@@ -1,0 +1,34 @@
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: network-hub
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: network
+  secure-saas-infra:adminRoleArns: []
+  secure-saas-infra:network:
+    egress:
+      cidr: 10.0.0.0/16
+      azCount: 3
+      networkFirewallEnabled: true
+      shareTransitGatewayWithOrganization: true
+      allowedDomains:
+        - github.com
+        - api.github.com
+        - registry.npmjs.org
+        - pypi.org
+        - files.pythonhosted.org
+        - docker.io
+        - registry-1.docker.io
+        - ghcr.io
+    # Hub-only network account. Cross-account spokes attach to the shared TGW in a later stack.
+    spokes: []
+  secure-saas-infra:eks:
+    version: "1.33"
+    endpointPublicAccess: false
+    autoModeNodePools:
+      - system
+      - general-purpose
+    networkPolicyMode: strict
+  secure-saas-infra:security:
+    enableGuardDuty: true
+    enableSecurityHub: true

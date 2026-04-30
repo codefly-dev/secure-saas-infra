@@ -1,0 +1,12 @@
+{
+  "githubOrg": "deus-ai",
+  "pulumiOrg": "deus",
+  "repo": "secure-saas-infra",
+  "pulumiProject": "secure-saas-infra",
+  "organizationName": "deus",
+  "accountEmailDomain": "aws.example.com",
+  "awsEmailPrefix": "aws",
+  "codeownersTeam": "platform-security",
+  "managementAccountId": "111122223333",
+  "deployerPolicyAccountId": "111122223333"
+}

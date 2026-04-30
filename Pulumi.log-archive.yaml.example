@@ -1,0 +1,18 @@
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: log-archive
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: log-archive
+  secure-saas-infra:logArchive:
+    objectLockRetentionDays: 2555
+    transitionToGlacierDays: 90
+    cloudTrailPrefix: cloudtrail
+    createOrganizationTrail: false
+    organizationTrailName: deus-organization-trail
+    # Set to the AWS Organizations management account ID before deploying the log archive stack.
+    # The trail bucket policy and KMS key require both aws:SourceArn and aws:SourceAccount to match.
+    cloudTrailSourceAccountId: "111111111111"
+    # Optional S3 bucket ARNs whose object-level events should be captured by the
+    # organization trail. Recommended for customer artifact and Vault backup buckets.
+    s3DataEventBucketArns: []

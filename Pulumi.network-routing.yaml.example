@@ -1,0 +1,13 @@
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: network-routing
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: network-routing
+  secure-saas-infra:networkRouting:
+    networkStackRef: your-pulumi-org/secure-saas-infra/network
+    azCount: 3
+    networkFirewallEnabled: true
+    spokeStackRefs:
+      - your-pulumi-org/secure-saas-infra/platform-dev
+      - your-pulumi-org/secure-saas-infra/execution-dev

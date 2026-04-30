@@ -1,0 +1,75 @@
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: identity
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: identity
+  secure-saas-infra:identityCenter:
+    # Run this from the management account after IAM Identity Center is enabled for the organization.
+    organizationStackRef: your-pulumi-org/secure-saas-infra/management
+    groups:
+      - name: security-admins
+        displayName: AWS Security Admins
+        create: true
+      - name: platform-admins
+        displayName: AWS Platform Admins
+        create: true
+      - name: developers
+        displayName: AWS Developers
+        create: true
+      - name: readonly
+        displayName: AWS ReadOnly
+        create: true
+      - name: breakglass
+        displayName: AWS BreakGlass
+        create: true
+    permissionSets:
+      - name: SecurityAuditReadOnly
+        description: Read-only security visibility across accounts.
+        sessionDuration: PT4H
+        managedPolicyArns:
+          - arn:aws:iam::aws:policy/SecurityAudit
+          - arn:aws:iam::aws:policy/job-function/ViewOnlyAccess
+      - name: PlatformPowerUser
+        description: Power user access for platform operations without IAM administration.
+        sessionDuration: PT2H
+        managedPolicyArns:
+          - arn:aws:iam::aws:policy/PowerUserAccess
+      - name: DeveloperReadOnly
+        description: Read-only developer access.
+        sessionDuration: PT4H
+        managedPolicyArns:
+          - arn:aws:iam::aws:policy/ReadOnlyAccess
+      - name: BreakGlassAdministrator
+        description: Emergency administrator access. Keep membership empty by default.
+        sessionDuration: PT1H
+        managedPolicyArns:
+          - arn:aws:iam::aws:policy/AdministratorAccess
+    assignments:
+      - groupName: security-admins
+        permissionSetName: SecurityAuditReadOnly
+        accountNames:
+          - security-tooling
+          - log-archive
+          - network
+          - shared-services
+      - groupName: platform-admins
+        permissionSetName: PlatformPowerUser
+        accountNames:
+          - platform-dev
+          - platform-staging
+          - platform-prod
+      - groupName: developers
+        permissionSetName: DeveloperReadOnly
+        accountNames:
+          - platform-dev
+          - execution-dev
+      - groupName: breakglass
+        permissionSetName: BreakGlassAdministrator
+        accountNames:
+          - security-tooling
+          - log-archive
+          - network
+          - shared-services
+          - platform-prod
+          - execution-prod

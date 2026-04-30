@@ -1,0 +1,15 @@
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: waf
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: waf
+  secure-saas-infra:waf:
+    name: public-ingress
+    scope: REGIONAL
+    rateLimitPer5Minutes: 2000
+    enableBotControl: true
+    modelGatewayPathPrefixes:
+      - /v1/models
+      - /v1/agents
+    modelGatewayRateLimitPer5Minutes: 200

@@ -1,0 +1,35 @@
+config:
+  secure-saas-infra:stackKind: github-governance
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: github-governance
+  # The GitHub provider also reads GITHUB_TOKEN from the environment.
+  github:owner: your-github-org
+  secure-saas-infra:githubGovernance:
+    enabled: true
+    owner: your-github-org
+    repository: secure-saas-infra
+    defaultBranch: main
+    requiredStatusChecks:
+      - npm test
+    protectedEnvironments:
+      - name: production
+        reviewerTeamIds: []
+        reviewerUserIds: []
+        waitTimerMinutes: 0
+    allowedActionsPatterns:
+      - actions/*
+      - github/codeql-action/*
+      - sigstore/*
+      - slsa-framework/*
+    requireShaPinnedActions: true
+    requireCodeOwnerReview: true
+    requireSignedCommits: true
+    requireLinearHistory: true
+    requiredApprovingReviewCount: 1
+    requireCodeScanning: true
+    codeScanningTool: CodeQL
+    # Organization settings are broad and affect future repositories, so keep this
+    # false until the GitHub organization owner has approved the defaults.
+    manageOrganizationSettings: false
+    # organizationBillingEmail: security@example.com

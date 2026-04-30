@@ -1,0 +1,38 @@
+environment:
+  - secure-saas-infra/dev
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: execution
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: execution-dev
+  secure-saas-infra:spoke:
+    name: execution-dev
+    kind: execution
+    cidr: 10.20.0.0/16
+    azCount: 3
+    createEks: true
+    networkStackRef: your-pulumi-org/secure-saas-infra/network
+  secure-saas-infra:executionSandbox:
+    provider: e2b-byoc
+    dedicatedAccountRequired: true
+    privateLoadBalancerRequired: true
+    centralizedEgressRequired: true
+    maxSandboxDurationMinutes: 1440
+    allowExternalControlPlane: true
+    allowAnonymizedMetricsExport: true
+    requirePerJobAuditMetadata: true
+    requireBrokeredCredentials: true
+  secure-saas-infra:e2bByocAccess:
+    createVendorRole: false
+    vendorPrincipalArns: []
+    managedPolicyArns: []
+    maxSessionDurationSeconds: 3600
+  secure-saas-infra:customerData:
+    createArtifactStore: true
+    artifactRetentionDays: 90
+    noncurrentVersionExpirationDays: 30
+    requireTenantScopedPrefixes: true
+    requireDeletionManifests: true
+    requireExportManifests: true
+    enterpriseDedicatedKmsRequired: true

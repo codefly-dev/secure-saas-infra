@@ -1,0 +1,11 @@
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: shared-services
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: shared-services
+  secure-saas-infra:sharedServices:
+    createVaultAutoUnsealKey: true
+    createVaultBackupBucket: true
+    vaultBackupRetentionDays: 90
+    createTailscaleBootstrapSecrets: true

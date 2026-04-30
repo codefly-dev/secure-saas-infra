@@ -1,0 +1,15 @@
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: organization-audit
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: organization-audit
+  secure-saas-infra:organizationAudit:
+    # Must match the log-archive stack's organizationTrailName. The audit stack
+    # reads it back from log-archive's exports and rejects mismatches at preview.
+    logArchiveStackRef: your-pulumi-org/secure-saas-infra/log-archive
+    organizationTrailName: deus-organization-trail
+    cloudTrailPrefix: cloudtrail
+    # Capture S3 object-level events for these buckets in the org trail.
+    # Recommended: customer artifact bucket ARN and Vault backup bucket ARN.
+    s3DataEventBucketArns: []

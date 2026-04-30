@@ -1,0 +1,15 @@
+environment:
+  - secure-saas-infra/dev
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: platform
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: platform-dev
+  secure-saas-infra:spoke:
+    name: platform-dev
+    kind: platform
+    cidr: 10.10.0.0/16
+    azCount: 3
+    createEks: true
+    networkStackRef: your-pulumi-org/secure-saas-infra/network

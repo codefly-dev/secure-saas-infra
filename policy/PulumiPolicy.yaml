@@ -1,0 +1,5 @@
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm
+description: Mandatory infrastructure guardrails for secure-saas-infra.

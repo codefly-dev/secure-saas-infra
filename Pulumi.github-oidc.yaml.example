@@ -1,0 +1,32 @@
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: github-oidc
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: github-oidc
+  secure-saas-infra:githubOidc:
+    enabled: true
+    repositories:
+      # Run this stack in every AWS account where GitHub Actions needs AWS access.
+      # Replace owner/repo and policy ARNs before deploying.
+      - name: infra-plan
+        owner: your-github-org
+        repo: secure-saas-infra
+        description: Read-only planning role for infrastructure previews.
+        allowedRefs:
+          - refs/heads/main
+        allowedEnvironments: []
+        managedPolicyArns:
+          - arn:aws:iam::aws:policy/ReadOnlyAccess
+        maxSessionDurationSeconds: 3600
+      - name: infra-deploy-production
+        owner: your-github-org
+        repo: secure-saas-infra
+        description: Production deployment role gated by a GitHub protected environment.
+        allowedRefs: []
+        allowedEnvironments:
+          - production
+        managedPolicyArns:
+          # Replace with an account-local least-privilege Pulumi deployer policy.
+          - arn:aws:iam::123456789012:policy/deus-production-pulumi-deployer
+        maxSessionDurationSeconds: 3600

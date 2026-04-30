@@ -1,0 +1,15 @@
+values:
+  pulumiConfig:
+    aws:region: us-east-1
+    secure-saas-infra:organizationName: deus
+    secure-saas-infra:environment: dev
+    secure-saas-infra:eks:
+      version: "1.33"
+      endpointPublicAccess: false
+      autoModeNodePools:
+        - system
+        - general-purpose
+      networkPolicyMode: strict
+    secure-saas-infra:security:
+      enableGuardDuty: true
+      enableSecurityHub: true

@@ -1,0 +1,9 @@
+name: secure-saas-infra
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm
+description: Secure SaaS infrastructure baseline with centralized egress, EKS, Vault-ready secrets, and GitOps.
+config:
+  aws:region:
+    value: us-east-1

@@ -1,0 +1,15 @@
+environment:
+  - secure-saas-infra/staging
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: platform
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: platform-staging
+  secure-saas-infra:spoke:
+    name: platform-staging
+    kind: platform
+    cidr: 10.11.0.0/16
+    azCount: 3
+    createEks: true
+    networkStackRef: your-pulumi-org/secure-saas-infra/network

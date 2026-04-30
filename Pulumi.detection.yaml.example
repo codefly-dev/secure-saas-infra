@@ -1,0 +1,9 @@
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: detection
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: detection
+  secure-saas-infra:detection:
+    emailSubscriptions:
+      - security-alerts@your-org.example

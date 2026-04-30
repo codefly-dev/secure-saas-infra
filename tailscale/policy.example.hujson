@@ -1,0 +1,28 @@
+{
+  // Start from this policy, then wire it into Tailscale GitOps.
+  // Use real groups/users before applying.
+  "tagOwners": {
+    "tag:k8s-operator": [],
+    "tag:k8s": ["tag:k8s-operator"],
+    "tag:k8s-platform": ["tag:k8s-operator"],
+    "tag:k8s-execution-breakglass": ["tag:k8s-operator"]
+  },
+
+  "acls": [
+    // Platform admins can reach private platform services exposed by the operator.
+    {
+      "action": "accept",
+      "src": ["autogroup:admin"],
+      "dst": ["tag:k8s-platform:*"]
+    },
+
+    // Execution access is intentionally break-glass only.
+    {
+      "action": "accept",
+      "src": ["autogroup:admin"],
+      "dst": ["tag:k8s-execution-breakglass:*"]
+    }
+  ],
+
+  "ssh": []
+}

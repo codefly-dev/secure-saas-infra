@@ -1,0 +1,14 @@
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: security-tooling
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: security-tooling
+  secure-saas-infra:securityTooling:
+    enableGuardDutyOrganization: true
+    enableSecurityHubOrganization: true
+    enableInspectorOrganization: true
+    enableConfigAggregator: true
+    configAggregatorAllRegions: true
+    # Add member account IDs after account vending if you want Pulumi to explicitly enable Inspector scans.
+    inspectorAccountIds: []

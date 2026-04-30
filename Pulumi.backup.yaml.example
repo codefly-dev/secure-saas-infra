@@ -1,0 +1,21 @@
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: backup
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: backup
+  secure-saas-infra:backup:
+    # Cross-region replica region for AWS Backup. Use a different region than the primary
+    # deploy region. Set to the empty string to disable cross-region copy (not recommended).
+    replicaRegion: us-west-2
+    vaultLockEnabled: true
+    vaultLockMinRetentionDays: 35
+    vaultLockMaxRetentionDays: 2555
+    vaultLockChangeableForDays: 3
+    createPlan: true
+    dailyScheduleExpression: "cron(0 5 ? * * *)"
+    coldStorageAfterDays: 90
+    deleteAfterDays: 365
+    selectionTags:
+      - key: Backup
+        value: required

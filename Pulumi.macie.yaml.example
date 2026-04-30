@@ -1,0 +1,15 @@
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: macie
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: macie
+  secure-saas-infra:macie:
+    classificationJobs:
+      # Replace accountId and bucket names. Schedule scans the customer artifact
+      # store and the Vault backup bucket weekly to flag accidental PII exposure.
+      - accountId: "111122223333"
+        buckets:
+          - deus-execution-prod-customer-artifacts
+          - deus-shared-services-vault-backups
+        dayOfWeek: MONDAY

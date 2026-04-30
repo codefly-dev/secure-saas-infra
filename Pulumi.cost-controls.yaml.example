@@ -1,0 +1,18 @@
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: cost-controls
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: cost-controls
+  secure-saas-infra:costControls:
+    notificationEmails:
+      - finops@your-org.example
+      - security-alerts@your-org.example
+    enableAnomalyDetection: true
+    anomalyMinImpactUsd: 100
+    tenantBudgets:
+      # Replace with real tenant identifiers; tenant resources should carry the
+      # tag {Key: TenantId, Value: <tenantId>}.
+      - tenantId: example-tenant-1
+        monthlyLimitUsd: 1000
+        thresholdPercent: 80

@@ -1,0 +1,75 @@
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: management
+  secure-saas-infra:deploymentMode: organization
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: management
+  secure-saas-infra:organization:
+    createOrganization: true
+    defaultAccountRoleName: OrganizationAccountAccessRole
+    enableRamSharing: true
+    enableSecurityDelegatedAdmin: true
+    securityDelegatedAdminAccountName: security-tooling
+    serviceAccessPrincipals:
+      - cloudtrail.amazonaws.com
+      - config.amazonaws.com
+      - config-multiaccountsetup.amazonaws.com
+      - guardduty.amazonaws.com
+      - securityhub.amazonaws.com
+      - inspector2.amazonaws.com
+    enabledPolicyTypes:
+      - SERVICE_CONTROL_POLICY
+    organizationalUnits:
+      - name: Security
+      - name: Infrastructure
+      - name: Workloads
+      - name: Execution
+      - name: Suspended
+    accounts:
+      # Replace these emails before deploying. AWS account emails must be globally unique.
+      - name: security-tooling
+        email: aws+security-tooling@example.com
+        ou: Security
+        kind: security
+      - name: log-archive
+        email: aws+log-archive@example.com
+        ou: Security
+        kind: log-archive
+      - name: network
+        email: aws+network@example.com
+        ou: Infrastructure
+        kind: network
+      - name: shared-services
+        email: aws+shared-services@example.com
+        ou: Infrastructure
+        kind: shared-services
+      - name: platform-dev
+        email: aws+platform-dev@example.com
+        ou: Workloads
+        kind: workload
+      - name: platform-staging
+        email: aws+platform-staging@example.com
+        ou: Workloads
+        kind: workload
+      - name: platform-prod
+        email: aws+platform-prod@example.com
+        ou: Workloads
+        kind: workload
+      - name: execution-dev
+        email: aws+execution-dev@example.com
+        ou: Execution
+        kind: execution
+      - name: execution-staging
+        email: aws+execution-staging@example.com
+        ou: Execution
+        kind: execution
+      - name: execution-prod
+        email: aws+execution-prod@example.com
+        ou: Execution
+        kind: execution
+    guardrailScpsEnabled: true
+    guardrailTargetOuNames:
+      - Security
+      - Infrastructure
+      - Workloads
+      - Execution

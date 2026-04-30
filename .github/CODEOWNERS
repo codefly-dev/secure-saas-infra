@@ -1,0 +1,10 @@
+# Infrastructure, GitOps, and security docs require platform/security review.
+* @your-github-org/platform-security
+
+/policy/ @your-github-org/platform-security
+/src/ @your-github-org/platform-security
+/gitops/ @your-github-org/platform-security
+/docs/mind-server-security.md @your-github-org/platform-security
+/docs/e2b-byoc.md @your-github-org/platform-security
+/docs/incident-response.md @your-github-org/platform-security
+/.github/ @your-github-org/platform-security

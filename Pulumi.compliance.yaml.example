@@ -1,0 +1,14 @@
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: compliance
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: compliance
+  secure-saas-infra:compliance:
+    deployConformancePack: true
+    # Set to true after copying the SOC 2 framework ARN from AWS Audit Manager.
+    createAuditManagerAssessment: false
+    # auditManagerFrameworkArn: arn:aws:auditmanager:us-east-1:aws:assessmentFramework/<framework-id>
+    # auditEvidenceBucket: your-evidence-bucket-name
+    auditManagerAccountIds: []
+    auditManagerRoleArns: []

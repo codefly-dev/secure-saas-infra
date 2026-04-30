@@ -1,0 +1,12 @@
+{
+  "name": "secure-saas-infra-policy",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "dependencies": {
+    "@pulumi/policy": "^1.20.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}

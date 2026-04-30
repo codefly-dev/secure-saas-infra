@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist-policy"
+  },
+  "include": ["policy/**/*.ts"]
+}

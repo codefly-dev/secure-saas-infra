@@ -1,0 +1,40 @@
+environment:
+  - secure-saas-infra/dev
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: single-account
+  secure-saas-infra:deploymentMode: workload
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: dev
+  secure-saas-infra:adminRoleArns: []
+  secure-saas-infra:network:
+    egress:
+      cidr: 10.0.0.0/16
+      azCount: 3
+      networkFirewallEnabled: true
+      shareTransitGatewayWithOrganization: false
+      allowedDomains:
+        - github.com
+        - api.github.com
+        - registry.npmjs.org
+        - pypi.org
+        - files.pythonhosted.org
+    spokes:
+      - name: platform
+        cidr: 10.10.0.0/16
+        kind: platform
+        createEks: true
+      - name: execution
+        cidr: 10.20.0.0/16
+        kind: execution
+        createEks: true
+  secure-saas-infra:eks:
+    version: "1.33"
+    endpointPublicAccess: false
+    autoModeNodePools:
+      - system
+      - general-purpose
+    networkPolicyMode: strict
+  secure-saas-infra:security:
+    enableGuardDuty: false
+    enableSecurityHub: false

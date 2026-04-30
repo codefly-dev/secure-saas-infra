@@ -1,0 +1,48 @@
+environment:
+  - secure-saas-infra/production
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: platform
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: platform-prod
+  secure-saas-infra:adminRoleArns:
+    # Replace with the IAM Identity Center or break-glass role ARNs that should
+    # have EKS Access Entries.
+    - arn:aws:iam::123456789012:role/AWSReservedSSO_PlatformPowerUser_PLACEHOLDER
+  secure-saas-infra:spoke:
+    name: platform-prod
+    kind: platform
+    cidr: 10.12.0.0/16
+    azCount: 3
+    createEks: true
+    networkStackRef: your-pulumi-org/secure-saas-infra/network
+  secure-saas-infra:agenticAi:
+    modelGatewayHostnames:
+      - api.openai.com
+      - api.anthropic.com
+    permittedModelProviders:
+      - openai
+      - anthropic
+      - bedrock
+    brokerEgressNamespaces:
+      - agent-broker
+      - agent-egress
+    requirePromptAuditLog: true
+    requireToolCallAuditLog: true
+    requireOutputFiltering: true
+    perTenantTokenBudget: 1000000
+    perTenantInferenceTimeoutSeconds: 60
+  secure-saas-infra:database:
+    name: control-plane
+    engine: aurora-postgresql
+    engineVersion: "16.4"
+    engineMajorVersion: "16"
+    databaseName: deus
+    masterUsername: deus_admin
+    port: 5432
+    instanceClass: db.r6g.large
+    instanceCount: 2
+    backupRetentionDays: 35
+    deletionProtection: true
+    createProxy: true
