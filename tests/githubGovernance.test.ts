@@ -39,6 +39,7 @@ test("github governance stack creates repository controls for customer-code infr
         bypassMode: "pull_request",
       },
     ],
+    useLegacyBranchProtection: false,
   });
 
   await flushPulumiMocks();
@@ -136,4 +137,59 @@ test("github governance stack creates repository controls for customer-code infr
     ).length,
     1,
   );
+});
+
+test("github governance falls back to legacy branch protection on free GitHub plans", async () => {
+  const { resources } = await installPulumiMocks();
+  const { createGithubGovernance } = await import("../src/githubGovernance");
+
+  createGithubGovernance({
+    enabled: true,
+    owner: "deus-ai",
+    repository: "infra",
+    defaultBranch: "main",
+    requiredStatusChecks: ["npm test"],
+    protectedEnvironments: [{ name: "production" }],
+    allowedActionsPatterns: ["actions/*"],
+    requireShaPinnedActions: true,
+    requireCodeOwnerReview: true,
+    requireSignedCommits: true,
+    requireLinearHistory: true,
+    requiredApprovingReviewCount: 1,
+    requireCodeScanning: true,
+    codeScanningTool: "CodeQL",
+    manageOrganizationSettings: false,
+    bypassActors: [],
+    useLegacyBranchProtection: true,
+  });
+
+  await flushPulumiMocks();
+
+  const rulesets = resourcesOfType(
+    resources,
+    "github:index/repositoryRuleset:RepositoryRuleset",
+  );
+  assert.equal(
+    rulesets.length,
+    0,
+    "rulesets must not be created when useLegacyBranchProtection is true",
+  );
+
+  const branchProtection = resourcesOfType(
+    resources,
+    "github:index/branchProtection:BranchProtection",
+  );
+  assert.equal(branchProtection.length, 1);
+  const inputs = branchProtection[0].inputs;
+  assert.equal(inputs.pattern, "main");
+  assert.equal(inputs.enforceAdmins, false);
+  assert.equal(inputs.requireSignedCommits, true);
+  assert.equal(inputs.requiredLinearHistory, true);
+  assert.equal(inputs.allowsForcePushes, false);
+  assert.equal(inputs.allowsDeletions, false);
+  assert.equal(
+    inputs.requiredPullRequestReviews[0].requireCodeOwnerReviews,
+    true,
+  );
+  assert.deepEqual(inputs.requiredStatusChecks[0].contexts, ["npm test"]);
 });

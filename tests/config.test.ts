@@ -195,6 +195,7 @@ const githubGovernanceConfig: GithubGovernanceConfig = {
   codeScanningTool: "CodeQL",
   manageOrganizationSettings: false,
   bypassActors: [],
+  useLegacyBranchProtection: false,
 };
 
 const executionSandboxConfig: ExecutionSandboxConfig = {

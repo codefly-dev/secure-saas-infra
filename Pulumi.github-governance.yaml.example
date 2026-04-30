@@ -38,3 +38,8 @@ config:
     # actorType: RepositoryRole | Team | Integration | OrganizationAdmin | DeployKey.
     # bypassMode: always | pull_request.
     bypassActors: []
+    # Repository rulesets require GitHub Pro/Team for private repos. Set this
+    # to true on Free plans to fall back to legacy branch protection (no push
+    # ruleset, no bypassActors flexibility, but covers signed commits, required
+    # reviews, CODEOWNERS, status checks, linear history, no force push).
+    useLegacyBranchProtection: false

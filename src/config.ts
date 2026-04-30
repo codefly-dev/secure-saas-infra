@@ -230,6 +230,12 @@ export interface GithubGovernanceConfig {
   manageOrganizationSettings: boolean;
   organizationBillingEmail?: string;
   bypassActors: GithubRulesetBypassActor[];
+  // Repository rulesets require GitHub Pro/Team for private repos. Set this to
+  // true on Free plans to fall back to legacy branch protection, which covers
+  // the bulk of the same controls (signed commits, required reviews,
+  // CODEOWNERS, status checks, linear history, no force push). Loses the push
+  // ruleset and bypassActors flexibility.
+  useLegacyBranchProtection: boolean;
 }
 
 export type ExecutionSandboxProvider =
@@ -638,6 +644,7 @@ export const githubGovernanceConfig =
     codeScanningTool: "CodeQL",
     manageOrganizationSettings: false,
     bypassActors: [],
+    useLegacyBranchProtection: false,
   } satisfies GithubGovernanceConfig);
 
 export const executionSandboxConfig =
