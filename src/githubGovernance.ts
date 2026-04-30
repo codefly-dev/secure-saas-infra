@@ -116,8 +116,8 @@ export function createGithubGovernance(
                 requiredCodeScanningTools: [
                   {
                     tool: config.codeScanningTool,
-                    alertsThreshold: "errorsAndWarnings",
-                    securityAlertsThreshold: "highOrHigher",
+                    alertsThreshold: "errors_and_warnings",
+                    securityAlertsThreshold: "high_or_higher",
                   },
                 ],
               },

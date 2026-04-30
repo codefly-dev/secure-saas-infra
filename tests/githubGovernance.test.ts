@@ -94,7 +94,7 @@ test("github governance stack creates repository controls for customer-code infr
   assert.equal(
     mainRuleset.inputs.rules.requiredCodeScanning.requiredCodeScanningTools[0]
       .securityAlertsThreshold,
-    "highOrHigher",
+    "high_or_higher",
   );
 
   const pushRuleset = rulesets.find(
