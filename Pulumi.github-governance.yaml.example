@@ -33,3 +33,8 @@ config:
     # false until the GitHub organization owner has approved the defaults.
     manageOrganizationSettings: false
     # organizationBillingEmail: security@example.com
+    # Optional: admins who can bypass the ruleset in emergencies. Use sparingly.
+    # actorId is the numeric GitHub user/team/role ID (gh api user --jq .id).
+    # actorType: RepositoryRole | Team | Integration | OrganizationAdmin | DeployKey.
+    # bypassMode: always | pull_request.
+    bypassActors: []

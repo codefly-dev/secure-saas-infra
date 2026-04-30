@@ -32,6 +32,13 @@ test("github governance stack creates repository controls for customer-code infr
     requireCodeScanning: true,
     codeScanningTool: "CodeQL",
     manageOrganizationSettings: false,
+    bypassActors: [
+      {
+        actorId: 12345,
+        actorType: "OrganizationAdmin",
+        bypassMode: "pull_request",
+      },
+    ],
   });
 
   await flushPulumiMocks();
@@ -60,6 +67,13 @@ test("github governance stack creates repository controls for customer-code infr
   );
   assert.ok(mainRuleset);
   assert.equal(mainRuleset.inputs.enforcement, "active");
+  assert.deepEqual(mainRuleset.inputs.bypassActors, [
+    {
+      actorId: 12345,
+      actorType: "OrganizationAdmin",
+      bypassMode: "pull_request",
+    },
+  ]);
   assert.deepEqual(mainRuleset.inputs.conditions.refName.includes, [
     "~DEFAULT_BRANCH",
   ]);

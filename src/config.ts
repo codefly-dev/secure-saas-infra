@@ -201,6 +201,17 @@ export interface GithubGovernanceEnvironmentConfig {
   waitTimerMinutes?: number;
 }
 
+export interface GithubRulesetBypassActor {
+  actorId: number;
+  actorType:
+    | "RepositoryRole"
+    | "Team"
+    | "Integration"
+    | "OrganizationAdmin"
+    | "DeployKey";
+  bypassMode: "always" | "pull_request";
+}
+
 export interface GithubGovernanceConfig {
   enabled: boolean;
   owner: string;
@@ -218,6 +229,7 @@ export interface GithubGovernanceConfig {
   codeScanningTool: string;
   manageOrganizationSettings: boolean;
   organizationBillingEmail?: string;
+  bypassActors: GithubRulesetBypassActor[];
 }
 
 export type ExecutionSandboxProvider =
@@ -625,6 +637,7 @@ export const githubGovernanceConfig =
     requireCodeScanning: true,
     codeScanningTool: "CodeQL",
     manageOrganizationSettings: false,
+    bypassActors: [],
   } satisfies GithubGovernanceConfig);
 
 export const executionSandboxConfig =

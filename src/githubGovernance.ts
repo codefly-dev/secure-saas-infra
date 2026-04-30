@@ -71,6 +71,12 @@ export function createGithubGovernance(
     );
   }
 
+  const bypassActors = config.bypassActors.map((entry) => ({
+    actorId: entry.actorId,
+    actorType: entry.actorType,
+    bypassMode: entry.bypassMode,
+  }));
+
   const mainRuleset = new github.RepositoryRuleset(
     named("github-main-ruleset"),
     {
@@ -78,6 +84,7 @@ export function createGithubGovernance(
       name: named("main-protection"),
       target: "branch",
       enforcement: "active",
+      bypassActors,
       conditions: {
         refName: {
           includes: ["~DEFAULT_BRANCH"],
@@ -128,6 +135,7 @@ export function createGithubGovernance(
       name: named("push-protection"),
       target: "push",
       enforcement: "active",
+      bypassActors,
       rules: {
         fileExtensionRestriction: {
           restrictedFileExtensions: ["pem", "key", "p12", "pfx"],
