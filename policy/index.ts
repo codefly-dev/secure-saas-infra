@@ -503,6 +503,92 @@ new PolicyPack("secure-saas-infra-guardrails", {
         }
       },
     },
+    {
+      name: "cloudfront-distribution-hardened",
+      description:
+        "CloudFront distributions must use modern TLS, attach a WAF web ACL, log to S3, and use VPC Origins (no public-IP origins).",
+      severity: "critical",
+      validateResource: (args, reportViolation) => {
+        if (args.type !== "aws:cloudfront/distribution:Distribution") return;
+
+        const viewerCert = args.props.viewerCertificate ?? {};
+        const minimumProtocolVersion = viewerCert.minimumProtocolVersion;
+        const acceptableTls = ["TLSv1.2_2021", "TLSv1.3_2021"];
+        if (!acceptableTls.includes(minimumProtocolVersion)) {
+          reportViolation(
+            `CloudFront distribution viewer certificate must use minimumProtocolVersion in ${acceptableTls.join(", ")}.`,
+          );
+        }
+
+        if (!args.props.webAclId) {
+          reportViolation(
+            "CloudFront distributions must attach a WAFv2 web ACL via webAclId.",
+          );
+        }
+
+        if (!args.props.loggingConfig?.bucket) {
+          reportViolation(
+            "CloudFront distributions must enable access logging to an S3 bucket.",
+          );
+        }
+
+        const origins: Array<Record<string, unknown>> = args.props.origins ?? [];
+        if (origins.length === 0) {
+          reportViolation("CloudFront distributions must declare origins.");
+          return;
+        }
+
+        for (const origin of origins) {
+          const isVpcOrigin = Boolean(origin.vpcOriginConfig);
+          const isS3Origin = Boolean(origin.s3OriginConfig);
+          if (!isVpcOrigin && !isS3Origin) {
+            reportViolation(
+              `CloudFront origin '${origin.originId}' must use vpcOriginConfig or s3OriginConfig. Public-IP origins are not allowed.`,
+            );
+          }
+
+          const customOriginConfig = origin.customOriginConfig as
+            | Record<string, unknown>
+            | undefined;
+          if (customOriginConfig) {
+            reportViolation(
+              `CloudFront origin '${origin.originId}' uses customOriginConfig (public origin). Switch to vpcOriginConfig for private NLB/ALB or s3OriginConfig with OAC.`,
+            );
+          }
+
+          if (
+            isVpcOrigin &&
+            (origin.vpcOriginConfig as Record<string, unknown>).originReadTimeout === undefined
+          ) {
+            // Soft hint, not a violation.
+          }
+        }
+
+        const cacheBehavior = args.props.defaultCacheBehavior as
+          | Record<string, unknown>
+          | undefined;
+        if (cacheBehavior?.viewerProtocolPolicy === "allow-all") {
+          reportViolation(
+            "CloudFront defaultCacheBehavior.viewerProtocolPolicy must redirect or require HTTPS.",
+          );
+        }
+      },
+    },
+    {
+      name: "acm-certificate-uses-dns-validation",
+      description:
+        "ACM certificates must use DNS validation; email validation is not auditable.",
+      severity: "high",
+      validateResource: (args, reportViolation) => {
+        if (args.type !== "aws:acm/certificate:Certificate") return;
+
+        if (args.props.validationMethod !== "DNS") {
+          reportViolation(
+            "ACM certificates must use validationMethod: DNS.",
+          );
+        }
+      },
+    },
   ],
 });
 

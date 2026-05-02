@@ -49,6 +49,12 @@ The baseline uses:
   eBPF) wired through Argo CD. See [docs/runtime-security.md](docs/runtime-security.md).
 - VPC-level Route 53 Resolver query logs in every workload VPC.
 - SLSA Level 3 release workflow using `slsa-framework/slsa-github-generator`.
+- Public ingress hub: CloudFront + WAFv2 + ACM (TLS 1.3) + VPC Origin to an
+  internal NLB → Istio ambient → backends. No public IP in any VPC. See
+  [docs/ingress.md](docs/ingress.md).
+- ExternalDNS reconciles Route 53 from in-cluster `Service`/`Ingress`/Gateway
+  API resources; Argo Rollouts ships canary + blue-green progressive
+  delivery.
 
 ## First Deployment Flow
 
@@ -206,3 +212,4 @@ See [docs/runtime-security.md](docs/runtime-security.md) for Falco runtime detec
 See [docs/compliance.md](docs/compliance.md) for the Config conformance pack and SOC 2 evidence.
 See [docs/cost-controls.md](docs/cost-controls.md) for per-tenant budgets and cost anomaly detection.
 See [docs/waf.md](docs/waf.md) for public-ingress WAF posture.
+See [docs/ingress.md](docs/ingress.md) for the CloudFront + VPC Origin + Istio ingress architecture.

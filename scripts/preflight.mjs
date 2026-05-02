@@ -27,6 +27,7 @@ const requiredFiles = [
   "Pulumi.cost-controls.yaml.example",
   "Pulumi.macie.yaml.example",
   "Pulumi.waf.yaml.example",
+  "Pulumi.ingress.yaml.example",
   "docs/onboarding.md",
   "docs/github-security.md",
   "docs/deploy-runbook.md",
@@ -40,12 +41,15 @@ const requiredFiles = [
   "docs/compliance.md",
   "docs/cost-controls.md",
   "docs/waf.md",
+  "docs/ingress.md",
   "policy/index.ts",
   "gitops/base/kyverno/require-execution-sandbox.yaml",
   "gitops/base/kyverno/verify-signed-provenance.yaml",
   "gitops/base/kyverno/require-agent-audit.yaml",
   "gitops/bootstrap/argocd/base/apps/vault.application.yaml",
   "gitops/bootstrap/argocd/base/apps/falco.application.yaml",
+  "gitops/bootstrap/argocd/base/apps/external-dns.application.yaml",
+  "gitops/bootstrap/argocd/base/apps/argo-rollouts.application.yaml",
 ];
 
 for (const file of requiredFiles) {

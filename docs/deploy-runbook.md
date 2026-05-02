@@ -282,17 +282,40 @@ The `detection`, `compliance`, and `macie` stacks run in `security-tooling`.
 The `cost-controls` stack runs in `management`. The `waf` stack runs in the
 account that owns the public ingress (typically `platform-prod`).
 
-## 13. Vault and Falco
+## 13. Vault, Falco, ExternalDNS, Argo Rollouts
 
-Both run via Argo CD; sync them after the cluster bootstraps:
+All four run via Argo CD; sync after the cluster bootstraps:
 
 ```sh
-kubectl get applications -n argocd vault falco
+kubectl get applications -n argocd vault falco external-dns argo-rollouts
 ```
 
 Vault uses AWS KMS auto-unseal keyed against
 `alias/deus-shared-services-vault-auto-unseal`. Provide the unseal IAM role
 to the Vault `ServiceAccount` via Pod Identity before initial unseal.
+
+ExternalDNS needs an IAM role with `route53:ChangeResourceRecordSets`
+on the configured hosted zone, attached via Pod Identity to the
+`external-dns` ServiceAccount. Argo Rollouts dashboard is ClusterIP only —
+reach it via the Tailscale operator.
+
+## 14. Public Ingress (CloudFront + WAF + VPC Origin)
+
+The public ingress hub lives at the AWS edge, not in a VPC. Run after the
+platform stack so the internal NLB exists, and after the `waf` stack with
+`scope: CLOUDFRONT` so the web ACL ARN is available.
+
+```sh
+pulumi stack init ingress
+cp Pulumi.ingress.yaml.example Pulumi.ingress.yaml
+# Edit domainName, hostedZoneId, internalNlbArn, originDomainName, webAclArn.
+pulumi up --stack ingress --policy-pack ./policy
+```
+
+The ingress stack creates ACM (us-east-1), a CloudFront VPC Origin to the
+internal NLB, the CloudFront distribution with HTTP/3 + TLS 1.3 + strict
+security headers, KMS-encrypted access logs with 365-day retention, and a
+Route 53 alias record. See [ingress.md](ingress.md) for the architecture.
 
 ## Incident Gate
 

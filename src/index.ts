@@ -10,6 +10,7 @@ import {
   githubGovernanceConfig,
   githubOidcConfig,
   identityCenterConfig,
+  ingressConfig,
   logArchiveConfig,
   macieConfig,
   networkConfig,
@@ -33,6 +34,7 @@ import { createE2bByocStack } from "./stacks/e2bByocStack";
 import { createGithubGovernanceStack } from "./stacks/githubGovernanceStack";
 import { createGithubOidcStack } from "./stacks/githubOidcStack";
 import { createIdentityStack } from "./stacks/identityStack";
+import { createIngressStack } from "./stacks/ingressStack";
 import { createLogArchiveStack } from "./stacks/logArchiveStack";
 import { createMacieStack } from "./stacks/macieStack";
 import { createNetworkHubStack } from "./stacks/networkHubStack";
@@ -132,6 +134,10 @@ const costControls =
     : undefined;
 const macie = stackKind === "macie" ? createMacieStack(macieConfig) : undefined;
 const waf = stackKind === "waf" ? createWafStack(wafConfig) : undefined;
+const ingress =
+  stackKind === "ingress" && ingressConfig
+    ? createIngressStack(ingressConfig)
+    : undefined;
 
 const network = networkHub?.network ?? workload?.network;
 
@@ -227,3 +233,8 @@ export const tenantBudgetNames = costControls
   : undefined;
 export const macieAccountId = macie?.account.id;
 export const wafWebAclArn = waf?.webAcl.arn;
+export const ingressDistributionId = ingress?.distribution.id;
+export const ingressDistributionDomainName = ingress?.distribution.domainName;
+export const ingressCertificateArn = ingress?.certificate.arn;
+export const ingressVpcOriginId = ingress?.vpcOrigin.id;
+export const ingressLogBucketName = ingress?.logBucket.bucket;

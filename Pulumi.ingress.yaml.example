@@ -1,0 +1,35 @@
+config:
+  # Region of the workload (where Pulumi state and the platform NLB live).
+  # CloudFront, ACM, and the CloudFront-scope WAF web ACL are pinned to
+  # us-east-1 by the ingress module regardless of this value.
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: ingress
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: ingress
+  secure-saas-infra:ingress:
+    domainName: api.your-domain.example
+    subjectAlternativeNames:
+      - app.your-domain.example
+    hostedZoneId: Z00000000000000000000  # Route 53 zone ID for the apex.
+    # Wire from platform-prod stack output: the internal NLB ARN that fronts
+    # the Istio ingress-gateway service.
+    internalNlbArn: arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/k8s-istio-ingress/0123456789abcdef
+    # The internal NLB's DNS name. CloudFront forwards SNI matching this.
+    originDomainName: k8s-istio-ingress-0123456789.elb.us-east-1.amazonaws.com
+    # CLOUDFRONT-scope WAF web ACL ARN (must live in us-east-1).
+    webAclArn: arn:aws:wafv2:us-east-1:111111111111:global/webacl/deus-public-ingress-waf/abcd1234
+    priceClass: PriceClass_100  # PriceClass_100 (US/EU/Israel), 200 (+APAC), All (global)
+    minimumTlsVersion: TLSv1.3_2021  # Reject anything older than TLS 1.3.
+    geoRestrictionType: none  # none | whitelist | blacklist
+    geoRestrictionLocations: []
+    # URI prefixes that route to the model gateway. The WAF stack adds a
+    # tighter rate limit for these, and CloudFront uses orderedCacheBehaviors
+    # to keep them as https-only with no caching.
+    modelGatewayPathPrefixes:
+      - /v1/models
+      - /v1/agents
+    # CSP starting point. Tighten per-route via Gateway API HTTPRoute filters
+    # if you serve a browser app from this hostname.
+    contentSecurityPolicy: "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+    logRetentionDays: 365

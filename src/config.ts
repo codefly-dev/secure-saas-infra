@@ -21,6 +21,7 @@ export type StackKind =
   | "cost-controls"
   | "macie"
   | "waf"
+  | "ingress"
   | "disabled";
 export type SpokeKind = "platform" | "execution" | "data" | "shared";
 export type OrganizationAccountKind =
@@ -357,6 +358,26 @@ export interface CostControlsConfig {
   tenantBudgets: CostControlsTenantBudget[];
   enableAnomalyDetection: boolean;
   anomalyMinImpactUsd: number;
+}
+
+export interface IngressConfig {
+  domainName: string;
+  subjectAlternativeNames: string[];
+  hostedZoneId?: string;
+  internalNlbArn: string;
+  originDomainName: string;
+  webAclArn?: string;
+  priceClass: "PriceClass_100" | "PriceClass_200" | "PriceClass_All";
+  minimumTlsVersion:
+    | "TLSv1.2_2018"
+    | "TLSv1.2_2019"
+    | "TLSv1.2_2021"
+    | "TLSv1.3_2021";
+  geoRestrictionType: "none" | "whitelist" | "blacklist";
+  geoRestrictionLocations: string[];
+  modelGatewayPathPrefixes: string[];
+  contentSecurityPolicy: string;
+  logRetentionDays: number;
 }
 
 export interface AgenticAiConfig {
@@ -740,6 +761,8 @@ export const costControlsConfig =
     anomalyMinImpactUsd: 100,
   } satisfies CostControlsConfig);
 
+export const ingressConfig = projectConfig.getObject<IngressConfig>("ingress");
+
 export const agenticAiConfig =
   projectConfig.getObject<AgenticAiConfig>("agenticAi") ??
   ({
@@ -806,6 +829,15 @@ export function validateConfig() {
     if (databaseConfig) {
       validateDatabaseConfig(databaseConfig);
     }
+  }
+
+  if (stackKind === "ingress") {
+    if (!ingressConfig) {
+      throw new Error(
+        "ingress stacks require secure-saas-infra:ingress configuration.",
+      );
+    }
+    validateIngressConfig(ingressConfig);
   }
 }
 
@@ -1042,6 +1074,7 @@ export function validateStackKindValues(
     "cost-controls",
     "macie",
     "waf",
+    "ingress",
     "disabled",
   ];
 
@@ -1452,6 +1485,78 @@ export function validateWafConfig(config: WafConfig) {
 
   if (!["REGIONAL", "CLOUDFRONT"].includes(config.scope)) {
     throw new Error("waf.scope must be REGIONAL or CLOUDFRONT.");
+  }
+}
+
+export function validateIngressConfig(config: IngressConfig) {
+  if (!config.domainName) {
+    throw new Error(
+      "ingress.domainName is required and must be the public hostname.",
+    );
+  }
+
+  if (!/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$/i.test(config.domainName)) {
+    throw new Error(
+      `ingress.domainName '${config.domainName}' is not a valid DNS hostname.`,
+    );
+  }
+
+  if (!config.internalNlbArn) {
+    throw new Error(
+      "ingress.internalNlbArn is required. Wire this from the platform stack output.",
+    );
+  }
+
+  if (
+    !/^arn:[^:]+:elasticloadbalancing:[a-z0-9-]+:[0-9]{12}:loadbalancer\/net\/[^/]+\/[a-f0-9]+$/.test(
+      config.internalNlbArn,
+    )
+  ) {
+    throw new Error(
+      "ingress.internalNlbArn must be a Network Load Balancer ARN (no ALB origins).",
+    );
+  }
+
+  const validTls = [
+    "TLSv1.2_2018",
+    "TLSv1.2_2019",
+    "TLSv1.2_2021",
+    "TLSv1.3_2021",
+  ];
+  if (!validTls.includes(config.minimumTlsVersion)) {
+    throw new Error(
+      `ingress.minimumTlsVersion must be one of: ${validTls.join(", ")}.`,
+    );
+  }
+
+  if (
+    config.minimumTlsVersion !== "TLSv1.3_2021" &&
+    config.minimumTlsVersion !== "TLSv1.2_2021"
+  ) {
+    throw new Error(
+      "ingress.minimumTlsVersion must be TLSv1.2_2021 or stronger. Older 2018/2019 viewer policies allow weak ciphers.",
+    );
+  }
+
+  if (
+    config.geoRestrictionType !== "none" &&
+    config.geoRestrictionLocations.length === 0
+  ) {
+    throw new Error(
+      "ingress.geoRestrictionLocations must be non-empty when geoRestrictionType is whitelist or blacklist.",
+    );
+  }
+
+  if (config.logRetentionDays < 365) {
+    throw new Error(
+      "ingress.logRetentionDays must be at least 365 to align with the security log retention baseline.",
+    );
+  }
+
+  if (!config.contentSecurityPolicy) {
+    throw new Error(
+      "ingress.contentSecurityPolicy must be set; default-src 'none' is the secure starting point.",
+    );
   }
 }
 

@@ -124,6 +124,11 @@
 - Route 53 Resolver query logs in every workload VPC for DNS-layer forensics.
 - SLSA Level 3 release workflow using
   `slsa-framework/slsa-github-generator`.
+- Public ingress hub: CloudFront + WAFv2 + ACM + CloudFront VPC Origin to an
+  internal NLB. No public IP in any VPC; the "hub" lives at the AWS edge,
+  not in a VPC. See [ingress.md](ingress.md).
+- ExternalDNS reconciles Route 53 from in-cluster Gateway API resources.
+- Argo Rollouts ships canary + blue-green progressive delivery.
 
 Remaining work for production:
 
