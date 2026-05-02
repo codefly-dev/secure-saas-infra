@@ -1,0 +1,27 @@
+environment:
+  - secure-saas-infra/production
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: ingress
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: ingress-prod
+  secure-saas-infra:ingress:
+    domainName: api.mind.example
+    subjectAlternativeNames: []
+    # Hosted zone created by the dns stack; bootstrap script populates this.
+    hostedZoneId: <set-from-dns-stack>
+    # Internal NLB ARN exported by the platform-prod stack.
+    internalNlbArn: <set-from-platform-prod-stack>
+    originDomainName: <set-from-platform-prod-stack>
+    # CLOUDFRONT-scope WAF web ACL ARN exported by the waf-prod stack.
+    webAclArn: <set-from-waf-prod-stack>
+    priceClass: PriceClass_All
+    minimumTlsVersion: TLSv1.3_2021
+    geoRestrictionType: none
+    geoRestrictionLocations: []
+    modelGatewayPathPrefixes:
+      - /v1/models
+      - /v1/agents
+    contentSecurityPolicy: "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+    logRetentionDays: 365

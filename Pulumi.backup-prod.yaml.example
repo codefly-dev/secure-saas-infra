@@ -1,0 +1,21 @@
+environment:
+  - secure-saas-infra/production
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: backup
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: backup-prod
+  secure-saas-infra:backup:
+    replicaRegion: us-west-2
+    vaultLockEnabled: true
+    vaultLockMinRetentionDays: 90
+    vaultLockMaxRetentionDays: 2555
+    vaultLockChangeableForDays: 3
+    createPlan: true
+    dailyScheduleExpression: "cron(0 5 ? * * *)"
+    coldStorageAfterDays: 90
+    deleteAfterDays: 2555
+    selectionTags:
+      - key: Backup
+        value: required

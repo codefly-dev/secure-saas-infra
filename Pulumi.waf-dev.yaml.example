@@ -1,0 +1,18 @@
+environment:
+  - secure-saas-infra/dev
+config:
+  # CloudFront-scope WAF web ACL must live in us-east-1.
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: waf
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: waf-dev
+  secure-saas-infra:waf:
+    name: public-ingress-dev
+    scope: CLOUDFRONT
+    rateLimitPer5Minutes: 500
+    enableBotControl: false
+    modelGatewayPathPrefixes:
+      - /v1/models
+      - /v1/agents
+    modelGatewayRateLimitPer5Minutes: 50

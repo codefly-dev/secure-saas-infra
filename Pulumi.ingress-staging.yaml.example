@@ -1,0 +1,27 @@
+environment:
+  - secure-saas-infra/staging
+config:
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: ingress
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: ingress-staging
+  secure-saas-infra:ingress:
+    domainName: staging.mind.example
+    subjectAlternativeNames: []
+    # Hosted zone created by the dns stack; bootstrap script populates this.
+    hostedZoneId: <set-from-dns-stack>
+    # Internal NLB ARN exported by the platform-staging stack.
+    internalNlbArn: <set-from-platform-staging-stack>
+    originDomainName: <set-from-platform-staging-stack>
+    # CLOUDFRONT-scope WAF web ACL ARN exported by the waf-staging stack.
+    webAclArn: <set-from-waf-staging-stack>
+    priceClass: PriceClass_100
+    minimumTlsVersion: TLSv1.3_2021
+    geoRestrictionType: none
+    geoRestrictionLocations: []
+    modelGatewayPathPrefixes:
+      - /v1/models
+      - /v1/agents
+    contentSecurityPolicy: "default-src 'none'"
+    logRetentionDays: 365

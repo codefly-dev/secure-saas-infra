@@ -37,6 +37,31 @@ export function createOrganizationFoundation(config: OrganizationConfig): Organi
     );
   }
 
+  // Service-access enablement so org-scoped resources work without a
+  // console click. Each entry is required for at least one downstream
+  // stack: backup ⇢ AWS Backup org plan; access-analyzer ⇢ Identity
+  // Access Analyzer org-wide findings; sso ⇢ IAM Identity Center
+  // (Identity Center itself still has to be enabled once via the
+  // console — there is no API for the initial flip — but trusted
+  // access for SSO and AccessAnalyzer can be set here so dependent
+  // stacks deploy cleanly).
+  for (const servicePrincipal of [
+    "backup.amazonaws.com",
+    "access-analyzer.amazonaws.com",
+    "sso.amazonaws.com",
+    "fms.amazonaws.com",
+    "ram.amazonaws.com",
+    "member.org.stacksets.cloudformation.amazonaws.com",
+  ]) {
+    new aws.organizations.AwsServiceAccess(
+      named(`service-access-${slug(servicePrincipal)}`),
+      {
+        servicePrincipal,
+      },
+      organization ? { dependsOn: organization } : undefined,
+    );
+  }
+
   const organizationalUnits: Record<string, aws.organizations.OrganizationalUnit> = {};
   for (const unit of config.organizationalUnits) {
     const parentId = unit.parent ? organizationalUnits[unit.parent]?.id : rootId;

@@ -22,6 +22,8 @@ export type StackKind =
   | "macie"
   | "waf"
   | "ingress"
+  | "dns"
+  | "argocd"
   | "disabled";
 export type SpokeKind = "platform" | "execution" | "data" | "shared";
 export type OrganizationAccountKind =
@@ -358,6 +360,21 @@ export interface CostControlsConfig {
   tenantBudgets: CostControlsTenantBudget[];
   enableAnomalyDetection: boolean;
   anomalyMinImpactUsd: number;
+}
+
+export interface DnsConfig {
+  rootDomain: string;
+  createRootZone: boolean;
+  enableQueryLogging: boolean;
+  environmentSubdomains: string[];
+}
+
+export interface ArgocdConfig {
+  clusterStackRef: string;
+  clusterName: string;
+  argocdHostname: string;
+  chartVersion: string;
+  bootstrapDirectory: string;
 }
 
 export interface IngressConfig {
@@ -763,6 +780,10 @@ export const costControlsConfig =
 
 export const ingressConfig = projectConfig.getObject<IngressConfig>("ingress");
 
+export const dnsConfig = projectConfig.getObject<DnsConfig>("dns");
+
+export const argocdConfig = projectConfig.getObject<ArgocdConfig>("argocd");
+
 export const agenticAiConfig =
   projectConfig.getObject<AgenticAiConfig>("agenticAi") ??
   ({
@@ -838,6 +859,84 @@ export function validateConfig() {
       );
     }
     validateIngressConfig(ingressConfig);
+  }
+
+  if (stackKind === "dns") {
+    if (!dnsConfig) {
+      throw new Error(
+        "dns stacks require secure-saas-infra:dns configuration.",
+      );
+    }
+    validateDnsConfig(dnsConfig);
+  }
+
+  if (stackKind === "argocd") {
+    if (!argocdConfig) {
+      throw new Error(
+        "argocd stacks require secure-saas-infra:argocd configuration.",
+      );
+    }
+    validateArgocdConfig(argocdConfig);
+  }
+}
+
+export function validateDnsConfig(config: DnsConfig) {
+  if (
+    !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?\.[a-z]{2,}$/i.test(config.rootDomain)
+  ) {
+    throw new Error(
+      `dns.rootDomain '${config.rootDomain}' is not a valid DNS apex.`,
+    );
+  }
+
+  for (const env of config.environmentSubdomains) {
+    if (!/^[a-z0-9-]+$/.test(env)) {
+      throw new Error(
+        `dns.environmentSubdomains entry '${env}' must be a DNS-safe slug.`,
+      );
+    }
+  }
+
+  const seen = new Set<string>();
+  for (const env of config.environmentSubdomains) {
+    if (seen.has(env)) {
+      throw new Error(
+        `dns.environmentSubdomains has duplicate entry '${env}'.`,
+      );
+    }
+    seen.add(env);
+  }
+}
+
+export function validateArgocdConfig(config: ArgocdConfig) {
+  if (!config.clusterStackRef) {
+    throw new Error(
+      "argocd.clusterStackRef is required (Pulumi stack name for the cluster).",
+    );
+  }
+
+  if (!config.clusterName) {
+    throw new Error(
+      "argocd.clusterName must match a key in the cluster stack's eksClusters output.",
+    );
+  }
+
+  if (!/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$/i.test(config.argocdHostname)) {
+    throw new Error(
+      `argocd.argocdHostname '${config.argocdHostname}' is not a valid hostname.`,
+    );
+  }
+
+  if (!/^\d+\.\d+\.\d+$/.test(config.chartVersion)) {
+    throw new Error(
+      "argocd.chartVersion must pin a fully-qualified semver (e.g. 8.4.0).",
+    );
+  }
+
+  if (!config.bootstrapDirectory) {
+    throw new Error(
+      "argocd.bootstrapDirectory is required; point at the Argo CD bootstrap kustomize.",
+    );
   }
 }
 
@@ -1075,6 +1174,8 @@ export function validateStackKindValues(
     "macie",
     "waf",
     "ingress",
+    "dns",
+    "argocd",
     "disabled",
   ];
 

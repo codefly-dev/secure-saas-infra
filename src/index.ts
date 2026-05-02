@@ -1,10 +1,12 @@
 import * as pulumi from "@pulumi/pulumi";
 import {
+  argocdConfig,
   backupConfig,
   complianceConfig,
   costControlsConfig,
   customerDataConfig,
   detectionConfig,
+  dnsConfig,
   e2bByocAccessConfig,
   eksConfig,
   githubGovernanceConfig,
@@ -33,6 +35,8 @@ import { createDetectionStack } from "./stacks/detectionStack";
 import { createE2bByocStack } from "./stacks/e2bByocStack";
 import { createGithubGovernanceStack } from "./stacks/githubGovernanceStack";
 import { createGithubOidcStack } from "./stacks/githubOidcStack";
+import { createArgocdStack } from "./stacks/argocdStack";
+import { createDnsStack } from "./stacks/dnsStack";
 import { createIdentityStack } from "./stacks/identityStack";
 import { createIngressStack } from "./stacks/ingressStack";
 import { createLogArchiveStack } from "./stacks/logArchiveStack";
@@ -138,6 +142,11 @@ const ingress =
   stackKind === "ingress" && ingressConfig
     ? createIngressStack(ingressConfig)
     : undefined;
+const dns = stackKind === "dns" && dnsConfig ? createDnsStack(dnsConfig) : undefined;
+const argocd =
+  stackKind === "argocd" && argocdConfig
+    ? createArgocdStack(argocdConfig)
+    : undefined;
 
 const network = networkHub?.network ?? workload?.network;
 
@@ -238,3 +247,17 @@ export const ingressDistributionDomainName = ingress?.distribution.domainName;
 export const ingressCertificateArn = ingress?.certificate.arn;
 export const ingressVpcOriginId = ingress?.vpcOrigin.id;
 export const ingressLogBucketName = ingress?.logBucket.bucket;
+export const dnsRootZoneId = dns?.rootZone?.zoneId;
+export const dnsRootZoneNameServers = dns?.rootZone?.nameServers;
+export const dnsEnvironmentZoneIds = dns
+  ? pulumi.output(
+      Object.fromEntries(
+        Object.entries(dns.environmentZones).map(([env, zone]) => [
+          env,
+          zone.zoneId,
+        ]),
+      ),
+    )
+  : undefined;
+export const argocdNamespace = argocd?.namespace.metadata.name;
+export const argocdReleaseName = argocd?.release.name;

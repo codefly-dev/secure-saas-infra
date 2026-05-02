@@ -55,6 +55,36 @@ The baseline uses:
 - ExternalDNS reconciles Route 53 from in-cluster `Service`/`Ingress`/Gateway
   API resources; Argo Rollouts ships canary + blue-green progressive
   delivery.
+- DNS module: Route 53 root zone + per-environment delegated subdomain zones
+  (`dev.<root>`, `staging.<root>`, `prod.<root>`) with public-zone query
+  logging.
+- Argo CD installed via Pulumi (`@pulumi/kubernetes` Helm release) — replaces
+  the manual `kubectl apply -k` bootstrap; Argo CD then self-syncs every
+  platform application from the repo.
+- AWS Organizations service-access enabled at the org level for AWS Backup,
+  IAM Access Analyzer, IAM Identity Center, AWS RAM, AWS Firewall Manager,
+  and CloudFormation StackSets so dependent stacks deploy without console
+  clicks.
+- Single-command bootstrap (`npm run bootstrap`) provisions org + accounts +
+  identity + log archive + organization audit + security tooling + shared
+  services + DNS + network + detection + compliance + macie + cost-controls
+  + per-env workload + per-env edge in one orchestrated run with
+  cross-account assume-role wired automatically.
+
+## One-command Bootstrap
+
+```sh
+cp onboarding.config.example.json onboarding.local.json
+# Edit onboarding.local.json: githubOrg, pulumiOrg, accountEmailDomain, etc.
+
+GITHUB_TOKEN=ghp_xxx npm run bootstrap -- --environment all
+```
+
+`scripts/bootstrap.mjs` walks four phases — foundation, shared, workload,
+edge — and provisions the entire landing zone end-to-end. See
+[docs/bootstrap.md](docs/bootstrap.md) for the human-only prerequisites
+(create the AWS root account, enable IAM Identity Center, create the
+Tailscale OAuth client) and the per-phase stack list.
 
 ## First Deployment Flow
 

@@ -40,6 +40,25 @@ test("organization foundation creates OUs, accounts, RAM sharing, and SCP guardr
 
   assert.equal(resourcesOfType(resources, "aws:ram/sharingWithOrganization:SharingWithOrganization").length, 1);
 
+  const serviceAccess = resourcesOfType(
+    resources,
+    "aws:organizations/awsServiceAccess:AwsServiceAccess",
+  );
+  const enabledPrincipals = serviceAccess.map(
+    (entry) => entry.inputs.servicePrincipal,
+  );
+  for (const expected of [
+    "backup.amazonaws.com",
+    "access-analyzer.amazonaws.com",
+    "sso.amazonaws.com",
+    "ram.amazonaws.com",
+  ]) {
+    assert.ok(
+      enabledPrincipals.includes(expected),
+      `expected service-access enabled for ${expected}`,
+    );
+  }
+
   const policies = resourcesOfType(resources, "aws:organizations/policy:Policy");
   assert.equal(policies.length, 7);
 

@@ -1,0 +1,19 @@
+config:
+  # DNS zones live in shared-services so they survive workload account
+  # incidents.
+  aws:region: us-east-1
+  secure-saas-infra:stackKind: dns
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:organizationName: deus
+  secure-saas-infra:environment: dns
+  secure-saas-infra:dns:
+    rootDomain: mind.example
+    createRootZone: true
+    enableQueryLogging: true
+    # Per-environment delegated zones. dev.mind.example, staging.mind.example,
+    # prod.mind.example each becomes its own Route 53 zone with NS records
+    # in the root zone delegating to it.
+    environmentSubdomains:
+      - dev
+      - staging
+      - prod
