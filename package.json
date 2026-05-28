@@ -21,16 +21,16 @@
     "format": "prettier --write \"**/*.{ts,md,yaml,yml,json}\""
   },
   "dependencies": {
-    "@pulumi/aws": "^7.0.0",
-    "@pulumi/github": "^6.13.1",
-    "@pulumi/kubernetes": "^4.30.0",
-    "@pulumi/pulumi": "^3.229.0"
+    "@pulumi/aws": "^7.31.0",
+    "@pulumi/github": "^6.14.0",
+    "@pulumi/kubernetes": "^4.31.1",
+    "@pulumi/pulumi": "^3.243.0"
   },
   "devDependencies": {
-    "@pulumi/policy": "^1.20.0",
-    "@types/node": "^24.0.0",
+    "@pulumi/policy": "^1.21.0",
+    "@types/node": "^25.9.1",
     "prettier": "^3.6.0",
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   },
   "engines": {
     "node": ">=22"
