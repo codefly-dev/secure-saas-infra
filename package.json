@@ -24,7 +24,7 @@
     "@pulumi/aws": "^7.0.0",
     "@pulumi/github": "^6.13.1",
     "@pulumi/kubernetes": "^4.30.0",
-    "@pulumi/pulumi": "^3.229.0"
+    "@pulumi/pulumi": "^3.251.0"
   },
   "devDependencies": {
     "@pulumi/policy": "^1.20.0",
