@@ -1,0 +1,1210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/management-seed-access-bundle-v1.schema.json",
+  "title": "Management-seed access bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "cloudMutationPerformed",
+    "managementAccountId",
+    "awsPartition",
+    "authorizationModel",
+    "bootstrapSamlProvider",
+    "bootstrapSourceTrustPolicy",
+    "provisioning",
+    "trustedPrincipals",
+    "targetRoles",
+    "precreatedFoundation",
+    "trustedPrincipalAssumeRolePolicies",
+    "sourcePolicies",
+    "cloudFormationTemplate",
+    "cloudFormationTemplateCanonicalSha256",
+    "cloudFormationTemplateFileSha256",
+    "bundleDigest"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "security.deus.dev/management-seed-access-bundle/v1"
+    },
+    "kind": { "const": "ManagementSeedAccessBundle" },
+    "cloudMutationPerformed": { "const": false },
+    "managementAccountId": { "$ref": "#/$defs/accountId" },
+    "awsPartition": { "const": "aws" },
+    "authorizationModel": {
+      "const": "separate-preorganization-saml-principals"
+    },
+    "bootstrapSamlProvider": {
+      "$ref": "#/$defs/bootstrapSamlProvider"
+    },
+    "bootstrapSourceTrustPolicy": {
+      "$ref": "#/$defs/bootstrapSourceTrustPolicy"
+    },
+    "provisioning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "principalArn",
+        "active",
+        "cloudFormationStackName",
+        "region",
+        "standingAssignmentAllowed",
+        "retirementRequiredBeforeSeedPreview",
+        "retirement"
+      ],
+      "properties": {
+        "model": { "const": "preorganization-saml-administrator" },
+        "principalArn": { "$ref": "#/$defs/bootstrapSourceRoleArn" },
+        "active": { "$ref": "#/$defs/activeProvisioner" },
+        "cloudFormationStackName": {
+          "const": "deus-management-seed-access"
+        },
+        "region": { "$ref": "#/$defs/region" },
+        "standingAssignmentAllowed": { "const": false },
+        "retirementRequiredBeforeSeedPreview": { "const": true },
+        "retirement": { "$ref": "#/$defs/provisionerRetirement" }
+      }
+    },
+    "trustedPrincipals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preview", "apply"],
+      "properties": {
+        "preview": { "$ref": "#/$defs/bootstrapSourceRoleArn" },
+        "apply": { "$ref": "#/$defs/bootstrapSourceRoleArn" }
+      }
+    },
+    "targetRoles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preview", "apply"],
+      "properties": {
+        "preview": {
+          "type": "string",
+          "pattern": "^arn:aws:iam::[0-9]{12}:role/OrganizationSeedPreview$"
+        },
+        "apply": {
+          "type": "string",
+          "pattern": "^arn:aws:iam::[0-9]{12}:role/OrganizationSeedApply$"
+        }
+      }
+    },
+    "precreatedFoundation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "PreviewPermissionsBoundary",
+        "ApplyPermissionsBoundary",
+        "PreviewRole",
+        "ApplyRole"
+      ],
+      "properties": {
+        "PreviewPermissionsBoundary": {
+          "$ref": "#/$defs/previewManagedPolicyResource"
+        },
+        "ApplyPermissionsBoundary": {
+          "$ref": "#/$defs/applyManagedPolicyResource"
+        },
+        "PreviewRole": { "$ref": "#/$defs/previewRoleResource" },
+        "ApplyRole": { "$ref": "#/$defs/applyRoleResource" }
+      }
+    },
+    "trustedPrincipalAssumeRolePolicies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preview", "apply"],
+      "properties": {
+        "preview": { "$ref": "#/$defs/previewAssumeRolePolicy" },
+        "apply": { "$ref": "#/$defs/applyAssumeRolePolicy" }
+      }
+    },
+    "sourcePolicies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preview", "apply"],
+      "properties": {
+        "preview": {
+          "$ref": "#/$defs/sourcePolicyPreview"
+        },
+        "apply": {
+          "$ref": "#/$defs/sourcePolicyApply"
+        }
+      }
+    },
+    "cloudFormationTemplate": { "$ref": "#/$defs/cloudFormationTemplate" },
+    "cloudFormationTemplateCanonicalSha256": { "$ref": "#/$defs/sha256" },
+    "cloudFormationTemplateFileSha256": { "$ref": "#/$defs/sha256" },
+    "bundleDigest": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "accountId": { "type": "string", "pattern": "^[0-9]{12}$" },
+    "region": {
+      "type": "string",
+      "pattern": "^(?!cn-|us-gov-)[a-z]{2}-[a-z]+-[0-9]$"
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "iamRoleArn": {
+      "type": "string",
+      "pattern": "^arn:aws:iam::[0-9]{12}:role/[A-Za-z0-9+=,.@_/-]+$"
+    },
+    "bootstrapSourceRoleArn": {
+      "type": "string",
+      "pattern": "^arn:aws:iam::[0-9]{12}:role/deus/bootstrap-source/ManagementSeed(Preview|Apply|Provisioner|Retirement)$"
+    },
+    "bootstrapSamlProviderArn": {
+      "type": "string",
+      "pattern": "^arn:aws:iam::[0-9]{12}:saml-provider/DeusBootstrap$"
+    },
+    "bootstrapSamlProvider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "arn",
+        "assertionEncryptionMode",
+        "metadataSha256",
+        "requiredPrivateKeyIds",
+        "requiredTags"
+      ],
+      "properties": {
+        "arn": { "$ref": "#/$defs/bootstrapSamlProviderArn" },
+        "assertionEncryptionMode": { "const": "Allowed" },
+        "metadataSha256": { "$ref": "#/$defs/sha256" },
+        "requiredPrivateKeyIds": {
+          "type": "array",
+          "items": false,
+          "maxItems": 0
+        },
+        "requiredTags": {
+          "type": "array",
+          "items": false,
+          "maxItems": 0
+        }
+      }
+    },
+    "bootstrapSourceTrustPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Version", "Statement"],
+      "properties": {
+        "Version": { "const": "2012-10-17" },
+        "Statement": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["Effect", "Principal", "Action", "Condition"],
+            "properties": {
+              "Effect": { "const": "Allow" },
+              "Principal": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["Federated"],
+                "properties": {
+                  "Federated": {
+                    "$ref": "#/$defs/bootstrapSamlProviderArn"
+                  }
+                }
+              },
+              "Action": {
+                "type": "array",
+                "prefixItems": [
+                  { "const": "sts:AssumeRoleWithSAML" },
+                  { "const": "sts:TagSession" }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "Condition": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["StringEquals"],
+                "properties": {
+                  "StringEquals": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["SAML:aud"],
+                    "properties": {
+                      "SAML:aud": {
+                        "const": "https://signin.aws.amazon.com/saml"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "provisionerRetirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "principalArn",
+        "principalInlinePolicyName",
+        "principalPolicyDocument",
+        "permissionsBoundaryArn",
+        "permissionsBoundaryName",
+        "permissionsBoundaryPath",
+        "permissionsBoundaryDocument",
+        "requiredRoleTags",
+        "requiredInlinePolicyNames",
+        "requiredAttachedPolicyArns",
+        "upstreamIdpAssignmentRetirementExternallyRequired"
+      ],
+      "properties": {
+        "principalArn": {
+          "type": "string",
+          "pattern": "^arn:aws:iam::[0-9]{12}:role/deus/bootstrap-source/ManagementSeedRetirement$"
+        },
+        "principalInlinePolicyName": {
+          "const": "ManagementSeedProvisionerRetirement"
+        },
+        "principalPolicyDocument": { "$ref": "#/$defs/policyDocument" },
+        "permissionsBoundaryArn": {
+          "type": "string",
+          "pattern": "^arn:aws:iam::[0-9]{12}:policy/deus/bootstrap/DeusManagementSeedProvisionerRetiredBoundary$"
+        },
+        "permissionsBoundaryName": {
+          "const": "DeusManagementSeedProvisionerRetiredBoundary"
+        },
+        "permissionsBoundaryPath": { "const": "/deus/bootstrap/" },
+        "permissionsBoundaryDocument": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Version", "Statement"],
+          "properties": {
+            "Version": { "const": "2012-10-17" },
+            "Statement": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["Sid", "Effect", "Action", "Resource"],
+                  "properties": {
+                    "Sid": { "const": "DenyAllRetiredProvisionerActions" },
+                    "Effect": { "const": "Deny" },
+                    "Action": { "const": "*" },
+                    "Resource": { "const": "*" }
+                  }
+                }
+              ],
+              "items": false,
+              "minItems": 1,
+              "maxItems": 1
+            }
+          }
+        },
+        "requiredRoleTags": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["Key", "Value"],
+              "properties": {
+                "Key": { "const": "DeusManagedBy" },
+                "Value": { "const": "secure-saas-infra" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["Key", "Value"],
+              "properties": {
+                "Key": { "const": "DeusPurpose" },
+                "Value": { "const": "management-seed-provisioner" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["Key", "Value"],
+              "properties": {
+                "Key": { "const": "DeusState" },
+                "Value": { "const": "retired" }
+              }
+            }
+          ],
+          "items": false,
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "requiredInlinePolicyNames": {
+          "type": "array",
+          "items": false,
+          "maxItems": 0
+        },
+        "requiredAttachedPolicyArns": {
+          "type": "array",
+          "items": false,
+          "maxItems": 0
+        },
+        "upstreamIdpAssignmentRetirementExternallyRequired": {
+          "const": true
+        }
+      }
+    },
+    "activeProvisioner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inlinePolicyName",
+        "inlinePolicyDocument",
+        "requiredRoleTags",
+        "requiredAttachedPolicyArns",
+        "permissionsBoundaryRequired"
+      ],
+      "properties": {
+        "inlinePolicyName": { "const": "ManagementSeedAccessProvisioner" },
+        "inlinePolicyDocument": { "$ref": "#/$defs/policyDocument" },
+        "requiredRoleTags": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["Key", "Value"],
+              "properties": {
+                "Key": { "const": "DeusManagedBy" },
+                "Value": { "const": "secure-saas-infra" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["Key", "Value"],
+              "properties": {
+                "Key": { "const": "DeusPurpose" },
+                "Value": { "const": "management-seed-provisioner" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["Key", "Value"],
+              "properties": {
+                "Key": { "const": "DeusState" },
+                "Value": { "const": "active" }
+              }
+            }
+          ],
+          "items": false,
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "requiredAttachedPolicyArns": {
+          "type": "array",
+          "items": false,
+          "maxItems": 0
+        },
+        "permissionsBoundaryRequired": { "const": false }
+      }
+    },
+    "sourcePolicyPreview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {
+          "const": "security/aws-management-seed-preview-policy.json"
+        },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "sourcePolicyApply": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {
+          "const": "security/aws-management-seed-apply-policy.json"
+        },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "policyDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Version", "Statement"],
+      "properties": {
+        "Version": { "const": "2012-10-17" },
+        "Statement": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "assumeRolePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Version", "Statement"],
+      "properties": {
+        "Version": { "const": "2012-10-17" },
+        "Statement": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["Sid", "Effect", "Action", "Resource"],
+              "properties": {
+                "Sid": { "const": "AssumeExactManagementSeedRole" },
+                "Effect": { "const": "Allow" },
+                "Action": { "const": "sts:AssumeRole" },
+                "Resource": {
+                  "type": "string",
+                  "pattern": "^arn:aws:iam::[0-9]{12}:role/OrganizationSeed(Preview|Apply)$"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["Sid", "Effect", "Action", "NotResource"],
+              "properties": {
+                "Sid": { "const": "DenyAssumingAnyOtherRole" },
+                "Effect": { "const": "Deny" },
+                "Action": { "const": "sts:AssumeRole" },
+                "NotResource": {
+                  "type": "string",
+                  "pattern": "^arn:aws:iam::[0-9]{12}:role/OrganizationSeed(Preview|Apply)$"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["Sid", "Effect", "NotAction", "Resource"],
+              "properties": {
+                "Sid": { "const": "DenyEveryOtherSourceAction" },
+                "Effect": { "const": "Deny" },
+                "NotAction": { "const": "sts:AssumeRole" },
+                "Resource": { "const": "*" }
+              }
+            }
+          ],
+          "items": false,
+          "minItems": 3,
+          "maxItems": 3
+        }
+      }
+    },
+    "previewAssumeRolePolicy": {
+      "allOf": [
+        { "$ref": "#/$defs/assumeRolePolicy" },
+        {
+          "type": "object",
+          "properties": {
+            "Statement": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "Resource": {
+                      "type": "string",
+                      "pattern": "^arn:aws:iam::[0-9]{12}:role/OrganizationSeedPreview$"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "NotResource": {
+                      "type": "string",
+                      "pattern": "^arn:aws:iam::[0-9]{12}:role/OrganizationSeedPreview$"
+                    }
+                  }
+                },
+                {
+                  "type": "object"
+                }
+              ],
+              "items": false,
+              "minItems": 3,
+              "maxItems": 3
+            }
+          }
+        }
+      ]
+    },
+    "applyAssumeRolePolicy": {
+      "allOf": [
+        { "$ref": "#/$defs/assumeRolePolicy" },
+        {
+          "type": "object",
+          "properties": {
+            "Statement": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "Resource": {
+                      "type": "string",
+                      "pattern": "^arn:aws:iam::[0-9]{12}:role/OrganizationSeedApply$"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "NotResource": {
+                      "type": "string",
+                      "pattern": "^arn:aws:iam::[0-9]{12}:role/OrganizationSeedApply$"
+                    }
+                  }
+                },
+                {
+                  "type": "object"
+                }
+              ],
+              "items": false,
+              "minItems": 3,
+              "maxItems": 3
+            }
+          }
+        }
+      ]
+    },
+    "managedPolicyResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Type",
+        "Condition",
+        "DeletionPolicy",
+        "UpdateReplacePolicy",
+        "Properties"
+      ],
+      "properties": {
+        "Type": { "const": "AWS::IAM::ManagedPolicy" },
+        "Condition": {
+          "const": "ExpectedManagementAccountPartitionAndRegion"
+        },
+        "DeletionPolicy": { "const": "Retain" },
+        "UpdateReplacePolicy": { "const": "Retain" },
+        "Properties": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ManagedPolicyName",
+            "Path",
+            "Description",
+            "PolicyDocument"
+          ],
+          "properties": {
+            "ManagedPolicyName": {
+              "enum": [
+                "DeusOrganizationSeedPreviewBoundary",
+                "DeusOrganizationSeedApplyBoundary"
+              ]
+            },
+            "Path": { "const": "/deus/bootstrap/" },
+            "Description": { "type": "string", "minLength": 1 },
+            "PolicyDocument": { "$ref": "#/$defs/policyDocument" }
+          }
+        }
+      }
+    },
+    "previewManagedPolicyResource": {
+      "allOf": [
+        { "$ref": "#/$defs/managedPolicyResource" },
+        {
+          "type": "object",
+          "properties": {
+            "Properties": {
+              "type": "object",
+              "properties": {
+                "ManagedPolicyName": {
+                  "const": "DeusOrganizationSeedPreviewBoundary"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "applyManagedPolicyResource": {
+      "allOf": [
+        { "$ref": "#/$defs/managedPolicyResource" },
+        {
+          "type": "object",
+          "properties": {
+            "Properties": {
+              "type": "object",
+              "properties": {
+                "ManagedPolicyName": {
+                  "const": "DeusOrganizationSeedApplyBoundary"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "roleResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Type",
+        "Condition",
+        "DeletionPolicy",
+        "UpdateReplacePolicy",
+        "Properties"
+      ],
+      "properties": {
+        "Type": { "const": "AWS::IAM::Role" },
+        "Condition": {
+          "const": "ExpectedManagementAccountPartitionAndRegion"
+        },
+        "DeletionPolicy": { "const": "Retain" },
+        "UpdateReplacePolicy": { "const": "Retain" },
+        "Properties": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "RoleName",
+            "Path",
+            "Description",
+            "MaxSessionDuration",
+            "PermissionsBoundary",
+            "AssumeRolePolicyDocument",
+            "Policies",
+            "Tags"
+          ],
+          "properties": {
+            "RoleName": {
+              "enum": ["OrganizationSeedPreview", "OrganizationSeedApply"]
+            },
+            "Path": { "const": "/" },
+            "Description": { "type": "string", "minLength": 1 },
+            "MaxSessionDuration": { "const": 3600 },
+            "PermissionsBoundary": {
+              "type": "string",
+              "pattern": "^arn:aws:iam::[0-9]{12}:policy/deus/bootstrap/DeusOrganizationSeed(Preview|Apply)Boundary$"
+            },
+            "AssumeRolePolicyDocument": { "$ref": "#/$defs/trustPolicy" },
+            "Policies": {
+              "type": "array",
+              "items": false,
+              "maxItems": 0
+            },
+            "Tags": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["Key", "Value"],
+                "properties": {
+                  "Key": {
+                    "enum": ["AccessMode", "ManagedBy", "Purpose"]
+                  },
+                  "Value": { "type": "string", "minLength": 1 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "previewRoleResource": {
+      "allOf": [
+        { "$ref": "#/$defs/roleResource" },
+        {
+          "type": "object",
+          "properties": {
+            "Properties": {
+              "type": "object",
+              "properties": {
+                "RoleName": { "const": "OrganizationSeedPreview" },
+                "PermissionsBoundary": {
+                  "type": "string",
+                  "pattern": "^arn:aws:iam::[0-9]{12}:policy/deus/bootstrap/DeusOrganizationSeedPreviewBoundary$"
+                },
+                "Policies": {
+                  "type": "array",
+                  "items": false,
+                  "maxItems": 0
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "applyRoleResource": {
+      "allOf": [
+        { "$ref": "#/$defs/roleResource" },
+        {
+          "type": "object",
+          "properties": {
+            "Properties": {
+              "type": "object",
+              "properties": {
+                "RoleName": { "const": "OrganizationSeedApply" },
+                "PermissionsBoundary": {
+                  "type": "string",
+                  "pattern": "^arn:aws:iam::[0-9]{12}:policy/deus/bootstrap/DeusOrganizationSeedApplyBoundary$"
+                },
+                "Policies": {
+                  "type": "array",
+                  "items": false,
+                  "maxItems": 0
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "rolePolicyResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Type",
+        "Condition",
+        "DeletionPolicy",
+        "UpdateReplacePolicy",
+        "Properties"
+      ],
+      "properties": {
+        "Type": { "const": "AWS::IAM::RolePolicy" },
+        "Condition": {
+          "const": "ExpectedManagementAccountPartitionAndRegion"
+        },
+        "DeletionPolicy": { "const": "Retain" },
+        "UpdateReplacePolicy": { "const": "Retain" },
+        "Properties": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["RoleName", "PolicyName", "PolicyDocument"],
+          "properties": {
+            "RoleName": {
+              "enum": ["OrganizationSeedPreview", "OrganizationSeedApply"]
+            },
+            "PolicyName": {
+              "enum": [
+                "OrganizationSeedPreviewPermissions",
+                "OrganizationSeedApplyPermissions"
+              ]
+            },
+            "PolicyDocument": { "$ref": "#/$defs/policyDocument" }
+          }
+        }
+      }
+    },
+    "previewRolePolicyResource": {
+      "allOf": [
+        { "$ref": "#/$defs/rolePolicyResource" },
+        {
+          "type": "object",
+          "properties": {
+            "Properties": {
+              "type": "object",
+              "properties": {
+                "RoleName": { "const": "OrganizationSeedPreview" },
+                "PolicyName": {
+                  "const": "OrganizationSeedPreviewPermissions"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "applyRolePolicyResource": {
+      "allOf": [
+        { "$ref": "#/$defs/rolePolicyResource" },
+        {
+          "type": "object",
+          "properties": {
+            "Properties": {
+              "type": "object",
+              "properties": {
+                "RoleName": { "const": "OrganizationSeedApply" },
+                "PolicyName": { "const": "OrganizationSeedApplyPermissions" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "literalOutput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Condition", "Value"],
+      "properties": {
+        "Condition": {
+          "const": "ExpectedManagementAccountPartitionAndRegion"
+        },
+        "Value": { "type": "string" }
+      }
+    },
+    "trustPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Version", "Statement"],
+      "properties": {
+        "Version": { "const": "2012-10-17" },
+        "Statement": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["Sid", "Effect", "Principal", "Action", "Condition"],
+            "properties": {
+              "Sid": { "const": "TrustOneExactFederatedRole" },
+              "Effect": { "const": "Allow" },
+              "Principal": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["AWS"],
+                "properties": {
+                  "AWS": {
+                    "type": "string",
+                    "pattern": "^arn:aws:iam::[0-9]{12}:root$"
+                  }
+                }
+              },
+              "Action": { "const": "sts:AssumeRole" },
+              "Condition": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["ArnEquals", "StringEquals"],
+                "properties": {
+                  "ArnEquals": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["aws:PrincipalArn"],
+                    "properties": {
+                      "aws:PrincipalArn": {
+                        "$ref": "#/$defs/bootstrapSourceRoleArn"
+                      }
+                    }
+                  },
+                  "StringEquals": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["aws:PrincipalAccount"],
+                    "properties": {
+                      "aws:PrincipalAccount": { "$ref": "#/$defs/accountId" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "resourceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Ref"],
+      "properties": {
+        "Ref": {
+          "enum": ["PreviewPermissionsBoundary", "ApplyPermissionsBoundary"]
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Value"],
+      "properties": {
+        "Value": {
+          "oneOf": [
+            { "$ref": "#/$defs/resourceRef" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["Fn::GetAtt"],
+              "properties": {
+                "Fn::GetAtt": {
+                  "type": "array",
+                  "prefixItems": [
+                    { "enum": ["PreviewRole", "ApplyRole"] },
+                    { "const": "Arn" }
+                  ],
+                  "items": false,
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "roleArnOutput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Condition", "Value"],
+      "properties": {
+        "Condition": {
+          "const": "ExpectedManagementAccountPartitionAndRegion"
+        },
+        "Value": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Fn::GetAtt"],
+          "properties": {
+            "Fn::GetAtt": {
+              "type": "array",
+              "prefixItems": [
+                { "enum": ["PreviewRole", "ApplyRole"] },
+                { "const": "Arn" }
+              ],
+              "items": false,
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        }
+      }
+    },
+    "boundaryArnOutput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Condition", "Value"],
+      "properties": {
+        "Condition": {
+          "const": "ExpectedManagementAccountPartitionAndRegion"
+        },
+        "Value": { "$ref": "#/$defs/resourceRef" }
+      }
+    },
+    "accountPartitionRegionCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Fn::And"],
+      "properties": {
+        "Fn::And": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["Fn::Equals"],
+              "properties": {
+                "Fn::Equals": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["Ref"],
+                      "properties": {
+                        "Ref": { "const": "AWS::AccountId" }
+                      }
+                    },
+                    { "$ref": "#/$defs/accountId" }
+                  ],
+                  "items": false,
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["Fn::Equals"],
+              "properties": {
+                "Fn::Equals": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["Ref"],
+                      "properties": {
+                        "Ref": { "const": "AWS::Partition" }
+                      }
+                    },
+                    { "const": "aws" }
+                  ],
+                  "items": false,
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["Fn::Equals"],
+              "properties": {
+                "Fn::Equals": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["Ref"],
+                      "properties": {
+                        "Ref": { "const": "AWS::Region" }
+                      }
+                    },
+                    { "$ref": "#/$defs/region" }
+                  ],
+                  "items": false,
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              }
+            }
+          ],
+          "items": false,
+          "minItems": 3,
+          "maxItems": 3
+        }
+      }
+    },
+    "cloudFormationTemplate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "AWSTemplateFormatVersion",
+        "Description",
+        "Metadata",
+        "Conditions",
+        "Resources",
+        "Outputs"
+      ],
+      "properties": {
+        "AWSTemplateFormatVersion": { "const": "2010-09-09" },
+        "Description": { "type": "string", "minLength": 1 },
+        "Metadata": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Deus"],
+          "properties": {
+            "Deus": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "ApiVersion",
+                "AuthorizationModel",
+                "CloudMutationPerformedByRenderer"
+              ],
+              "properties": {
+                "ApiVersion": {
+                  "const": "security.deus.dev/management-seed-access-bundle/v1"
+                },
+                "AuthorizationModel": {
+                  "const": "separate-preorganization-saml-principals"
+                },
+                "CloudMutationPerformedByRenderer": { "const": false }
+              }
+            }
+          }
+        },
+        "Conditions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ExpectedManagementAccountPartitionAndRegion"],
+          "properties": {
+            "ExpectedManagementAccountPartitionAndRegion": {
+              "$ref": "#/$defs/accountPartitionRegionCondition"
+            }
+          }
+        },
+        "Resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["PreviewRolePolicy", "ApplyRolePolicy"],
+          "properties": {
+            "PreviewRolePolicy": {
+              "$ref": "#/$defs/previewRolePolicyResource"
+            },
+            "ApplyRolePolicy": {
+              "$ref": "#/$defs/applyRolePolicyResource"
+            }
+          }
+        },
+        "Outputs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "PreviewRoleArn",
+            "ApplyRoleArn",
+            "PreviewPermissionsBoundaryArn",
+            "ApplyPermissionsBoundaryArn"
+          ],
+          "properties": {
+            "PreviewRoleArn": {
+              "allOf": [
+                { "$ref": "#/$defs/literalOutput" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "Value": {
+                      "type": "string",
+                      "pattern": "^arn:aws:iam::[0-9]{12}:role/OrganizationSeedPreview$"
+                    }
+                  }
+                }
+              ]
+            },
+            "ApplyRoleArn": {
+              "allOf": [
+                { "$ref": "#/$defs/literalOutput" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "Value": {
+                      "type": "string",
+                      "pattern": "^arn:aws:iam::[0-9]{12}:role/OrganizationSeedApply$"
+                    }
+                  }
+                }
+              ]
+            },
+            "PreviewPermissionsBoundaryArn": {
+              "allOf": [
+                { "$ref": "#/$defs/literalOutput" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "Value": {
+                      "type": "string",
+                      "pattern": "^arn:aws:iam::[0-9]{12}:policy/deus/bootstrap/DeusOrganizationSeedPreviewBoundary$"
+                    }
+                  }
+                }
+              ]
+            },
+            "ApplyPermissionsBoundaryArn": {
+              "allOf": [
+                { "$ref": "#/$defs/literalOutput" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "Value": {
+                      "type": "string",
+                      "pattern": "^arn:aws:iam::[0-9]{12}:policy/deus/bootstrap/DeusOrganizationSeedApplyBoundary$"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

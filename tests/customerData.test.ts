@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { flushPulumiMocks, installPulumiMocks, resourcesOfType } from "./helpers/pulumiMocks";
+import {
+  flushPulumiMocks,
+  installPulumiMocks,
+  resourcesOfType,
+} from "./helpers/pulumiMocks";
+import { createReferenceBlueprint } from "../src/core";
 
 test("customer data store creates encrypted tenant-scoped artifact storage", async () => {
   const { resources } = await installPulumiMocks();
@@ -20,14 +25,26 @@ test("customer data store creates encrypted tenant-scoped artifact storage", asy
 
   const kmsKeys = resourcesOfType(resources, "aws:kms/key:Key");
   const buckets = resourcesOfType(resources, "aws:s3/bucket:Bucket");
-  const publicAccessBlocks = resourcesOfType(resources, "aws:s3/bucketPublicAccessBlock:BucketPublicAccessBlock");
-  const versioning = resourcesOfType(resources, "aws:s3/bucketVersioning:BucketVersioning");
+  const publicAccessBlocks = resourcesOfType(
+    resources,
+    "aws:s3/bucketPublicAccessBlock:BucketPublicAccessBlock",
+  );
+  const versioning = resourcesOfType(
+    resources,
+    "aws:s3/bucketVersioning:BucketVersioning",
+  );
   const encryption = resourcesOfType(
     resources,
     "aws:s3/bucketServerSideEncryptionConfiguration:BucketServerSideEncryptionConfiguration",
   );
-  const lifecycle = resourcesOfType(resources, "aws:s3/bucketLifecycleConfiguration:BucketLifecycleConfiguration");
-  const policies = resourcesOfType(resources, "aws:s3/bucketPolicy:BucketPolicy");
+  const lifecycle = resourcesOfType(
+    resources,
+    "aws:s3/bucketLifecycleConfiguration:BucketLifecycleConfiguration",
+  );
+  const policies = resourcesOfType(
+    resources,
+    "aws:s3/bucketPolicy:BucketPolicy",
+  );
 
   assert.equal(kmsKeys.length, 1);
   assert.equal(kmsKeys[0].inputs.enableKeyRotation, true);
@@ -43,17 +60,28 @@ test("customer data store creates encrypted tenant-scoped artifact storage", asy
   assert.equal(publicAccessBlocks[0].inputs.blockPublicAcls, true);
   assert.equal(publicAccessBlocks[0].inputs.blockPublicPolicy, true);
   assert.equal(versioning[0].inputs.versioningConfiguration.status, "Enabled");
-  assert.equal(encryption[0].inputs.rules[0].applyServerSideEncryptionByDefault.sseAlgorithm, "aws:kms");
-  assert.equal(encryption[0].inputs.rules[0].blockedEncryptionTypes[0], "SSE-C");
+  assert.equal(
+    encryption[0].inputs.rules[0].applyServerSideEncryptionByDefault
+      .sseAlgorithm,
+    "aws:kms",
+  );
+  assert.equal(
+    encryption[0].inputs.rules[0].blockedEncryptionTypes[0],
+    "SSE-C",
+  );
   assert.equal(lifecycle[0].inputs.rules[0].expiration.days, 90);
-  assert.equal(lifecycle[0].inputs.rules[0].noncurrentVersionExpiration.noncurrentDays, 30);
+  assert.equal(
+    lifecycle[0].inputs.rules[0].noncurrentVersionExpiration.noncurrentDays,
+    30,
+  );
   assert.match(policies[0].inputs.policy, /DenyInsecureTransport/);
   assert.match(policies[0].inputs.policy, /DenyCustomerProvidedEncryptionKeys/);
   assert.match(policies[0].inputs.policy, /DenyWritesOutsideTenantJobPrefix/);
 
   const parsed = JSON.parse(policies[0].inputs.policy);
   const tenantStatement = parsed.Statement.find(
-    (entry: { Sid: string }) => entry.Sid === "DenyWritesOutsideTenantJobPrefix",
+    (entry: { Sid: string }) =>
+      entry.Sid === "DenyWritesOutsideTenantJobPrefix",
   );
   assert.deepEqual(tenantStatement.Action, [
     "s3:PutObject",
@@ -68,6 +96,40 @@ test("customer data store creates encrypted tenant-scoped artifact storage", asy
   assert.ok(
     tenantStatement.NotResource.some((entry: string) =>
       entry.endsWith("/tenant/*/job/*/manifest/*"),
+    ),
+  );
+});
+
+test("blueprint-driven dedicated data creates separate tagged buckets and keys", async () => {
+  const { resources } = await installPulumiMocks();
+  const { createCustomerDataStoresFromBlueprint } =
+    await import("../src/customerData");
+  const result = createCustomerDataStoresFromBlueprint(
+    createReferenceBlueprint("dedicated-data"),
+    {
+      createArtifactStore: true,
+      artifactRetentionDays: 90,
+      noncurrentVersionExpirationDays: 30,
+      requireTenantScopedPrefixes: true,
+      requireDeletionManifests: true,
+      requireExportManifests: true,
+      enterpriseDedicatedKmsRequired: true,
+    },
+  );
+
+  await flushPulumiMocks();
+  const buckets = resourcesOfType(resources, "aws:s3/bucket:Bucket");
+  const keys = resourcesOfType(resources, "aws:kms/key:Key");
+  assert.equal(Object.keys(result.stores).length, 2);
+  assert.equal(buckets.length, 2);
+  assert.equal(keys.length, 2);
+  assert.equal(
+    new Set(buckets.map((bucket) => bucket.inputs.tags.DataBoundaryId)).size,
+    2,
+  );
+  assert.ok(
+    buckets.every(
+      (bucket) => bucket.inputs.tags.ObjectAuditEvents === "read,write,delete",
     ),
   );
 });

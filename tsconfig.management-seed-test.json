@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist-management-seed-test",
+    "noEmit": false
+  },
+  "include": [
+    "tests/adversarialReviewDisposition.test.ts",
+    "tests/bootstrap.test.ts",
+    "tests/bootstrapDoctor.test.ts",
+    "tests/bootstrapQualification.test.ts",
+    "tests/bootstrapRuntimeIntegrity.test.ts",
+    "tests/contractSchemaValidation.test.ts",
+    "tests/dependencySecurity.test.ts",
+    "tests/managementSeedConfig.test.ts",
+    "tests/managementSeedPolicy.test.ts",
+    "tests/organization.test.ts",
+    "tests/release.test.ts",
+    "tests/releaseEvidence.test.ts"
+  ]
+}

@@ -138,13 +138,10 @@ export function createDetectionRules(config: DetectionConfig): DetectionResult {
       tags: tag(`detect-${spec.name}`, { EvidenceClass: "detection" }),
     });
 
-    new aws.cloudwatch.EventTarget(
-      named(`detect-${spec.name}-target`),
-      {
-        rule: rule.name,
-        arn: topic.arn,
-      },
-    );
+    new aws.cloudwatch.EventTarget(named(`detect-${spec.name}-target`), {
+      rule: rule.name,
+      arn: topic.arn,
+    });
 
     return rule;
   });

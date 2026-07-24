@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   BackupConfig,
   CustomerDataConfig,
@@ -22,6 +23,9 @@ import {
   validateGithubGovernanceConfig,
   validateOperationalConfigValues,
   validateProductionPostureValues,
+  resolvePlatformBlueprintConfig,
+  deploymentStageForEnvironment,
+  isProductionLikeEnvironment,
   validateStackKindValues,
   validateWafConfig,
   NetworkConfig,
@@ -30,9 +34,62 @@ import {
   SpokeStackConfig,
 } from "../src/config";
 
+const wardenMindPreset = {
+  name: "warden-mind-v1",
+  networkCidrs: {
+    "egress-net": "10.0.0.0/16",
+    "control-net": "10.12.0.0/16",
+    "execution-shared-net": "10.22.0.0/16",
+    "data-shared-net": "10.32.0.0/16",
+  },
+};
+
+test("Warden/Mind blueprint preset resolves exact environment CIDRs", () => {
+  const loaded = resolvePlatformBlueprintConfig(undefined, wardenMindPreset);
+  assert.ok(loaded);
+  assert.equal(loaded.blueprint.name, "warden-mind-platform");
+  assert.deepEqual(
+    Object.fromEntries(
+      loaded.blueprint.networkDomains.map((domain) => [
+        domain.id,
+        domain.cidrs[0],
+      ]),
+    ),
+    wardenMindPreset.networkCidrs,
+  );
+  assert.equal(loaded.migrationReport.migrated, false);
+});
+
+test("blueprint preset rejects ambiguity, missing domains, and unknown fields", () => {
+  assert.throws(
+    () =>
+      resolvePlatformBlueprintConfig(
+        { apiVersion: "ignored" },
+        wardenMindPreset,
+      ),
+    /either platformBlueprint or platformBlueprintPreset/,
+  );
+  assert.throws(
+    () =>
+      resolvePlatformBlueprintConfig(undefined, {
+        ...wardenMindPreset,
+        networkCidrs: { "control-net": "10.12.0.0/16" },
+      }),
+    /egress-net must be a non-empty CIDR string/,
+  );
+  assert.throws(
+    () =>
+      resolvePlatformBlueprintConfig(undefined, {
+        ...wardenMindPreset,
+        providerCredentials: "forbidden",
+      }),
+    /unknown field 'providerCredentials'/,
+  );
+});
+
 const organizationConfig: OrganizationConfig = {
   createOrganization: true,
-  defaultAccountRoleName: "OrganizationAccountAccessRole",
+  defaultAccountRoleName: "DeusOrganizationBootstrap",
   enableRamSharing: true,
   serviceAccessPrincipals: ["cloudtrail.amazonaws.com"],
   enabledPolicyTypes: ["SERVICE_CONTROL_POLICY"],
@@ -43,6 +100,12 @@ const organizationConfig: OrganizationConfig = {
       email: "platform-dev@example.com",
       ou: "Workloads",
       kind: "workload",
+    },
+    {
+      name: "execution-dev",
+      email: "execution-dev@example.com",
+      ou: "Workloads",
+      kind: "execution",
     },
   ],
   guardrailScpsEnabled: true,
@@ -112,6 +175,23 @@ test("validateConfigValues rejects unsafe AZ counts", () => {
   );
 });
 
+test("blueprint-authoritative validation ignores unused legacy network decisions", () => {
+  assert.doesNotThrow(() =>
+    validateConfigValues(
+      "workload",
+      {
+        egress: { ...networkConfig.egress, azCount: 1 },
+        spokes: [
+          { name: "duplicate", cidr: "not-a-cidr", kind: "platform" },
+          { name: "duplicate", cidr: "also-invalid", kind: "execution" },
+        ],
+      },
+      organizationConfig,
+      true,
+    ),
+  );
+});
+
 test("validateConfigValues rejects accounts outside known OUs", () => {
   assert.throws(
     () =>
@@ -128,6 +208,59 @@ test("validateConfigValues rejects accounts outside known OUs", () => {
       }),
     /references unknown OU/,
   );
+});
+
+test("validateConfigValues rejects malformed modular organization topology", () => {
+  assert.throws(
+    () =>
+      validateConfigValues("organization", networkConfig, {
+        ...organizationConfig,
+        organizationalUnits: [
+          { name: "Security" },
+          { name: "PreProd", parent: "Workloads" },
+          { name: "Workloads" },
+        ],
+      }),
+    /unknown or later parent OU/,
+  );
+  assert.throws(
+    () =>
+      validateConfigValues("organization", networkConfig, {
+        ...organizationConfig,
+        accounts: organizationConfig.accounts.filter(
+          (account) => account.name !== "execution-dev",
+        ),
+      }),
+    /requires paired platform and execution accounts/,
+  );
+  assert.throws(
+    () =>
+      validateConfigValues("organization", networkConfig, {
+        ...organizationConfig,
+        accounts: organizationConfig.accounts.map((account) =>
+          account.name === "platform-dev"
+            ? { ...account, create: false }
+            : account,
+        ),
+      }),
+    /must be enabled or disabled together/,
+  );
+});
+
+test("management example enables dev and prod but keeps preprod paired and disabled", () => {
+  const management = readFileSync("Pulumi.management.yaml.example", "utf8");
+  assert.match(management, /- name: NonProd\n\s+parent: Workloads/);
+  assert.match(management, /- name: PreProd\n\s+parent: Workloads/);
+  assert.match(management, /- name: Prod\n\s+parent: Workloads/);
+  assert.match(
+    management,
+    /- name: platform-staging[\s\S]*?kind: workload\n\s+create: false/,
+  );
+  assert.match(
+    management,
+    /- name: execution-staging[\s\S]*?kind: execution\n\s+create: false/,
+  );
+  assert.doesNotMatch(management, /- name: Execution\n/);
 });
 
 const spokeConfig: SpokeStackConfig = {
@@ -408,6 +541,26 @@ test("validateStackKindValues rejects unsafe identity and github oidc wiring", (
         undefined,
         {
           ...identityCenterConfig,
+          permissionSets: [
+            {
+              ...identityCenterConfig.permissionSets[0],
+              managedPolicyArns: ["arn:aws:iam::aws:policy/PowerUserAccess"],
+            },
+          ],
+        },
+      ),
+    /must not attach AdministratorAccess, PowerUserAccess, or IAMFullAccess/,
+  );
+
+  assert.throws(
+    () =>
+      validateStackKindValues(
+        "identity",
+        spokeConfig,
+        routingConfig,
+        undefined,
+        {
+          ...identityCenterConfig,
           assignments: [
             {
               groupName: "missing",
@@ -646,6 +799,18 @@ const eksConfig: EksConfig = {
   endpointPublicAccess: false,
   autoModeNodePools: ["system", "general-purpose"],
   networkPolicyMode: "strict",
+  accessGrants: [
+    {
+      id: "platform-admin",
+      principal: {
+        kind: "identity-center-permission-set",
+        category: "workforce",
+        permissionSetName: "PlatformPowerUser",
+      },
+      accessPolicy: "cluster-admin",
+      scope: { type: "cluster" },
+    },
+  ],
 };
 
 const backupConfig: BackupConfig = {
@@ -656,6 +821,8 @@ const backupConfig: BackupConfig = {
   vaultLockChangeableForDays: 3,
   createPlan: true,
   dailyScheduleExpression: "cron(0 5 ? * * *)",
+  backupIntervalMinutes: 1440,
+  restoreTestIntervalDays: 30,
   coldStorageAfterDays: 90,
   deleteAfterDays: 365,
   selectionTags: [{ key: "Backup", value: "required" }],
@@ -776,7 +943,6 @@ test("validateProductionPostureValues enforces production hub firewall and admin
       networkConfig,
       eksConfig,
       spokeConfig,
-      ["arn:aws:iam::111111111111:role/breakglass"],
     ),
   );
 
@@ -791,7 +957,6 @@ test("validateProductionPostureValues enforces production hub firewall and admin
         },
         eksConfig,
         spokeConfig,
-        [],
       ),
     /networkFirewallEnabled must be true/,
   );
@@ -802,11 +967,10 @@ test("validateProductionPostureValues enforces production hub firewall and admin
         "platform",
         "platform-prod",
         networkConfig,
-        eksConfig,
+        { ...eksConfig, accessGrants: [] },
         spokeConfig,
-        [],
       ),
-    /adminRoleArns/,
+    /eks\.accessGrants/,
   );
 
   assert.throws(
@@ -815,10 +979,25 @@ test("validateProductionPostureValues enforces production hub firewall and admin
         "single-account",
         "dev",
         networkConfig,
-        eksConfig,
+        { ...eksConfig, accessGrants: [] },
         spokeConfig,
-        [],
       ),
-    /adminRoleArns/,
+    /eks\.accessGrants/,
   );
+});
+
+test("production-like environment detection does not classify development as production", () => {
+  assert.equal(isProductionLikeEnvironment("dev"), false);
+  assert.equal(isProductionLikeEnvironment("network"), false);
+  assert.equal(isProductionLikeEnvironment("platform-production"), true);
+  assert.equal(isProductionLikeEnvironment("execution_prd"), true);
+  assert.equal(isProductionLikeEnvironment("staging"), true);
+});
+
+test("managed PostgreSQL deployment stage is exact and rejects ambiguous environment names", () => {
+  assert.equal(deploymentStageForEnvironment("platform-dev"), "development");
+  assert.equal(deploymentStageForEnvironment("platform-staging"), "staging");
+  assert.equal(deploymentStageForEnvironment("platform-prod"), "production");
+  assert.equal(deploymentStageForEnvironment("platform"), undefined);
+  assert.equal(deploymentStageForEnvironment("dev-prod"), undefined);
 });

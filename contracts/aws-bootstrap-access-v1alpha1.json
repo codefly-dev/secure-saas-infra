@@ -1,0 +1,272 @@
+{
+  "apiVersion": "security.deus.dev/aws-bootstrap-access/v1alpha1",
+  "kind": "AwsBootstrapAccessPlan",
+  "name": "deus-rootless-bootstrap",
+  "landingZoneOwner": "organizations",
+  "organizationName": "deus",
+  "management": {
+    "accountId": "999988887777",
+    "workforceAccess": "iam-identity-center",
+    "accessInstallerRoleArn": "arn:aws:iam::999988887777:role/ScopedAccessInstaller",
+    "humanFederationOnly": true,
+    "automationAccess": false,
+    "maxSessionDurationSeconds": 3600,
+    "root": {
+      "programmaticAccess": false,
+      "mfaRequired": true,
+      "multiPersonRecovery": true,
+      "centralizedMemberRootAccess": true,
+      "usedByAutomation": false,
+      "usedByPulumi": false
+    }
+  },
+  "initialMemberHandoff": {
+    "roleName": "DeusOrganizationBootstrap",
+    "purpose": "install-scoped-access-roles",
+    "humanApprovalRequired": true,
+    "automationAssumable": false,
+    "retireAfterScopedRolesReady": true
+  },
+  "controller": {
+    "roleArn": "arn:aws:iam::888877776666:role/InfrastructureController",
+    "hostAccountId": "888877776666",
+    "identityMode": "eks-pod-identity",
+    "kubernetesNamespace": "platform",
+    "kubernetesServiceAccount": "infrastructure-controller",
+    "temporaryCredentials": true,
+    "maxSessionDurationSeconds": 3600,
+    "managementAccountAccess": false
+  },
+  "accounts": [
+    {
+      "accountName": "security-tooling",
+      "accountId": "333322221111",
+      "kind": "security-tooling",
+      "environmentClass": "nonproduction",
+      "allowedRegions": ["us-east-1", "us-west-2"],
+      "resourceNamePrefix": "deus-security-tooling",
+      "actionSets": ["observability", "security"],
+      "allowControllerPlan": false,
+      "allowControllerApply": false,
+      "productionApprovalRequired": false,
+      "roles": {
+        "planRoleName": "InfrastructurePlan",
+        "applyRoleName": "InfrastructureApplyNonProd",
+        "planPermissionsBoundaryName": "InfrastructurePlanBoundary",
+        "applyPermissionsBoundaryName": "InfrastructureApplyBoundary"
+      }
+    },
+    {
+      "accountName": "log-archive",
+      "accountId": "222211110000",
+      "kind": "log-archive",
+      "environmentClass": "nonproduction",
+      "allowedRegions": ["us-east-1", "us-west-2"],
+      "resourceNamePrefix": "deus-log-archive",
+      "actionSets": ["audit", "data", "observability"],
+      "allowControllerPlan": false,
+      "allowControllerApply": false,
+      "productionApprovalRequired": false,
+      "roles": {
+        "planRoleName": "InfrastructurePlan",
+        "applyRoleName": "InfrastructureApplyNonProd",
+        "planPermissionsBoundaryName": "InfrastructurePlanBoundary",
+        "applyPermissionsBoundaryName": "InfrastructureApplyBoundary"
+      }
+    },
+    {
+      "accountName": "network",
+      "accountId": "777766665555",
+      "kind": "network",
+      "environmentClass": "nonproduction",
+      "allowedRegions": ["us-east-1", "us-west-2"],
+      "resourceNamePrefix": "deus-network",
+      "actionSets": ["dns", "network", "observability"],
+      "allowControllerPlan": false,
+      "allowControllerApply": false,
+      "productionApprovalRequired": false,
+      "roles": {
+        "planRoleName": "InfrastructurePlan",
+        "applyRoleName": "InfrastructureApplyNonProd",
+        "planPermissionsBoundaryName": "InfrastructurePlanBoundary",
+        "applyPermissionsBoundaryName": "InfrastructureApplyBoundary"
+      }
+    },
+    {
+      "accountName": "shared-services",
+      "accountId": "111100009999",
+      "kind": "shared-services",
+      "environmentClass": "nonproduction",
+      "allowedRegions": ["us-east-1", "us-west-2"],
+      "resourceNamePrefix": "deus-shared-services",
+      "actionSets": ["data", "dns", "observability"],
+      "allowControllerPlan": false,
+      "allowControllerApply": false,
+      "productionApprovalRequired": false,
+      "roles": {
+        "planRoleName": "InfrastructurePlan",
+        "applyRoleName": "InfrastructureApplyNonProd",
+        "planPermissionsBoundaryName": "InfrastructurePlanBoundary",
+        "applyPermissionsBoundaryName": "InfrastructureApplyBoundary"
+      }
+    },
+    {
+      "accountName": "platform-dev",
+      "accountId": "888877776666",
+      "kind": "platform",
+      "environmentClass": "nonproduction",
+      "allowedRegions": ["us-east-1", "us-west-2"],
+      "resourceNamePrefix": "deus-platform-dev",
+      "actionSets": [
+        "backup",
+        "data",
+        "database",
+        "dns",
+        "network",
+        "observability",
+        "workload"
+      ],
+      "allowControllerPlan": false,
+      "allowControllerApply": false,
+      "productionApprovalRequired": false,
+      "roles": {
+        "planRoleName": "InfrastructurePlan",
+        "applyRoleName": "InfrastructureApplyNonProd",
+        "planPermissionsBoundaryName": "InfrastructurePlanBoundary",
+        "applyPermissionsBoundaryName": "InfrastructureApplyBoundary"
+      }
+    },
+    {
+      "accountName": "execution-dev",
+      "accountId": "666655554444",
+      "kind": "execution",
+      "environmentClass": "nonproduction",
+      "allowedRegions": ["us-east-1", "us-west-2"],
+      "resourceNamePrefix": "deus-execution-dev",
+      "actionSets": [
+        "backup",
+        "data",
+        "database",
+        "network",
+        "observability",
+        "workload"
+      ],
+      "allowControllerPlan": false,
+      "allowControllerApply": false,
+      "productionApprovalRequired": false,
+      "roles": {
+        "planRoleName": "InfrastructurePlan",
+        "applyRoleName": "InfrastructureApplyNonProd",
+        "planPermissionsBoundaryName": "InfrastructurePlanBoundary",
+        "applyPermissionsBoundaryName": "InfrastructureApplyBoundary"
+      }
+    },
+    {
+      "accountName": "platform-staging",
+      "accountId": "121212121212",
+      "kind": "platform",
+      "environmentClass": "preproduction",
+      "allowedRegions": ["us-east-1", "us-west-2"],
+      "resourceNamePrefix": "deus-platform-staging",
+      "actionSets": [
+        "backup",
+        "data",
+        "database",
+        "dns",
+        "network",
+        "observability",
+        "workload"
+      ],
+      "allowControllerPlan": false,
+      "allowControllerApply": false,
+      "productionApprovalRequired": false,
+      "roles": {
+        "planRoleName": "InfrastructurePlan",
+        "applyRoleName": "InfrastructureApplyNonProd",
+        "planPermissionsBoundaryName": "InfrastructurePlanBoundary",
+        "applyPermissionsBoundaryName": "InfrastructureApplyBoundary"
+      }
+    },
+    {
+      "accountName": "execution-staging",
+      "accountId": "131313131313",
+      "kind": "execution",
+      "environmentClass": "preproduction",
+      "allowedRegions": ["us-east-1", "us-west-2"],
+      "resourceNamePrefix": "deus-execution-staging",
+      "actionSets": [
+        "backup",
+        "data",
+        "database",
+        "network",
+        "observability",
+        "workload"
+      ],
+      "allowControllerPlan": false,
+      "allowControllerApply": false,
+      "productionApprovalRequired": false,
+      "roles": {
+        "planRoleName": "InfrastructurePlan",
+        "applyRoleName": "InfrastructureApplyNonProd",
+        "planPermissionsBoundaryName": "InfrastructurePlanBoundary",
+        "applyPermissionsBoundaryName": "InfrastructureApplyBoundary"
+      }
+    },
+    {
+      "accountName": "platform-prod",
+      "accountId": "555544443333",
+      "kind": "platform",
+      "environmentClass": "production",
+      "allowedRegions": ["us-east-1", "us-west-2"],
+      "resourceNamePrefix": "deus-platform-prod",
+      "actionSets": [
+        "backup",
+        "data",
+        "database",
+        "dns",
+        "network",
+        "observability",
+        "workload"
+      ],
+      "allowControllerPlan": false,
+      "allowControllerApply": false,
+      "productionApprovalRequired": true,
+      "roles": {
+        "planRoleName": "InfrastructurePlan",
+        "applyRoleName": "InfrastructureApplyProd",
+        "planPermissionsBoundaryName": "InfrastructurePlanBoundary",
+        "applyPermissionsBoundaryName": "InfrastructureApplyBoundary"
+      }
+    },
+    {
+      "accountName": "execution-prod",
+      "accountId": "444433332222",
+      "kind": "execution",
+      "environmentClass": "production",
+      "allowedRegions": ["us-east-1", "us-west-2"],
+      "resourceNamePrefix": "deus-execution-prod",
+      "actionSets": [
+        "backup",
+        "data",
+        "database",
+        "network",
+        "observability",
+        "workload"
+      ],
+      "allowControllerPlan": false,
+      "allowControllerApply": false,
+      "productionApprovalRequired": true,
+      "roles": {
+        "planRoleName": "InfrastructurePlan",
+        "applyRoleName": "InfrastructureApplyProd",
+        "planPermissionsBoundaryName": "InfrastructurePlanBoundary",
+        "applyPermissionsBoundaryName": "InfrastructureApplyBoundary"
+      }
+    }
+  ],
+  "deletion": {
+    "ordinaryApplyRoleAllowed": false,
+    "dedicatedRoleProvisioned": false,
+    "minimumApprovals": 2
+  }
+}

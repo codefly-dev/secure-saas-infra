@@ -10,10 +10,8 @@ config:
     rootDomain: mind.example
     createRootZone: true
     enableQueryLogging: true
-    # Per-environment delegated zones. dev.mind.example, staging.mind.example,
-    # prod.mind.example each becomes its own Route 53 zone with NS records
-    # in the root zone delegating to it.
+    # Enabled delegated zones. Add staging only when the paired PreProd
+    # accounts and release environment are explicitly enabled.
     environmentSubdomains:
       - dev
-      - staging
       - prod

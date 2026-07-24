@@ -146,6 +146,25 @@ test("spoke private route tables default to Transit Gateway and AWS APIs use VPC
   assert.ok(stsEndpoint);
   assert.ok(secretsEndpoint);
   assert.ok(s3Endpoint);
+  const securityGroups = resourcesOfType(
+    resources,
+    "aws:ec2/securityGroup:SecurityGroup",
+  );
+  const secretsEndpointSecurityGroup = securityGroups.find(
+    (securityGroup) =>
+      `${securityGroup.name}_id` === secretsEndpoint.inputs.securityGroupIds[0],
+  );
+  assert.ok(secretsEndpointSecurityGroup);
+  assert.equal(
+    secretsEndpointSecurityGroup.inputs.tags.NetworkRole,
+    "postgres-bootstrap-endpoint",
+  );
+  assert.deepEqual(secretsEndpointSecurityGroup.inputs.ingress, []);
+  assert.notEqual(
+    secretsEndpoint.inputs.securityGroupIds[0],
+    stsEndpoint.inputs.securityGroupIds[0],
+    "Secrets Manager must not reuse the VPC-CIDR endpoint security group",
+  );
 
   assert.equal(
     defaultEc2Routes.length,

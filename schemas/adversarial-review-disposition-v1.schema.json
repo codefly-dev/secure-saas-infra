@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/adversarial-review-disposition-v1.schema.json",
+  "title": "Adversarial review disposition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "reviewedAt",
+    "source",
+    "approvedForLocalQualification",
+    "approvedForAwsMutation",
+    "reviews"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "security.deus.dev/adversarial-review-disposition/v1alpha1"
+    },
+    "reviewedAt": { "type": "string", "format": "date-time" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "treeDigest"],
+      "properties": {
+        "revision": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "treeDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "approvedForLocalQualification": { "type": "boolean" },
+    "approvedForAwsMutation": { "const": false },
+    "reviews": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/architectureReview" },
+          { "$ref": "#/$defs/securityReview" },
+          { "$ref": "#/$defs/validationReview" }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "reviewBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "discipline",
+        "reviewer",
+        "reviewMode",
+        "identityAssurance",
+        "localFindings",
+        "findingSummary",
+        "awsBoundary"
+      ],
+      "properties": {
+        "discipline": { "type": "string" },
+        "reviewer": { "type": "string" },
+        "reviewMode": { "const": "read-only" },
+        "identityAssurance": { "const": "process-label-only" },
+        "localFindings": { "enum": ["resolved", "unresolved"] },
+        "findingSummary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "awsBoundary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        }
+      }
+    },
+    "architectureReview": {
+      "allOf": [
+        { "$ref": "#/$defs/reviewBase" },
+        {
+          "type": "object",
+          "properties": {
+            "discipline": { "const": "architecture" },
+            "reviewer": { "const": "seam_architecture_critic" }
+          }
+        }
+      ]
+    },
+    "securityReview": {
+      "allOf": [
+        { "$ref": "#/$defs/reviewBase" },
+        {
+          "type": "object",
+          "properties": {
+            "discipline": { "const": "security" },
+            "reviewer": { "const": "seam_security_critic" }
+          }
+        }
+      ]
+    },
+    "validationReview": {
+      "allOf": [
+        { "$ref": "#/$defs/reviewBase" },
+        {
+          "type": "object",
+          "properties": {
+            "discipline": { "const": "validation" },
+            "reviewer": { "const": "seam_validation_critic" }
+          }
+        }
+      ]
+    }
+  }
+}

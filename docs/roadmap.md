@@ -1,5 +1,67 @@
 # Implementation Roadmap
 
+> **Status boundary:** only the AWS Organizations management seed is currently
+> in the positive build/test/release inventory. The later account foundation,
+> network, EKS/RDS, and edge sections below are cloud-infrastructure roadmap
+> work, not qualified runtime claims. In-cluster Kubernetes/Argo/Helm work is
+> separately owned platform delivery and must not enter the IaC release.
+
+## Current IaC-only execution boundary — 2026-07-21
+
+Only the AWS Organizations management seed is executable in the positive
+qualification scope. Local gates bind the exact source/build/runtime closure,
+independent review disposition, access bundle, dependency audit, SPDX
+inventory, Policy Pack, candidate signing request, and immutable Pulumi plan
+manifest. The exact graph policy checks every admitted logical identity against
+its resource type, exact input-key inventory, critical properties, tags,
+dependency set, and property dependencies. No Codefly, Kubernetes, Helm, Argo CD, GitOps, application, VPC,
+EKS, or RDS code is executed by these gates.
+
+The pre-Organization access contract uses one exact commercial-AWS SAML
+provider and four distinct source roles: preview, Organization-only apply,
+just-in-time provisioner, and independently governed provisioner retirement.
+The active provisioner and retirement authority each have one exact generated
+policy. The governed retirement runner binds the executed access receipt and
+performs deny-all boundary -> sole-policy deletion -> retired tag, resuming
+only from an exact monotonic prefix before exact live read-back. Seed
+preview/apply refuses to start unless the provisioner is live
+verified as inert under its exact deny-all retirement boundary with zero
+policies and exact retirement tags. Upstream IdP assignment removal is an
+external first-authority responsibility.
+
+`seedWave: organization-only` is the only admitted apply and its AWS role can
+create only the protected Organization and enable the two reviewed policy
+types. The plan manifest binds the absent-Organization precondition; apply
+then proves the exact Organization/root/management-only baseline and absence
+of foreign Organizations state. `seedWave: full` is preview-only: its live account,
+invitation, pending-creation, and quota observation is bound to the candidate,
+management account, configuration, and reviewed plan manifest, then repeated
+immediately before and after Pulumi. Full apply remains machine-blocked until a
+separately qualified member-access wave can replace and immediately retire
+every broad `DeusOrganizationBootstrap` account-vending role.
+
+Remaining qualification and real-environment prerequisites:
+
+- commit the exact tree and obtain three fresh adversarial dispositions;
+- create a protected evidence-only child, protected tag, and GitHub immutable
+  release;
+- configure only the Ed25519 public trust root here while the private signer
+  remains independently controlled;
+- build and verify native `amd64` and `arm64` host kits, then prove the
+  installed systemd/Landlock/sudo/runtime lifecycle on native Linux;
+- choose the Pulumi Cloud organization and recovery procedure, initialize only
+  the management stack, and provide the real management account ID plus
+  globally unique account emails;
+- establish the separately audited SAML provider/four source roles, two empty
+  pre-bounded target roles, and three immutable managed boundaries; execute the
+  exact two-inline-policy access change set; and retire the provisioner; and
+- run the first governed read-only `organization-only` preview. Any apply requires
+  a separately reviewed saved plan and explicit operator confirmation.
+
+The cloud-neutral, database, network, EKS, and other material later in this
+document is roadmap context only. In-cluster delivery is owned by the platform
+layer; see [iac-platform-boundary.md](iac-platform-boundary.md).
+
 ## Phase 1: Foundation
 
 - Create AWS landing zone and accounts. The Pulumi account-vending scaffold exists.
@@ -9,7 +71,8 @@
 - Replace bastion access with Tailscale operator/admin access.
 - Enable account-level audit, detection, and logging. The log-archive, organization-audit, security-tooling, and shared-services stacks exist.
 - Configure workforce and CI/CD identity. IAM Identity Center permission sets/account assignments and GitHub Actions OIDC role scaffolding now exist.
-- Bootstrap GitOps security baseline. Argo CD apps now cover Istio ambient mode, cert-manager, Gateway API CRDs, metrics-server, kube-prometheus-stack, Vault Secrets Operator, Tailscale Operator, Kyverno, namespaces, NetworkPolicies, and mesh security defaults.
+- Publish the versioned cloud-to-platform handoff; the platform repository owns
+  Argo CD and all in-cluster desired state.
 
 ## Phase 2: Security Hardening
 
@@ -36,7 +99,7 @@
   IMDSv2 on EC2 instances.
 - Tighten config-time validators: production-like network-hub/single-account
   stacks must enable Network Firewall, private EKS clusters must declare
-  `adminRoleArns`, shared-services must keep customer-managed KMS for the Vault
+  scoped IAM Identity Center `eks.accessGrants`, shared-services must keep customer-managed KMS for the Vault
   backup bucket and Tailscale secrets, and the in-cluster microVM execution
   provider is held to the same dedicated-account/private-LB/central-egress
   boundary as E2B BYOC.
@@ -77,11 +140,8 @@
 - Use E2B BYOC as the preferred production execution path in dedicated
   execution AWS accounts. Use fully self-hosted E2B only when the BYOC
   control-plane relationship is not acceptable for a tenant.
-- Keep the in-cluster microVM path as a fail-closed fallback. The execution
-  GitOps baseline now declares the `deus-microvm` RuntimeClass, requires
-  per-job audit metadata and resource limits, and applies namespace quotas; the
-  remaining work is installing and validating the backing runtime on labeled
-  execution nodes.
+- Keep any in-cluster microVM path as a fail-closed fallback owned and verified
+  by the platform repository, not by cloud IaC.
 - Deny direct metadata service access.
 - Enforce CPU, memory, disk, network, and wall-clock quotas.
 - Add per-job identity and audit logs.
@@ -105,12 +165,8 @@
   is now deployed via the `backup` stack.
 - Aurora baseline now ships in `src/database.ts` with IAM auth, CMK, deletion
   protection, RDS Proxy, and audit logging. See [database.md](database.md).
-- Agent broker / agent egress namespaces are reserved with Kyverno and
-  NetworkPolicy guardrails. See [agentic-ai.md](agentic-ai.md). The broker
-  service itself is application code; the IaC reserves the trust boundary.
-- Vault deployed via Argo CD with AWS KMS auto-unseal and Raft storage.
-- Falco DaemonSet (modern eBPF) wired through Argo CD for syscall-level
-  runtime detection. See [runtime-security.md](runtime-security.md).
+- Platform-owned admission, Vault, Falco, and agent namespaces consume only the
+  verified cloud handoff; their deployment and validation are not IaC work.
 - WAFv2 Web ACL with managed rule sets, bot control, and a strict
   model-gateway rate limit. See [waf.md](waf.md).
 - EventBridge detection rules + SNS fan-out for GuardDuty, IAM, KMS,

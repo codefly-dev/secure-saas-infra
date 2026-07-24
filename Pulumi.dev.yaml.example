@@ -6,7 +6,6 @@ config:
   secure-saas-infra:deploymentMode: workload
   secure-saas-infra:organizationName: deus
   secure-saas-infra:environment: dev
-  secure-saas-infra:adminRoleArns: []
   secure-saas-infra:network:
     egress:
       cidr: 10.0.0.0/16
@@ -35,6 +34,15 @@ config:
       - system
       - general-purpose
     networkPolicyMode: strict
+    accessGrants:
+      - id: platform-admin
+        principal:
+          kind: identity-center-permission-set
+          category: workforce
+          permissionSetName: PlatformPowerUser
+        accessPolicy: cluster-admin
+        scope:
+          type: cluster
   secure-saas-infra:security:
     enableGuardDuty: false
     enableSecurityHub: false

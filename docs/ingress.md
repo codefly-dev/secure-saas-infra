@@ -27,17 +27,38 @@ Mind backend pods                 — control plane in platform-prod
 
 ## Why CloudFront + VPC Origin instead of a public ALB
 
-| Criterion | Public ALB in network/ingress account | CloudFront + VPC Origin |
-|---|---|---|
-| Public IP in your VPC | yes (the ALB) | **no** |
-| DDoS protection | Shield Standard on ALB | Shield Standard at edge (further out) |
-| L7 inspection | WAF on ALB | WAF on CloudFront (same engine, edge-attached) |
-| TGW data-transfer | every customer byte traverses TGW (~$0.02/GB) | CloudFront → spoke via VPC Origin **bypasses TGW** |
-| Latency | extra hop through TGW | edge PoP closer to user |
-| Per-spoke isolation | shared ALB, complex security groups | each spoke has its own internal NLB; CloudFront origin group routes per host/path |
-| TLS cert mgmt | one ALB cert | one CloudFront cert (us-east-1) |
+| Criterion             | Public ALB in network/ingress account         | CloudFront + VPC Origin                                                           |
+| --------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- |
+| Public IP in your VPC | yes (the ALB)                                 | **no**                                                                            |
+| DDoS protection       | Shield Standard on ALB                        | Shield Standard at edge (further out)                                             |
+| L7 inspection         | WAF on ALB                                    | WAF on CloudFront (same engine, edge-attached)                                    |
+| TGW data-transfer     | every customer byte traverses TGW (~$0.02/GB) | CloudFront → spoke via VPC Origin **bypasses TGW**                                |
+| Latency               | extra hop through TGW                         | edge PoP closer to user                                                           |
+| Per-spoke isolation   | shared ALB, complex security groups           | each spoke has its own internal NLB; CloudFront origin group routes per host/path |
+| TLS cert mgmt         | one ALB cert                                  | one CloudFront cert (us-east-1)                                                   |
 
 The "hub" you want is at the AWS edge (CloudFront + WAF), not in a hub VPC.
+
+## Controller and routing ownership
+
+The EKS clusters use Auto Mode, so the AWS-managed load-balancing capability is
+the only controller allowed to reconcile the internal NLB. The Istio gateway
+Service declares `loadBalancerClass: eks.amazonaws.com/nlb`, internal scheme,
+IP targets, cross-zone balancing, and the Envoy readiness endpoint. Do not
+install the self-managed AWS Load Balancer Controller into these clusters.
+
+Argo CD owns the pinned Istio/Gateway API installation. Istio owns L7 routing
+through `Gateway`/`HTTPRoute`; application delivery owns only its authorized
+routes and backends. Pulumi owns CloudFront, WAF, ACM, logs, and the VPC Origin.
+An ALB is an explicit alternative for a service that intentionally bypasses
+Istio—it is not another L7 hop in front of the same Istio gateway.
+
+AWS currently recommends its load-balancer controller model over the legacy
+in-tree service controller, and EKS Auto Mode provides that capability without
+a separate installation. Istio intends Kubernetes Gateway API to become its
+default traffic API. See the AWS [EKS load-balancing guidance](https://docs.aws.amazon.com/eks/latest/best-practices/load-balancing.html),
+[Auto Mode networking constraints](https://docs.aws.amazon.com/eks/latest/userguide/auto-networking.html),
+and Istio [Gateway API deployment model](https://istio.io/latest/docs/tasks/traffic-management/ingress/gateway-api/).
 This pattern centralizes everything that benefits from centralization
 (inspection, TLS, DDoS, log sink) and skips centralization of the L4 LB,
 which would only add TGW cost and latency.
@@ -78,12 +99,15 @@ The mandatory Pulumi policy pack rejects:
 
 - `domainName` and optional `subjectAlternativeNames`.
 - `hostedZoneId` (Route 53) for cert validation + the alias record.
-- `internalNlbArn` and `originDomainName` from the platform stack output.
+- `internalNlbArn` and `originDomainName` from a post-Argo observation of the
+  exact `istio-ingress/istio-ingress` Service provisioned by EKS Auto Mode.
 - `webAclArn` from the `waf` stack (with `scope: CLOUDFRONT`).
 
 Workflow:
 
-1. Run the `platform-prod` stack so the internal NLB exists.
+1. Run the platform cluster and Argo CD stacks, wait for the exact Istio
+   gateway Service to report an internal EKS Auto Mode NLB, and record its ARN
+   and DNS name as the reviewed runtime handoff.
 2. Run the `waf` stack with `scope: CLOUDFRONT` — that web ACL must live in
    us-east-1 because CloudFront-scope WAF is global.
 3. Run the `ingress` stack with the values from steps 1 and 2.
@@ -107,15 +131,15 @@ root filesystem, RuntimeDefault seccomp.
 
 ## Threat model summary
 
-| Threat | Control |
-|---|---|
-| DDoS | CloudFront edge + Shield Standard (Advanced optional) |
-| Credential stuffing / brute force | WAF rate-based statement (per-IP) |
-| Inference flooding | WAF model-gateway rate-based statement (per-IP, scoped to `/v1/models*`, `/v1/agents*`) |
-| OWASP Top 10 | AWSManagedRulesCommonRuleSet + KnownBadInputs + IpReputation + AnonymousIp + BotControl |
-| TLS downgrade | `MinimumProtocolVersion: TLSv1.3_2021` |
-| Header injection / CSP bypass | Strict response headers policy with HSTS preload |
-| Origin discovery / direct-to-origin attacks | VPC Origin = no public IP for the NLB; origin not reachable from the internet |
-| Cross-tenant cache poisoning | Caching disabled by default; tenant-aware caching requires explicit per-route cache key configuration |
-| Header smuggling for auth | WAF redacts `authorization`, `cookie`, `x-api-key` in logs; Istio AuthorizationPolicy enforces tenant scope per request |
-| Geographic restriction | Optional `geoRestrictionType: whitelist` for regulated tenants |
+| Threat                                      | Control                                                                                                                 |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| DDoS                                        | CloudFront edge + Shield Standard (Advanced optional)                                                                   |
+| Credential stuffing / brute force           | WAF rate-based statement (per-IP)                                                                                       |
+| Inference flooding                          | WAF model-gateway rate-based statement (per-IP, scoped to `/v1/models*`, `/v1/agents*`)                                 |
+| OWASP Top 10                                | AWSManagedRulesCommonRuleSet + KnownBadInputs + IpReputation + AnonymousIp + BotControl                                 |
+| TLS downgrade                               | `MinimumProtocolVersion: TLSv1.3_2021`                                                                                  |
+| Header injection / CSP bypass               | Strict response headers policy with HSTS preload                                                                        |
+| Origin discovery / direct-to-origin attacks | VPC Origin = no public IP for the NLB; origin not reachable from the internet                                           |
+| Cross-tenant cache poisoning                | Caching disabled by default; tenant-aware caching requires explicit per-route cache key configuration                   |
+| Header smuggling for auth                   | WAF redacts `authorization`, `cookie`, `x-api-key` in logs; Istio AuthorizationPolicy enforces tenant scope per request |
+| Geographic restriction                      | Optional `geoRestrictionType: whitelist` for regulated tenants                                                          |

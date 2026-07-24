@@ -25,7 +25,10 @@ test("detection stack creates SNS topic and EventBridge rules for high-severity 
     "aws:sns/topicSubscription:TopicSubscription",
   );
   assert.equal(subscriptions.length, 1);
-  assert.equal(subscriptions[0].inputs.endpoint, "security-alerts@deus.example");
+  assert.equal(
+    subscriptions[0].inputs.endpoint,
+    "security-alerts@deus.example",
+  );
 
   const rules = resourcesOfType(
     resources,

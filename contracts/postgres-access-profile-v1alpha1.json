@@ -1,0 +1,80 @@
+{
+  "apiVersion": "security.deus.dev/postgres-access-profile/v1alpha1",
+  "kind": "PostgresAccessProfile",
+  "id": "warden-saas-postgres-runtime",
+  "bindingId": "warden-saas-postgres",
+  "profileSpecDigest": "384864230c6a372c5673dbdf9129394400a7d0916eed8155608d455b59018156",
+  "application": {
+    "applicationId": "warden",
+    "componentId": "warden-saas",
+    "serviceRef": "deus/warden-saas/postgres",
+    "dataBoundaryId": "warden-saas-state"
+  },
+  "accessClass": "runtime",
+  "connection": {
+    "endpoint": "warden.proxy-abcdefghijkl.us-east-1.rds.amazonaws.com",
+    "port": 5432,
+    "databaseName": "warden",
+    "tls": {
+      "mode": "verify-full",
+      "caCertIdentifier": "rds-ca-rsa2048-g1",
+      "caBundleRef": "aws-rds://truststore/global/global-bundle.pem"
+    }
+  },
+  "authentication": {
+    "kind": "aws-rds-iam",
+    "region": "us-east-1",
+    "target": "rds-proxy",
+    "resourceId": "prx-0123456789abcdef0",
+    "databaseUser": "warden_saas_service",
+    "tokenDelivery": "per-physical-connection"
+  },
+  "identity": {
+    "semanticIdentityId": "warden-saas-service",
+    "roleArn": "arn:aws:iam::123456789012:role/warden-saas-runtime",
+    "namespace": "codefly-db-runtime-warden-saas-postgres-development",
+    "serviceAccount": "warden-saas-service",
+    "podIdentityAssociationId": "a-0123456789abcdef0"
+  },
+  "network": {
+    "securityGroupId": "sg-0123456789abcdef0",
+    "exposure": "private",
+    "sourceBoundaryMode": "exact-pod-security-group"
+  },
+  "enforcement": {
+    "bindingDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "workloadBundleDigest": "5bb6c125137a3b102640fdef6c299f78388d9dc8616a322597b23b4fdaa53035",
+    "requiredPodLabels": {
+      "security.deus.dev/workload-identity-binding": "warden-saas-service"
+    },
+    "requiredPodAnnotations": {
+      "security.deus.dev/workload-identity-mode": "eks-pod-identity",
+      "security.deus.dev/workload-identity-audience": "pods.eks.amazonaws.com",
+      "security.deus.dev/workload-identity-binding-digest": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "requiredPodScheduling": {
+      "nodeSelector": {
+        "node-restriction.kubernetes.io/database-access-f7f0e299b75bbc5d": "warden-saas-postgres-runtime-database-access"
+      },
+      "tolerations": [
+        {
+          "key": "node-restriction.kubernetes.io/database-access-f7f0e299b75bbc5d",
+          "operator": "Equal",
+          "value": "warden-saas-postgres-runtime-database-access",
+          "effect": "NoSchedule"
+        }
+      ]
+    }
+  },
+  "readiness": {
+    "state": "pending-infrastructure",
+    "ready": false,
+    "blockers": [
+      "DATABASE_ACCESS_BUNDLE_NOT_OBSERVED",
+      "DATABASE_DEPLOYMENT_AUTHORITY_NOT_OBSERVED",
+      "POSTGRES_SQL_BOOTSTRAP_EVIDENCE_REQUIRED"
+    ],
+    "evidenceRefs": []
+  },
+  "credentials": null
+}

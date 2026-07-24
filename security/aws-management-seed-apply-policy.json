@@ -1,0 +1,163 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadManagementSeedState",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeRegions",
+        "guardduty:ListOrganizationAdminAccounts",
+        "iam:GetPolicy",
+        "iam:GetPolicyVersion",
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:GetSAMLProvider",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListPolicyVersions",
+        "iam:ListRolePolicies",
+        "inspector2:ListDelegatedAdminAccounts",
+        "organizations:DescribeAccount",
+        "organizations:DescribeCreateAccountStatus",
+        "organizations:DescribeEffectivePolicy",
+        "organizations:DescribeOrganization",
+        "organizations:DescribeOrganizationalUnit",
+        "organizations:DescribePolicy",
+        "organizations:DescribeResourcePolicy",
+        "organizations:ListAWSServiceAccessForOrganization",
+        "organizations:ListAccounts",
+        "organizations:ListAccountsForParent",
+        "organizations:ListChildren",
+        "organizations:ListCreateAccountStatus",
+        "organizations:ListDelegatedAdministrators",
+        "organizations:ListDelegatedServicesForAccount",
+        "organizations:ListHandshakesForOrganization",
+        "organizations:ListOrganizationalUnitsForParent",
+        "organizations:ListParents",
+        "organizations:ListPolicies",
+        "organizations:ListPoliciesForTarget",
+        "organizations:ListRoots",
+        "organizations:ListTagsForResource",
+        "organizations:ListTargetsForPolicy",
+        "securityhub:ListOrganizationAdminAccounts",
+        "servicequotas:ListServiceQuotas",
+        "sts:GetCallerIdentity"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CreateOrganizationOnly",
+      "Effect": "Allow",
+      "Action": "organizations:CreateOrganization",
+      "Resource": "*"
+    },
+    {
+      "Sid": "CreateExactServiceLinkedRoles",
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "*"
+    },
+    {
+      "Sid": "EnableOnlyReviewedOrganizationPolicyTypes",
+      "Effect": "Allow",
+      "Action": "organizations:EnablePolicyType",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "organizations:PolicyType": ["S3_POLICY", "SERVICE_CONTROL_POLICY"]
+        }
+      }
+    },
+    {
+      "Sid": "DenyUnreviewedPolicyTypes",
+      "Effect": "Deny",
+      "Action": "organizations:EnablePolicyType",
+      "Resource": "*",
+      "Condition": {
+        "StringNotEquals": {
+          "organizations:PolicyType": ["S3_POLICY", "SERVICE_CONTROL_POLICY"]
+        }
+      }
+    },
+    {
+      "Sid": "DenyUnapprovedServiceLinkedRoles",
+      "Effect": "Deny",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "*",
+      "Condition": {
+        "StringNotEquals": {
+          "iam:AWSServiceName": "organizations.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "DenyUnreviewedApplyActions",
+      "Effect": "Deny",
+      "NotAction": [
+        "ec2:DescribeRegions",
+        "guardduty:ListOrganizationAdminAccounts",
+        "iam:CreateServiceLinkedRole",
+        "iam:GetPolicy",
+        "iam:GetPolicyVersion",
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:GetSAMLProvider",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListPolicyVersions",
+        "iam:ListRolePolicies",
+        "inspector2:ListDelegatedAdminAccounts",
+        "organizations:CreateOrganization",
+        "organizations:DescribeAccount",
+        "organizations:DescribeCreateAccountStatus",
+        "organizations:DescribeEffectivePolicy",
+        "organizations:DescribeOrganization",
+        "organizations:DescribeOrganizationalUnit",
+        "organizations:DescribePolicy",
+        "organizations:DescribeResourcePolicy",
+        "organizations:EnablePolicyType",
+        "organizations:ListAWSServiceAccessForOrganization",
+        "organizations:ListAccounts",
+        "organizations:ListAccountsForParent",
+        "organizations:ListChildren",
+        "organizations:ListCreateAccountStatus",
+        "organizations:ListDelegatedAdministrators",
+        "organizations:ListDelegatedServicesForAccount",
+        "organizations:ListHandshakesForOrganization",
+        "organizations:ListOrganizationalUnitsForParent",
+        "organizations:ListParents",
+        "organizations:ListPolicies",
+        "organizations:ListPoliciesForTarget",
+        "organizations:ListRoots",
+        "organizations:ListTagsForResource",
+        "organizations:ListTargetsForPolicy",
+        "securityhub:ListOrganizationAdminAccounts",
+        "servicequotas:ListServiceQuotas",
+        "sts:GetCallerIdentity"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyManagementSeedDestruction",
+      "Effect": "Deny",
+      "Action": [
+        "guardduty:DisableOrganizationAdminAccount",
+        "inspector2:DisableDelegatedAdminAccount",
+        "organizations:CloseAccount",
+        "organizations:DeleteOrganization",
+        "organizations:DeleteOrganizationalUnit",
+        "organizations:DeletePolicy",
+        "organizations:DeregisterDelegatedAdministrator",
+        "organizations:DetachPolicy",
+        "organizations:DisableAWSServiceAccess",
+        "organizations:DisablePolicyType",
+        "organizations:LeaveOrganization",
+        "organizations:RemoveAccountFromOrganization",
+        "organizations:RegisterDelegatedAdministrator",
+        "organizations:UntagResource",
+        "organizations:UpdateOrganizationalUnit",
+        "organizations:UpdatePolicy",
+        "securityhub:DisableOrganizationAdminAccount"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

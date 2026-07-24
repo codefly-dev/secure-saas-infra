@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/aws-bootstrap-access-v1alpha1.schema.json",
+  "title": "Credential-free AWS bootstrap access plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "name",
+    "landingZoneOwner",
+    "organizationName",
+    "management",
+    "initialMemberHandoff",
+    "controller",
+    "accounts",
+    "deletion"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "security.deus.dev/aws-bootstrap-access/v1alpha1"
+    },
+    "kind": { "const": "AwsBootstrapAccessPlan" },
+    "name": { "$ref": "#/$defs/identifier" },
+    "landingZoneOwner": { "enum": ["organizations", "control-tower"] },
+    "organizationName": { "$ref": "#/$defs/identifier" },
+    "management": { "$ref": "#/$defs/management" },
+    "initialMemberHandoff": { "$ref": "#/$defs/handoff" },
+    "controller": { "$ref": "#/$defs/controller" },
+    "accounts": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/account" }
+    },
+    "deletion": { "$ref": "#/$defs/deletion" }
+  },
+  "$defs": {
+    "management": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accountId",
+        "workforceAccess",
+        "accessInstallerRoleArn",
+        "humanFederationOnly",
+        "automationAccess",
+        "maxSessionDurationSeconds",
+        "root"
+      ],
+      "properties": {
+        "accountId": { "$ref": "#/$defs/accountId" },
+        "workforceAccess": { "const": "iam-identity-center" },
+        "accessInstallerRoleArn": { "$ref": "#/$defs/roleArn" },
+        "humanFederationOnly": { "const": true },
+        "automationAccess": { "const": false },
+        "maxSessionDurationSeconds": { "$ref": "#/$defs/sessionDuration" },
+        "root": { "$ref": "#/$defs/rootAccess" }
+      }
+    },
+    "rootAccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "programmaticAccess",
+        "mfaRequired",
+        "multiPersonRecovery",
+        "centralizedMemberRootAccess",
+        "usedByAutomation",
+        "usedByPulumi"
+      ],
+      "properties": {
+        "programmaticAccess": { "const": false },
+        "mfaRequired": { "const": true },
+        "multiPersonRecovery": { "const": true },
+        "centralizedMemberRootAccess": { "const": true },
+        "usedByAutomation": { "const": false },
+        "usedByPulumi": { "const": false }
+      }
+    },
+    "handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "roleName",
+        "purpose",
+        "humanApprovalRequired",
+        "automationAssumable",
+        "retireAfterScopedRolesReady"
+      ],
+      "properties": {
+        "roleName": { "$ref": "#/$defs/iamName" },
+        "purpose": { "const": "install-scoped-access-roles" },
+        "humanApprovalRequired": { "const": true },
+        "automationAssumable": { "const": false },
+        "retireAfterScopedRolesReady": { "const": true }
+      }
+    },
+    "controller": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "roleArn",
+        "hostAccountId",
+        "identityMode",
+        "kubernetesNamespace",
+        "kubernetesServiceAccount",
+        "temporaryCredentials",
+        "maxSessionDurationSeconds",
+        "managementAccountAccess"
+      ],
+      "properties": {
+        "roleArn": { "$ref": "#/$defs/roleArn" },
+        "hostAccountId": { "$ref": "#/$defs/accountId" },
+        "identityMode": { "const": "eks-pod-identity" },
+        "kubernetesNamespace": { "$ref": "#/$defs/kubernetesName" },
+        "kubernetesServiceAccount": { "$ref": "#/$defs/kubernetesName" },
+        "temporaryCredentials": { "const": true },
+        "maxSessionDurationSeconds": { "$ref": "#/$defs/sessionDuration" },
+        "managementAccountAccess": { "const": false }
+      }
+    },
+    "account": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accountName",
+        "accountId",
+        "kind",
+        "environmentClass",
+        "allowedRegions",
+        "resourceNamePrefix",
+        "actionSets",
+        "allowControllerPlan",
+        "allowControllerApply",
+        "productionApprovalRequired",
+        "roles"
+      ],
+      "properties": {
+        "accountName": { "$ref": "#/$defs/identifier" },
+        "accountId": { "$ref": "#/$defs/accountId" },
+        "kind": {
+          "enum": [
+            "security-tooling",
+            "log-archive",
+            "network",
+            "shared-services",
+            "platform",
+            "execution"
+          ]
+        },
+        "environmentClass": {
+          "enum": ["nonproduction", "preproduction", "production"]
+        },
+        "allowedRegions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/region" }
+        },
+        "resourceNamePrefix": { "$ref": "#/$defs/identifier" },
+        "actionSets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "audit",
+              "backup",
+              "cost",
+              "data",
+              "database",
+              "dns",
+              "network",
+              "observability",
+              "security",
+              "workload"
+            ]
+          }
+        },
+        "allowControllerPlan": { "type": "boolean" },
+        "allowControllerApply": { "type": "boolean" },
+        "productionApprovalRequired": { "type": "boolean" },
+        "roles": { "$ref": "#/$defs/roles" }
+      }
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planRoleName",
+        "applyRoleName",
+        "planPermissionsBoundaryName",
+        "applyPermissionsBoundaryName"
+      ],
+      "properties": {
+        "planRoleName": { "$ref": "#/$defs/iamName" },
+        "applyRoleName": { "$ref": "#/$defs/iamName" },
+        "planPermissionsBoundaryName": { "$ref": "#/$defs/iamName" },
+        "applyPermissionsBoundaryName": { "$ref": "#/$defs/iamName" }
+      }
+    },
+    "deletion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ordinaryApplyRoleAllowed",
+        "dedicatedRoleProvisioned",
+        "minimumApprovals"
+      ],
+      "properties": {
+        "ordinaryApplyRoleAllowed": { "const": false },
+        "dedicatedRoleProvisioned": { "const": false },
+        "minimumApprovals": { "const": 2 }
+      }
+    },
+    "accountId": { "type": "string", "pattern": "^[0-9]{12}$" },
+    "sessionDuration": {
+      "type": "integer",
+      "minimum": 900,
+      "maximum": 3600
+    },
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "iamName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9+=,.@_-]+$"
+    },
+    "roleArn": {
+      "type": "string",
+      "pattern": "^arn:aws(-[a-z]+)?:iam::[0-9]{12}:role/[A-Za-z0-9+=,.@_/-]+$"
+    },
+    "region": {
+      "type": "string",
+      "pattern": "^[a-z]{2}(-gov)?-[a-z]+-[0-9]$"
+    },
+    "kubernetesName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 253,
+      "pattern": "^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"
+    }
+  }
+}

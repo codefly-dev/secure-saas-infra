@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/cloud-context-observation-v1alpha1.schema.json",
+  "title": "Authenticated cloud-context placement observation evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "evidenceId",
+    "organizationId",
+    "platformTenantId",
+    "environment",
+    "applicationId",
+    "componentId",
+    "requestDigest",
+    "catalogDesiredStateDigest",
+    "placementDigest",
+    "dependencyClosureDigest",
+    "resolverRegistryDigest",
+    "admissionPolicyDigest",
+    "issuedAt",
+    "expiresAt",
+    "nonce",
+    "verifier",
+    "observations",
+    "signature"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "evidence.security.deus.dev/cloud-context-observation/v1alpha1"
+    },
+    "kind": { "const": "CloudContextObservationEvidence" },
+    "evidenceId": { "$ref": "#/$defs/identifier" },
+    "organizationId": { "$ref": "#/$defs/identifier" },
+    "platformTenantId": { "$ref": "#/$defs/identifier" },
+    "environment": {
+      "enum": ["development", "staging", "production"]
+    },
+    "applicationId": { "$ref": "#/$defs/identifier" },
+    "componentId": { "$ref": "#/$defs/identifier" },
+    "requestDigest": { "$ref": "#/$defs/sha256" },
+    "catalogDesiredStateDigest": { "$ref": "#/$defs/sha256" },
+    "placementDigest": { "$ref": "#/$defs/sha256" },
+    "dependencyClosureDigest": { "$ref": "#/$defs/sha256" },
+    "resolverRegistryDigest": { "$ref": "#/$defs/sha256" },
+    "admissionPolicyDigest": { "$ref": "#/$defs/sha256" },
+    "issuedAt": { "$ref": "#/$defs/timestamp" },
+    "expiresAt": { "$ref": "#/$defs/timestamp" },
+    "nonce": {
+      "type": "string",
+      "minLength": 32,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "verifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "keyId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "version": { "$ref": "#/$defs/version" },
+        "keyId": { "$ref": "#/$defs/keyId" }
+      }
+    },
+    "observations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/observation" }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": { "const": "Ed25519" },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{86}$"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9]*(?:[._:-][a-z0-9]+)*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "keyId": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{3})?Z$"
+    },
+    "dependencyKey": {
+      "type": "string",
+      "maxLength": 512,
+      "pattern": "^[a-z][a-z0-9]*(?:[._:-][a-z0-9]+)*/(?:context|runtime|network|registry|identity|observability|dns|resource-binding)/[a-z][a-z0-9]*(?:[._:-][a-z0-9]+)*$"
+    },
+    "resolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestDigest",
+        "resolverId",
+        "resolverVersion",
+        "owner",
+        "providerResourceUid",
+        "providerResourceVersion",
+        "outputDigest",
+        "resolvedAt",
+        "expiresAt"
+      ],
+      "properties": {
+        "requestDigest": { "$ref": "#/$defs/sha256" },
+        "resolverId": { "$ref": "#/$defs/identifier" },
+        "resolverVersion": { "$ref": "#/$defs/version" },
+        "owner": { "$ref": "#/$defs/identifier" },
+        "providerResourceUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^*?\\s@#]+$",
+          "not": {
+            "pattern": "(?i:password|secret|credential|access[_-]?key|session[_-]?token)"
+          }
+        },
+        "providerResourceVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^*?\\s@#]+$",
+          "not": {
+            "pattern": "(?i:password|secret|credential|access[_-]?key|session[_-]?token)"
+          }
+        },
+        "outputDigest": { "$ref": "#/$defs/sha256" },
+        "resolvedAt": { "$ref": "#/$defs/timestamp" },
+        "expiresAt": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dependencyKey",
+        "dependencyKind",
+        "contextId",
+        "dependencyId",
+        "generation",
+        "subjectDigest",
+        "phase",
+        "previousObservationDigest",
+        "resolutions"
+      ],
+      "properties": {
+        "dependencyKey": { "$ref": "#/$defs/dependencyKey" },
+        "dependencyKind": {
+          "enum": [
+            "context",
+            "runtime",
+            "network",
+            "registry",
+            "identity",
+            "observability",
+            "dns",
+            "resource-binding"
+          ]
+        },
+        "contextId": { "$ref": "#/$defs/identifier" },
+        "dependencyId": { "$ref": "#/$defs/identifier" },
+        "generation": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "subjectDigest": { "$ref": "#/$defs/sha256" },
+        "phase": { "const": "ready" },
+        "previousObservationDigest": {
+          "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+        },
+        "resolutions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/resolution" }
+        }
+      }
+    }
+  }
+}

@@ -11,3 +11,10 @@ config:
     spokeStackRefs:
       - your-pulumi-org/secure-saas-infra/platform-dev
       - your-pulumi-org/secure-saas-infra/execution-dev
+    spokeBindings:
+      - stackRef: your-pulumi-org/secure-saas-infra/platform-dev
+        zoneId: zone:platform-dev
+        networkDomainId: network:platform-dev
+      - stackRef: your-pulumi-org/secure-saas-infra/execution-dev
+        zoneId: zone:execution-dev
+        networkDomainId: network:execution-dev

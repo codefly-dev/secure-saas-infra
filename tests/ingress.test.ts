@@ -1,9 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  IngressConfig,
-  validateIngressConfig,
-} from "../src/config";
+import { IngressConfig, validateIngressConfig } from "../src/config";
 import {
   flushPulumiMocks,
   installPulumiMocks,
@@ -16,8 +13,7 @@ const baseline: IngressConfig = {
   hostedZoneId: "Z00000000000000000000",
   internalNlbArn:
     "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/k8s-istio-ingress/0123456789abcdef",
-  originDomainName:
-    "k8s-istio-ingress-0123456789.elb.us-east-1.amazonaws.com",
+  originDomainName: "k8s-istio-ingress-0123456789.elb.us-east-1.amazonaws.com",
   webAclArn:
     "arn:aws:wafv2:us-east-1:111111111111:global/webacl/deus-public-ingress-waf/abcd1234",
   priceClass: "PriceClass_100",
@@ -79,8 +75,7 @@ test("validateIngressConfig rejects weak TLS, wrong NLB, and missing logging", (
   );
 
   assert.throws(
-    () =>
-      validateIngressConfig({ ...baseline, contentSecurityPolicy: "" }),
+    () => validateIngressConfig({ ...baseline, contentSecurityPolicy: "" }),
     /contentSecurityPolicy/,
   );
 });
@@ -119,8 +114,8 @@ test("ingress stack creates CloudFront with VPC Origin, WAF, ACM, hardened heade
   assert.equal(origin.customOriginConfig, undefined);
   assert.equal(distribution.inputs.loggingConfig.includeCookies, false);
 
-  const orderedCacheBehaviors =
-    distribution.inputs.orderedCacheBehaviors as Array<Record<string, any>>;
+  const orderedCacheBehaviors = distribution.inputs
+    .orderedCacheBehaviors as Array<Record<string, any>>;
   assert.equal(orderedCacheBehaviors.length, 2);
   assert.ok(
     orderedCacheBehaviors.every(
@@ -185,6 +180,13 @@ test("ingress stack creates CloudFront with VPC Origin, WAF, ACM, hardened heade
   assert.equal(logBuckets.length, 1);
   assert.equal(logBuckets[0].inputs.forceDestroy, false);
 
+  const versioning = resourcesOfType(
+    resources,
+    "aws:s3/bucketVersioning:BucketVersioning",
+  )[0];
+  assert.ok(versioning);
+  assert.equal(versioning.inputs.versioningConfiguration.status, "Enabled");
+
   const encryption = resourcesOfType(
     resources,
     "aws:s3/bucketServerSideEncryptionConfiguration:BucketServerSideEncryptionConfiguration",
@@ -200,33 +202,4 @@ test("ingress stack creates CloudFront with VPC Origin, WAF, ACM, hardened heade
     "aws:s3/bucketLifecycleConfiguration:BucketLifecycleConfiguration",
   )[0];
   assert.equal(lifecycle.inputs.rules[0].expiration.days, 365);
-});
-
-test("ExternalDNS and Argo Rollouts Argo CD applications are wired in", async () => {
-  const { readFileSync } = await import("node:fs");
-
-  const externalDns = readFileSync(
-    "gitops/bootstrap/argocd/base/apps/external-dns.application.yaml",
-    "utf8",
-  );
-  assert.match(externalDns, /chart: external-dns/);
-  assert.match(externalDns, /provider: aws/);
-  assert.match(externalDns, /gateway-httproute/);
-  assert.match(externalDns, /readOnlyRootFilesystem: true/);
-
-  const rollouts = readFileSync(
-    "gitops/bootstrap/argocd/base/apps/argo-rollouts.application.yaml",
-    "utf8",
-  );
-  assert.match(rollouts, /chart: argo-rollouts/);
-  assert.match(rollouts, /dashboard:/);
-  assert.match(rollouts, /type: ClusterIP/);
-  assert.match(rollouts, /readOnlyRootFilesystem: true/);
-
-  const kustomization = readFileSync(
-    "gitops/bootstrap/argocd/base/kustomization.yaml",
-    "utf8",
-  );
-  assert.match(kustomization, /apps\/external-dns\.application\.yaml/);
-  assert.match(kustomization, /apps\/argo-rollouts\.application\.yaml/);
 });

@@ -24,20 +24,23 @@ export function createSecurityTooling(config: SecurityToolingConfig) {
       "LAMBDA_NETWORK_LOGS",
       "RUNTIME_MONITORING",
     ]) {
-      new aws.guardduty.OrganizationConfigurationFeature(named(`guardduty-${feature.toLowerCase().replaceAll("_", "-")}`), {
-        detectorId: guardDutyDetector.id,
-        name: feature,
-        autoEnable: "ALL",
-        additionalConfigurations:
-          feature === "RUNTIME_MONITORING"
-            ? [
-                {
-                  name: "EKS_ADDON_MANAGEMENT",
-                  autoEnable: "ALL",
-                },
-              ]
-            : undefined,
-      });
+      new aws.guardduty.OrganizationConfigurationFeature(
+        named(`guardduty-${feature.toLowerCase().replaceAll("_", "-")}`),
+        {
+          detectorId: guardDutyDetector.id,
+          name: feature,
+          autoEnable: "ALL",
+          additionalConfigurations:
+            feature === "RUNTIME_MONITORING"
+              ? [
+                  {
+                    name: "EKS_ADDON_MANAGEMENT",
+                    autoEnable: "ALL",
+                  },
+                ]
+              : undefined,
+        },
+      );
     }
   }
 
@@ -46,9 +49,12 @@ export function createSecurityTooling(config: SecurityToolingConfig) {
       enableDefaultStandards: true,
     });
 
-    new aws.securityhub.FindingAggregator(named("securityhub-finding-aggregator"), {
-      linkingMode: "ALL_REGIONS",
-    });
+    new aws.securityhub.FindingAggregator(
+      named("securityhub-finding-aggregator"),
+      {
+        linkingMode: "ALL_REGIONS",
+      },
+    );
 
     new aws.securityhub.OrganizationConfiguration(named("securityhub-org"), {
       autoEnable: true,
@@ -87,17 +93,21 @@ export function createSecurityTooling(config: SecurityToolingConfig) {
 
     new aws.iam.RolePolicyAttachment(named("config-aggregator-org-policy"), {
       role: role.name,
-      policyArn: "arn:aws:iam::aws:policy/service-role/AWSConfigRoleForOrganizations",
+      policyArn:
+        "arn:aws:iam::aws:policy/service-role/AWSConfigRoleForOrganizations",
     });
 
-    new aws.cfg.ConfigurationAggregator(named("organization-config-aggregator"), {
-      name: named("organization-config-aggregator"),
-      organizationAggregationSource: {
-        allRegions: config.configAggregatorAllRegions,
-        roleArn: role.arn,
+    new aws.cfg.ConfigurationAggregator(
+      named("organization-config-aggregator"),
+      {
+        name: named("organization-config-aggregator"),
+        organizationAggregationSource: {
+          allRegions: config.configAggregatorAllRegions,
+          roleArn: role.arn,
+        },
+        tags: tag("organization-config-aggregator"),
       },
-      tags: tag("organization-config-aggregator"),
-    });
+    );
   }
 
   return { guardDutyDetector };

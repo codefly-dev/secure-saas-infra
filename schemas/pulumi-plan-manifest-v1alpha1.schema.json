@@ -1,0 +1,329 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/pulumi-plan-manifest-v1alpha1.schema.json",
+  "title": "Reviewed Pulumi update-plan manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "generatedAt",
+    "sourceRevision",
+    "managementAccountId",
+    "pulumiOrganization",
+    "pulumiProject",
+    "bootstrapCandidateDigest",
+    "managementSeedCapacity",
+    "managementSeedOrganizationState",
+    "plans"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "security.deus.dev/pulumi-plan-manifest/v1alpha1"
+    },
+    "kind": { "const": "PulumiPlanManifest" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "sourceRevision": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "managementAccountId": { "type": "string", "pattern": "^[0-9]{12}$" },
+    "pulumiOrganization": { "$ref": "#/$defs/name" },
+    "pulumiProject": { "$ref": "#/$defs/name" },
+    "bootstrapCandidateDigest": { "$ref": "#/$defs/sha256" },
+    "managementSeedCapacity": {
+      "oneOf": [
+        { "$ref": "#/$defs/organizationOnlyCapacity" },
+        { "$ref": "#/$defs/fullCapacity" }
+      ]
+    },
+    "managementSeedOrganizationState": {
+      "oneOf": [
+        { "$ref": "#/$defs/standaloneOrganizationState" },
+        { "$ref": "#/$defs/organizationBaselineState" }
+      ]
+    },
+    "plans": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stack", "planFile", "sha256"],
+        "properties": {
+          "stack": { "$ref": "#/$defs/name" },
+          "planFile": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+\\.plan\\.json$"
+          },
+          "sha256": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "organizationOnlyCapacity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "apiVersion",
+        "wave",
+        "managementAccountId",
+        "bootstrapCandidateDigest",
+        "configurationDigest",
+        "requiredAccounts",
+        "observationRequired",
+        "pass",
+        "attestationDigest"
+      ],
+      "properties": {
+        "apiVersion": {
+          "const": "security.deus.dev/management-seed-account-capacity/v1"
+        },
+        "wave": { "const": "organization-only" },
+        "managementAccountId": {
+          "type": "string",
+          "pattern": "^[0-9]{12}$"
+        },
+        "bootstrapCandidateDigest": { "$ref": "#/$defs/sha256" },
+        "configurationDigest": { "$ref": "#/$defs/sha256" },
+        "requiredAccounts": { "const": 1 },
+        "observationRequired": { "const": false },
+        "pass": { "const": true },
+        "attestationDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "fullCapacity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "apiVersion",
+        "wave",
+        "managementAccountId",
+        "bootstrapCandidateDigest",
+        "configurationDigest",
+        "observationRequired",
+        "quotaRegion",
+        "quotaName",
+        "quotaValue",
+        "requiredAccounts",
+        "observedAccountCount",
+        "observedMembers",
+        "openInvitations",
+        "pendingAccountCreations",
+        "pass",
+        "attestationDigest"
+      ],
+      "properties": {
+        "apiVersion": {
+          "const": "security.deus.dev/management-seed-account-capacity/v1"
+        },
+        "wave": { "const": "full" },
+        "managementAccountId": {
+          "type": "string",
+          "pattern": "^[0-9]{12}$"
+        },
+        "bootstrapCandidateDigest": { "$ref": "#/$defs/sha256" },
+        "configurationDigest": { "$ref": "#/$defs/sha256" },
+        "observationRequired": { "const": true },
+        "quotaRegion": { "const": "us-east-1" },
+        "quotaName": { "const": "Maximum number of accounts" },
+        "quotaValue": { "type": "integer", "minimum": 9 },
+        "requiredAccounts": { "const": 9 },
+        "observedAccountCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9
+        },
+        "observedMembers": {
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "email", "name"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[0-9]{12}$" },
+              "email": { "type": "string", "format": "email" },
+              "name": { "$ref": "#/$defs/name" }
+            }
+          }
+        },
+        "openInvitations": { "const": 0 },
+        "pendingAccountCreations": { "const": 0 },
+        "pass": { "const": true },
+        "attestationDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "organizationStateCommon": {
+      "type": "object",
+      "required": [
+        "apiVersion",
+        "expectedState",
+        "managementAccountId",
+        "bootstrapCandidateDigest",
+        "configurationDigest",
+        "observationRegion",
+        "organizationPresent",
+        "pass",
+        "attestationDigest"
+      ],
+      "properties": {
+        "apiVersion": {
+          "const": "security.deus.dev/management-seed-organization-state/v1"
+        },
+        "expectedState": {
+          "enum": ["standalone", "organization-baseline"]
+        },
+        "managementAccountId": { "$ref": "#/$defs/accountId" },
+        "bootstrapCandidateDigest": { "$ref": "#/$defs/sha256" },
+        "configurationDigest": { "$ref": "#/$defs/sha256" },
+        "observationRegion": { "const": "us-east-1" },
+        "organizationPresent": { "type": "boolean" },
+        "pass": { "const": true },
+        "attestationDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "standaloneOrganizationState": {
+      "allOf": [
+        { "$ref": "#/$defs/organizationStateCommon" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "apiVersion",
+            "expectedState",
+            "managementAccountId",
+            "bootstrapCandidateDigest",
+            "configurationDigest",
+            "observationRegion",
+            "organizationPresent",
+            "pass",
+            "attestationDigest"
+          ],
+          "properties": {
+            "apiVersion": true,
+            "expectedState": { "const": "standalone" },
+            "managementAccountId": true,
+            "bootstrapCandidateDigest": true,
+            "configurationDigest": true,
+            "observationRegion": true,
+            "organizationPresent": { "const": false },
+            "pass": true,
+            "attestationDigest": true
+          }
+        }
+      ]
+    },
+    "organizationBaselineState": {
+      "allOf": [
+        { "$ref": "#/$defs/organizationStateCommon" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "apiVersion",
+            "expectedState",
+            "managementAccountId",
+            "bootstrapCandidateDigest",
+            "configurationDigest",
+            "observationRegion",
+            "organizationPresent",
+            "organizationId",
+            "organizationArn",
+            "featureSet",
+            "rootId",
+            "rootArn",
+            "rootPolicyTypes",
+            "rootTags",
+            "managementAccount",
+            "organizationalUnits",
+            "trustedServicePrincipals",
+            "delegatedAdministrators",
+            "resourcePolicyPresent",
+            "customerPolicies",
+            "fullAwsAccessTargetId",
+            "openInvitations",
+            "pendingAccountCreations",
+            "pass",
+            "attestationDigest"
+          ],
+          "properties": {
+            "apiVersion": true,
+            "expectedState": { "const": "organization-baseline" },
+            "managementAccountId": true,
+            "bootstrapCandidateDigest": true,
+            "configurationDigest": true,
+            "observationRegion": true,
+            "organizationPresent": { "const": true },
+            "organizationId": {
+              "type": "string",
+              "pattern": "^o-[a-z0-9]{10,32}$"
+            },
+            "organizationArn": {
+              "type": "string",
+              "pattern": "^arn:aws:organizations::[0-9]{12}:organization/o-[a-z0-9]{10,32}$"
+            },
+            "featureSet": { "const": "ALL" },
+            "rootId": {
+              "type": "string",
+              "pattern": "^r-[0-9a-z]{4,32}$"
+            },
+            "rootArn": {
+              "type": "string",
+              "pattern": "^arn:aws:organizations::[0-9]{12}:root/o-[a-z0-9]{10,32}/r-[0-9a-z]{4,32}$"
+            },
+            "rootPolicyTypes": {
+              "type": "array",
+              "prefixItems": [
+                { "const": "S3_POLICY" },
+                { "const": "SERVICE_CONTROL_POLICY" }
+              ],
+              "items": false,
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "rootTags": { "$ref": "#/$defs/emptyArray" },
+            "managementAccount": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "name", "email", "state", "tags"],
+              "properties": {
+                "id": { "$ref": "#/$defs/accountId" },
+                "name": { "type": "string", "minLength": 1, "maxLength": 50 },
+                "email": { "type": "string", "format": "email" },
+                "state": { "const": "ACTIVE" },
+                "tags": { "$ref": "#/$defs/emptyArray" }
+              }
+            },
+            "organizationalUnits": { "$ref": "#/$defs/emptyArray" },
+            "trustedServicePrincipals": { "$ref": "#/$defs/emptyArray" },
+            "delegatedAdministrators": { "$ref": "#/$defs/emptyArray" },
+            "resourcePolicyPresent": { "const": false },
+            "customerPolicies": { "$ref": "#/$defs/emptyArray" },
+            "fullAwsAccessTargetId": {
+              "type": "string",
+              "pattern": "^r-[0-9a-z]{4,32}$"
+            },
+            "openInvitations": { "const": 0 },
+            "pendingAccountCreations": { "const": 0 },
+            "pass": true,
+            "attestationDigest": true
+          }
+        }
+      ]
+    },
+    "accountId": { "type": "string", "pattern": "^[0-9]{12}$" },
+    "emptyArray": {
+      "type": "array",
+      "items": false,
+      "maxItems": 0
+    }
+  }
+}

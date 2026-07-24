@@ -1,0 +1,291 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/infrastructure-controller-request-v1alpha1.schema.json",
+  "title": "Infrastructure controller authorization request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "requestId",
+    "operation",
+    "environmentClass",
+    "actor",
+    "claim",
+    "plugin",
+    "grant",
+    "capability",
+    "plan",
+    "approvals",
+    "idempotencyKey",
+    "deadlineEpochSeconds"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "security.deus.dev/infrastructure-controller/v1alpha1"
+    },
+    "kind": { "const": "InfrastructureControllerRequest" },
+    "requestId": { "$ref": "#/$defs/identifier" },
+    "operation": { "$ref": "#/$defs/operation" },
+    "environmentClass": {
+      "enum": ["nonproduction", "preproduction", "production"]
+    },
+    "actor": { "$ref": "#/$defs/actor" },
+    "claim": { "$ref": "#/$defs/claim" },
+    "plugin": { "$ref": "#/$defs/plugin" },
+    "grant": { "$ref": "#/$defs/grant" },
+    "capability": { "$ref": "#/$defs/capability" },
+    "plan": {
+      "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/plan" }]
+    },
+    "approvals": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/approval" }
+    },
+    "idempotencyKey": {
+      "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/identifier" }]
+    },
+    "deadlineEpochSeconds": { "$ref": "#/$defs/epoch" }
+  },
+  "$defs": {
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "principalId",
+        "organizationId",
+        "tenantId",
+        "authenticationMethods"
+      ],
+      "properties": {
+        "principalId": { "$ref": "#/$defs/identifier" },
+        "organizationId": { "$ref": "#/$defs/identifier" },
+        "tenantId": { "$ref": "#/$defs/identifier" },
+        "authenticationMethods": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["oidc", "mtls"] }
+        }
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claimId",
+        "tenantId",
+        "contextId",
+        "generation",
+        "desiredStateDigest"
+      ],
+      "properties": {
+        "claimId": { "$ref": "#/$defs/identifier" },
+        "tenantId": { "$ref": "#/$defs/identifier" },
+        "contextId": { "$ref": "#/$defs/identifier" },
+        "generation": { "type": "integer", "minimum": 1 },
+        "desiredStateDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "plugin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pluginId", "kind", "sandbox", "permissions"],
+      "properties": {
+        "pluginId": { "$ref": "#/$defs/identifier" },
+        "kind": { "const": "infrastructure-request" },
+        "sandbox": { "$ref": "#/$defs/sandbox" },
+        "permissions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/permission" }
+        }
+      }
+    },
+    "sandbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "network",
+        "providerCredentials",
+        "pulumiBackendAccess",
+        "kubernetesAdminAccess",
+        "hostAccess",
+        "unixSockets"
+      ],
+      "properties": {
+        "network": { "const": "broker-only" },
+        "providerCredentials": { "const": false },
+        "pulumiBackendAccess": { "const": false },
+        "kubernetesAdminAccess": { "const": false },
+        "hostAccess": { "const": false },
+        "unixSockets": { "const": false }
+      }
+    },
+    "permission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "resourcePrefix"],
+      "properties": {
+        "action": { "$ref": "#/$defs/action" },
+        "resourcePrefix": { "$ref": "#/$defs/resourcePrefix" }
+      }
+    },
+    "grant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "grantId",
+        "subjectId",
+        "organizationId",
+        "tenantId",
+        "actions",
+        "resourcePrefixes",
+        "expiresAtEpochSeconds"
+      ],
+      "properties": {
+        "grantId": { "$ref": "#/$defs/identifier" },
+        "subjectId": { "$ref": "#/$defs/identifier" },
+        "organizationId": { "$ref": "#/$defs/identifier" },
+        "tenantId": { "$ref": "#/$defs/identifier" },
+        "actions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/action" }
+        },
+        "resourcePrefixes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/resourcePrefix" }
+        },
+        "expiresAtEpochSeconds": { "$ref": "#/$defs/epoch" }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capabilityId",
+        "format",
+        "issuer",
+        "subjectId",
+        "audience",
+        "organizationId",
+        "tenantId",
+        "action",
+        "resource",
+        "claimGeneration",
+        "desiredStateDigest",
+        "planDigest",
+        "issuedAtEpochSeconds",
+        "notBeforeEpochSeconds",
+        "expiresAtEpochSeconds",
+        "oneUse",
+        "cryptographicallyVerified"
+      ],
+      "properties": {
+        "capabilityId": { "$ref": "#/$defs/identifier" },
+        "format": { "const": "v2-ed25519" },
+        "issuer": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://[^@?#]+(?:/[^?#]*)?$"
+        },
+        "subjectId": { "$ref": "#/$defs/identifier" },
+        "audience": { "$ref": "#/$defs/identifier" },
+        "organizationId": { "$ref": "#/$defs/identifier" },
+        "tenantId": { "$ref": "#/$defs/identifier" },
+        "action": { "$ref": "#/$defs/action" },
+        "resource": { "$ref": "#/$defs/resource" },
+        "claimGeneration": { "type": "integer", "minimum": 1 },
+        "desiredStateDigest": { "$ref": "#/$defs/sha256" },
+        "planDigest": {
+          "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/sha256" }]
+        },
+        "issuedAtEpochSeconds": { "$ref": "#/$defs/epoch" },
+        "notBeforeEpochSeconds": { "$ref": "#/$defs/epoch" },
+        "expiresAtEpochSeconds": { "$ref": "#/$defs/epoch" },
+        "oneUse": { "type": "boolean" },
+        "cryptographicallyVerified": { "type": "boolean" }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planDigest",
+        "desiredStateDigest",
+        "controllerVersion",
+        "providerId",
+        "providerVersion",
+        "createdAtEpochSeconds",
+        "expiresAtEpochSeconds",
+        "policyChecksPassed",
+        "destructive"
+      ],
+      "properties": {
+        "planDigest": { "$ref": "#/$defs/sha256" },
+        "desiredStateDigest": { "$ref": "#/$defs/sha256" },
+        "controllerVersion": { "$ref": "#/$defs/version" },
+        "providerId": { "$ref": "#/$defs/identifier" },
+        "providerVersion": { "$ref": "#/$defs/version" },
+        "createdAtEpochSeconds": { "$ref": "#/$defs/epoch" },
+        "expiresAtEpochSeconds": { "$ref": "#/$defs/epoch" },
+        "policyChecksPassed": { "type": "boolean" },
+        "destructive": { "type": "boolean" }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approvalId",
+        "approverPrincipalId",
+        "planDigest",
+        "approvedAtEpochSeconds"
+      ],
+      "properties": {
+        "approvalId": { "$ref": "#/$defs/identifier" },
+        "approverPrincipalId": { "$ref": "#/$defs/identifier" },
+        "planDigest": { "$ref": "#/$defs/sha256" },
+        "approvedAtEpochSeconds": { "$ref": "#/$defs/epoch" }
+      }
+    },
+    "operation": {
+      "enum": ["plan", "reconcile", "observe", "cancel", "delete"]
+    },
+    "action": {
+      "enum": [
+        "infra.claim.plan",
+        "infra.claim.reconcile",
+        "infra.claim.observe",
+        "infra.claim.cancel",
+        "infra.claim.delete"
+      ]
+    },
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "resource": {
+      "type": "string",
+      "pattern": "^organization/[A-Za-z0-9._:-]+/tenant/[A-Za-z0-9._:-]+/context/[A-Za-z0-9._:-]+/claim/[A-Za-z0-9._:-]+$"
+    },
+    "resourcePrefix": {
+      "type": "string",
+      "pattern": "^organization/[A-Za-z0-9._:-]+/tenant/[A-Za-z0-9._:-]+/context/[A-Za-z0-9._:-]+/claim/$"
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+    },
+    "epoch": { "type": "integer", "minimum": 1 }
+  }
+}

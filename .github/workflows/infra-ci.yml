@@ -11,20 +11,96 @@ permissions:
 
 jobs:
   test:
-    name: npm test
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    name: source qualification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+          fetch-depth: 2
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: "22"
+          node-version: "24.18.0"
           cache: npm
-      - name: Install
-        run: npm ci
-      - name: Test
-        run: npm test
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: "1.26.5"
+          cache: false
+      - name: Install exact npm version
+        run: npm install --global npm@11.16.0
+      - name: Install exact Pulumi CLI
+        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7
+        with:
+          pulumi-version: "3.253.0"
+      - name: Verify exact toolchain
+        run: |
+          test "$(node --version)" = "v24.18.0"
+          test "$(npm --version)" = "11.16.0"
+          test "$(pulumi version)" = "v3.253.0"
+          test "$(go version | awk '{print $3}')" = "go1.26.5"
+      - name: Verify source, tests, audit, and SBOM without promotion evidence
+        run: npm run validate:source
+      - name: Upload dependency SBOM and contract validation
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: secure-saas-infra-sbom
+          path: |
+            artifacts/secure-saas-infra.spdx.json
+            artifacts/contract-schema-validation.json
+          if-no-files-found: error
+          retention-days: 30
+
+  provider-smoke:
+    name: exact AWS provider smoke (${{ matrix.architecture }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: amd64
+            runner: ubuntu-24.04
+            machine: x86_64
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+            machine: aarch64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    steps:
+      - name: Checkout without credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Setup exact Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.18.0"
+      - name: Setup exact Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: "1.26.5"
+          cache: false
+      - name: Setup exact Pulumi CLI
+        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7
+        with:
+          pulumi-version: "3.253.0"
+      - name: Vet and test the native launcher on this architecture
+        run: |
+          test "$(go version | awk '{print $3}')" = "go1.26.5"
+          go vet ./cmd/deus-aws-bootstrap
+          go test ./cmd/deus-aws-bootstrap
+      - name: Download and verify the exact provider archive
+        env:
+          EXPECTED_MACHINE: ${{ matrix.machine }}
+        run: |
+          node_path=$(command -v node)
+          pulumi_path=$(command -v pulumi)
+          test "$(uname -m)" = "$EXPECTED_MACHINE"
+          env -i HOME="$RUNNER_TEMP/provider-smoke-home" LANG=C PATH=/usr/bin:/bin \
+            "$node_path" scripts/prepare-bootstrap-plugins.mjs --pulumi "$pulumi_path"
+          test -x artifacts/bootstrap-pulumi-home/plugins/resource-aws-v7.27.0/pulumi-resource-aws

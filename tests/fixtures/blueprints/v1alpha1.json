@@ -1,0 +1,24 @@
+{
+  "apiVersion": "security.deus.dev/v1alpha1",
+  "name": "migration-fixture",
+  "environment": "test",
+  "posture": {
+    "forbidPublicControlPlanes": true,
+    "requireInspectedEgress": false,
+    "requireImmutableAudit": false,
+    "minimumAuditRetentionDays": 365
+  },
+  "requiredCapabilities": [],
+  "trustZones": [],
+  "networkDomains": [],
+  "flows": [],
+  "workloadPlanes": [],
+  "applications": [],
+  "tenants": [],
+  "dataBoundaries": [],
+  "identities": [],
+  "identityDelegations": [],
+  "grants": [],
+  "evidenceSinks": [],
+  "evidenceRequirements": []
+}

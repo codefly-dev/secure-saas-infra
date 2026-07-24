@@ -5,25 +5,33 @@ repository settings are part of the production control plane.
 
 ## Required Repository Rules
 
-Apply the `github-governance` Pulumi stack before production deploy. It manages:
+The active AWS management seed does not mutate GitHub. Configure these rules
+directly in the `codefly-dev` organization (or admit a separately qualified
+GitHub-governance stack later):
 
 - require pull requests into `main`;
 - require CODEOWNERS review for all infrastructure, GitOps, policy, and security
   documentation paths;
 - require linear history or merge queue;
 - block force pushes and branch deletion on protected branches;
-- require status checks for `npm test` and `pulumi preview --policy-pack
-./policy`;
+- require `infra-ci` on source pull requests and `review-promotion` on the
+  separate evidence-only child pull request;
 - require signed commits or verified release provenance for production deploy
   workflows;
 - require conversation resolution before merge;
-- restrict who can bypass rulesets.
+- restrict who can bypass rulesets;
+- protect `v*.*.*` tags against deletion/retargeting and allow release creation
+  only from protected `main`;
+- enable GitHub immutable releases before publishing any management-seed
+  release, so the release tag and assets are locked at publication; and
+- require independent reviewers on the `production` release environment.
 
-The stack also enables repository vulnerability alerts, Dependabot security
-updates, selected Actions allowlists, SHA-pinned Actions requirements, protected
-deployment environments, and push rules that block secret-like files and large
-files. Keep `manageOrganizationSettings: false` until a GitHub organization
-owner approves the org-wide defaults.
+Also enable vulnerability alerts, Dependabot security updates, selected Actions
+allowlists, SHA-pinned ordinary Actions requirements, protected deployment
+environments, and push rules that block secret-like files and large files. The
+SLSA generic generator is the one reviewed exception: its reusable workflow
+must use an exact `vX.Y.Z` tag so `slsa-verifier` can authenticate the builder
+identity. Keep that exact tag allowlisted and review every version change.
 
 ## Required Security Features
 
@@ -41,7 +49,8 @@ Enable these at the organization or repository level:
 - Grant `id-token: write` only to jobs that assume AWS roles through OIDC.
 - Bind deploy jobs to protected GitHub environments with required reviewers.
 - Use separate AWS roles for plan and deploy.
-- Pin third-party actions by SHA for production release workflows.
+- Pin ordinary third-party actions by SHA for production release workflows.
+  Permit only the exact-tag SLSA reusable-workflow exception described above.
 - Disable or tightly restrict self-hosted runners for this repository.
 - Do not store AWS access keys, Pulumi access tokens, signing keys, or customer
   credentials as repository secrets unless there is a documented exception and
@@ -49,13 +58,18 @@ Enable these at the organization or repository level:
 
 ## Current Repo Artifacts
 
-- `.github/CODEOWNERS` marks security/platform ownership for infra paths.
+- `.github/CODEOWNERS` names `@codefly-dev/platform-security`; create that team,
+  grant it repository access, and verify GitHub recognizes it before relying on
+  CODEOWNERS enforcement.
 - `.github/dependabot.yml` enables weekly npm and GitHub Actions update PRs.
 - `.github/pull_request_template.md` adds a security checklist for reviewers.
-- `.github/workflows/infra-ci.yml` provides the pinned `npm test` required check.
-- `Pulumi.github-governance.yaml.example` applies repository rulesets,
-  protected environments, Actions SHA pinning, selected Actions allowlists,
-  Dependabot security updates, and vulnerability alerts.
+- `.github/workflows/infra-ci.yml` provides the pinned source-validation check.
+- `.github/workflows/review-promotion.yml` proves the disposition-only commit is
+  a direct child of the protected base before rerunning complete source
+  validation and emitting explicitly unqualified source-release evidence. It
+  cannot produce sealed-host production qualification.
+- `Pulumi.github-governance.yaml.example` is legacy/planned platform material,
+  not part of the qualified AWS management-seed release.
 - `Pulumi.github-oidc.yaml.example` scopes AWS access to explicit repositories,
   refs, and protected environments.
 
@@ -67,6 +81,8 @@ For SOC 2 and customer reviews, export or screenshot:
 - required status checks;
 - CODEOWNERS review enforcement;
 - protected environment reviewers;
+- immutable-releases enabled state and the published release's immutable
+  marker;
 - secret scanning and push-protection status;
 - Dependabot enablement;
 - OIDC deploy role trust policy and the matching GitHub environment settings.

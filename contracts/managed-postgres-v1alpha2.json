@@ -1,0 +1,214 @@
+{
+  "apiVersion": "security.deus.dev/managed-postgres/v1alpha2",
+  "name": "warden-mind-managed-postgres",
+  "broker": {
+    "apiVersion": "security.deus.dev/resource-broker/v1alpha1",
+    "resourceKind": "ManagedPostgres",
+    "authorization": "capability",
+    "tenantBindingRequired": true,
+    "idempotencyRequired": true,
+    "directProviderCredentials": false
+  },
+  "plugin": {
+    "publisher": "codefly.dev",
+    "name": "postgres",
+    "version": "0.0.103"
+  },
+  "bindings": [
+    {
+      "id": "warden-saas-postgres",
+      "dataBoundaryId": "warden-saas-state",
+      "codefly": {
+        "workspace": "warden-platform",
+        "module": "saas",
+        "service": "store"
+      },
+      "database": {
+        "name": "warden_saas",
+        "engine": "postgresql",
+        "majorVersion": "16",
+        "port": 5432,
+        "extensions": ["pgcrypto"]
+      },
+      "provisioning": {
+        "requestedBy": "codefly-postgres-plugin",
+        "owner": "provider-adapter",
+        "serviceClass": "managed-postgresql",
+        "networkExposure": "private",
+        "multiZone": true,
+        "customerManagedEncryption": true,
+        "deletionProtection": true,
+        "pointInTimeRecovery": true,
+        "backupRetentionDays": 35,
+        "restoreTestIntervalDays": 30
+      },
+      "access": {
+        "runtimeIdentityId": "warden-saas-service",
+        "migrationIdentityId": "warden-saas-migration",
+        "networkAccess": {
+          "mode": "explicit-source-boundaries",
+          "runtimeBoundaryId": "warden-saas-runtime-db-access",
+          "migrationBoundaryId": "warden-saas-migration-db-access",
+          "separateBoundaries": true,
+          "allowNetworkCidr": false
+        },
+        "authentication": "workload-identity",
+        "tlsMode": "verify-full",
+        "credentialDelivery": "reference-only",
+        "adminCredentialsExposed": false,
+        "separateMigrationIdentity": true
+      },
+      "outputs": {
+        "endpoint": "reference",
+        "port": "value",
+        "databaseName": "value",
+        "caBundle": "reference",
+        "runtimeIdentity": "reference",
+        "migrationIdentity": "reference",
+        "credentials": "never"
+      },
+      "audit": {
+        "immutable": true,
+        "denialEvents": true,
+        "accessEvidence": true,
+        "provisioningEvidence": true
+      },
+      "tenancy": {
+        "organizationId": "deus",
+        "platformTenantId": "tenant-warden",
+        "applicationId": "warden",
+        "resourceOwnerId": "warden-saas-service"
+      }
+    },
+    {
+      "id": "mind-infra-postgres",
+      "dataBoundaryId": "mind-infra-state",
+      "codefly": {
+        "workspace": "mind-server",
+        "module": "infra",
+        "service": "postgres"
+      },
+      "database": {
+        "name": "mind_infra",
+        "engine": "postgresql",
+        "majorVersion": "16",
+        "port": 5432,
+        "extensions": ["pgcrypto", "vector"]
+      },
+      "provisioning": {
+        "requestedBy": "codefly-postgres-plugin",
+        "owner": "provider-adapter",
+        "serviceClass": "managed-postgresql",
+        "networkExposure": "private",
+        "multiZone": true,
+        "customerManagedEncryption": true,
+        "deletionProtection": true,
+        "pointInTimeRecovery": true,
+        "backupRetentionDays": 35,
+        "restoreTestIntervalDays": 30
+      },
+      "access": {
+        "runtimeIdentityId": "mind-infra-service",
+        "migrationIdentityId": "mind-infra-migration",
+        "networkAccess": {
+          "mode": "explicit-source-boundaries",
+          "runtimeBoundaryId": "mind-infra-runtime-db-access",
+          "migrationBoundaryId": "mind-infra-migration-db-access",
+          "separateBoundaries": true,
+          "allowNetworkCidr": false
+        },
+        "authentication": "workload-identity",
+        "tlsMode": "verify-full",
+        "credentialDelivery": "reference-only",
+        "adminCredentialsExposed": false,
+        "separateMigrationIdentity": true
+      },
+      "outputs": {
+        "endpoint": "reference",
+        "port": "value",
+        "databaseName": "value",
+        "caBundle": "reference",
+        "runtimeIdentity": "reference",
+        "migrationIdentity": "reference",
+        "credentials": "never"
+      },
+      "audit": {
+        "immutable": true,
+        "denialEvents": true,
+        "accessEvidence": true,
+        "provisioningEvidence": true
+      },
+      "tenancy": {
+        "organizationId": "deus",
+        "platformTenantId": "tenant-mind",
+        "applicationId": "mind",
+        "resourceOwnerId": "mind-infra-service"
+      }
+    },
+    {
+      "id": "mind-users-postgres",
+      "dataBoundaryId": "mind-users-state",
+      "codefly": {
+        "workspace": "mind-server",
+        "module": "users",
+        "service": "store"
+      },
+      "database": {
+        "name": "mind_users",
+        "engine": "postgresql",
+        "majorVersion": "16",
+        "port": 5432,
+        "extensions": ["pgcrypto"]
+      },
+      "provisioning": {
+        "requestedBy": "codefly-postgres-plugin",
+        "owner": "provider-adapter",
+        "serviceClass": "managed-postgresql",
+        "networkExposure": "private",
+        "multiZone": true,
+        "customerManagedEncryption": true,
+        "deletionProtection": true,
+        "pointInTimeRecovery": true,
+        "backupRetentionDays": 35,
+        "restoreTestIntervalDays": 30
+      },
+      "access": {
+        "runtimeIdentityId": "mind-users-service",
+        "migrationIdentityId": "mind-users-migration",
+        "networkAccess": {
+          "mode": "explicit-source-boundaries",
+          "runtimeBoundaryId": "mind-users-runtime-db-access",
+          "migrationBoundaryId": "mind-users-migration-db-access",
+          "separateBoundaries": true,
+          "allowNetworkCidr": false
+        },
+        "authentication": "workload-identity",
+        "tlsMode": "verify-full",
+        "credentialDelivery": "reference-only",
+        "adminCredentialsExposed": false,
+        "separateMigrationIdentity": true
+      },
+      "outputs": {
+        "endpoint": "reference",
+        "port": "value",
+        "databaseName": "value",
+        "caBundle": "reference",
+        "runtimeIdentity": "reference",
+        "migrationIdentity": "reference",
+        "credentials": "never"
+      },
+      "audit": {
+        "immutable": true,
+        "denialEvents": true,
+        "accessEvidence": true,
+        "provisioningEvidence": true
+      },
+      "tenancy": {
+        "organizationId": "deus",
+        "platformTenantId": "tenant-mind",
+        "applicationId": "mind",
+        "resourceOwnerId": "mind-users-service"
+      }
+    }
+  ]
+}

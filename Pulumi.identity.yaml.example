@@ -30,21 +30,16 @@ config:
         managedPolicyArns:
           - arn:aws:iam::aws:policy/SecurityAudit
           - arn:aws:iam::aws:policy/job-function/ViewOnlyAccess
-      - name: PlatformPowerUser
-        description: Power user access for platform operations without IAM administration.
+      - name: PlatformOperationsReadOnly
+        description: Read-only platform visibility; mutations use separately approved deploy roles.
         sessionDuration: PT2H
         managedPolicyArns:
-          - arn:aws:iam::aws:policy/PowerUserAccess
+          - arn:aws:iam::aws:policy/job-function/ViewOnlyAccess
       - name: DeveloperReadOnly
         description: Read-only developer access.
         sessionDuration: PT4H
         managedPolicyArns:
           - arn:aws:iam::aws:policy/ReadOnlyAccess
-      - name: BreakGlassAdministrator
-        description: Emergency administrator access. Keep membership empty by default.
-        sessionDuration: PT1H
-        managedPolicyArns:
-          - arn:aws:iam::aws:policy/AdministratorAccess
     assignments:
       - groupName: security-admins
         permissionSetName: SecurityAuditReadOnly
@@ -54,22 +49,12 @@ config:
           - network
           - shared-services
       - groupName: platform-admins
-        permissionSetName: PlatformPowerUser
+        permissionSetName: PlatformOperationsReadOnly
         accountNames:
           - platform-dev
-          - platform-staging
           - platform-prod
       - groupName: developers
         permissionSetName: DeveloperReadOnly
         accountNames:
           - platform-dev
           - execution-dev
-      - groupName: breakglass
-        permissionSetName: BreakGlassAdministrator
-        accountNames:
-          - security-tooling
-          - log-archive
-          - network
-          - shared-services
-          - platform-prod
-          - execution-prod

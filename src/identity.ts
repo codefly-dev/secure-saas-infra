@@ -7,15 +7,24 @@ export interface IdentityCenterResult {
   groupIds: pulumi.Output<Record<string, string>>;
 }
 
-export function createIdentityCenter(config: IdentityCenterConfig): IdentityCenterResult {
+export function createIdentityCenter(
+  config: IdentityCenterConfig,
+): IdentityCenterResult {
   const instances = aws.ssoadmin.getInstancesOutput({});
-  const instanceArn = pulumi.output(config.identityCenterInstanceArn ?? instances.arns.apply((arns) => arns[0]));
-  const identityStoreId = pulumi.output(config.identityStoreId ?? instances.identityStoreIds.apply((ids) => ids[0]));
-  const accountIds: pulumi.Output<Record<string, string>> = config.organizationStackRef
-    ? (new pulumi.StackReference("organization", { name: config.organizationStackRef }).requireOutput(
-        "organizationAccountIds",
-      ) as pulumi.Output<Record<string, string>>)
-    : pulumi.output<Record<string, string>>({});
+  const instanceArn = pulumi.output(
+    config.identityCenterInstanceArn ?? instances.arns.apply((arns) => arns[0]),
+  );
+  const identityStoreId = pulumi.output(
+    config.identityStoreId ?? instances.identityStoreIds.apply((ids) => ids[0]),
+  );
+  const accountIds: pulumi.Output<Record<string, string>> =
+    config.organizationStackRef
+      ? (new pulumi.StackReference("organization", {
+          name: config.organizationStackRef,
+        }).requireOutput("organizationAccountIds") as pulumi.Output<
+          Record<string, string>
+        >)
+      : pulumi.output<Record<string, string>>({});
 
   const groupIds: Record<string, pulumi.Output<string>> = {};
   for (const group of config.groups) {
@@ -25,11 +34,15 @@ export function createIdentityCenter(config: IdentityCenterConfig): IdentityCent
     }
 
     if (group.create ?? true) {
-      const created = new aws.identitystore.Group(named(`identity-group-${slug(group.name)}`), {
-        identityStoreId,
-        displayName: group.displayName,
-        description: group.description ?? `${group.displayName} access group.`,
-      });
+      const created = new aws.identitystore.Group(
+        named(`identity-group-${slug(group.name)}`),
+        {
+          identityStoreId,
+          displayName: group.displayName,
+          description:
+            group.description ?? `${group.displayName} access group.`,
+        },
+      );
       groupIds[group.name] = created.groupId;
       continue;
     }
@@ -48,13 +61,16 @@ export function createIdentityCenter(config: IdentityCenterConfig): IdentityCent
   const permissionSets: Record<string, aws.ssoadmin.PermissionSet> = {};
   const permissionSetDependencies: Record<string, pulumi.Resource[]> = {};
   for (const permissionSet of config.permissionSets) {
-    const resource = new aws.ssoadmin.PermissionSet(named(`permission-set-${slug(permissionSet.name)}`), {
-      instanceArn,
-      name: permissionSet.name,
-      description: permissionSet.description,
-      sessionDuration: permissionSet.sessionDuration,
-      tags: tag(`permission-set-${slug(permissionSet.name)}`),
-    });
+    const resource = new aws.ssoadmin.PermissionSet(
+      named(`permission-set-${slug(permissionSet.name)}`),
+      {
+        instanceArn,
+        name: permissionSet.name,
+        description: permissionSet.description,
+        sessionDuration: permissionSet.sessionDuration,
+        tags: tag(`permission-set-${slug(permissionSet.name)}`),
+      },
+    );
 
     permissionSets[permissionSet.name] = resource;
     const dependencies: pulumi.Resource[] = [resource];
@@ -98,30 +114,45 @@ export function createIdentityCenter(config: IdentityCenterConfig): IdentityCent
     const accountNameTargets = assignment.accountNames ?? [];
 
     explicitAccountIds.forEach((accountId, index) => {
-      createAssignment(assignment.groupName, assignment.permissionSetName, `id-${index + 1}`, {
-        instanceArn,
-        permissionSetArn: permissionSet.arn,
-        groupId,
-        accountId: pulumi.output(accountId),
-        dependsOn: permissionSetDependencies[assignment.permissionSetName],
-      });
+      createAssignment(
+        assignment.groupName,
+        assignment.permissionSetName,
+        `id-${index + 1}`,
+        {
+          instanceArn,
+          permissionSetArn: permissionSet.arn,
+          groupId,
+          accountId: pulumi.output(accountId),
+          dependsOn: permissionSetDependencies[assignment.permissionSetName],
+        },
+      );
     });
 
     accountNameTargets.forEach((accountName) => {
-      createAssignment(assignment.groupName, assignment.permissionSetName, accountName, {
-        instanceArn,
-        permissionSetArn: permissionSet.arn,
-        groupId,
-        accountId: accountIds.apply((ids) => ids[accountName]),
-        dependsOn: permissionSetDependencies[assignment.permissionSetName],
-      });
+      createAssignment(
+        assignment.groupName,
+        assignment.permissionSetName,
+        accountName,
+        {
+          instanceArn,
+          permissionSetArn: permissionSet.arn,
+          groupId,
+          accountId: accountIds.apply((ids) => ids[accountName]),
+          dependsOn: permissionSetDependencies[assignment.permissionSetName],
+        },
+      );
     });
   }
 
   return {
     groupIds: pulumi.output(Object.fromEntries(Object.entries(groupIds))),
     permissionSetArns: pulumi.output(
-      Object.fromEntries(Object.entries(permissionSets).map(([name, permissionSet]) => [name, permissionSet.arn])),
+      Object.fromEntries(
+        Object.entries(permissionSets).map(([name, permissionSet]) => [
+          name,
+          permissionSet.arn,
+        ]),
+      ),
     ),
   };
 }
@@ -139,7 +170,9 @@ function createAssignment(
   },
 ) {
   new aws.ssoadmin.AccountAssignment(
-    named(`identity-${slug(groupName)}-${slug(permissionSetName)}-${slug(targetName)}`),
+    named(
+      `identity-${slug(groupName)}-${slug(permissionSetName)}-${slug(targetName)}`,
+    ),
     {
       instanceArn: args.instanceArn,
       permissionSetArn: args.permissionSetArn,
@@ -161,5 +194,8 @@ function tag(name: string, extra: Record<string, string> = {}) {
 }
 
 function slug(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }

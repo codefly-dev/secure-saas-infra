@@ -1,0 +1,31 @@
+#!/bin/sh
+set -eu
+
+case "$0" in
+  /*) launcher=$0 ;;
+  *) launcher=$PWD/$0 ;;
+esac
+repository=$(CDPATH= cd -- "${launcher%/*}/.." && pwd -P)
+if [ "${DEUS_PRODUCTION_QUALIFICATION-}" = 1 ]; then
+  go_binary=/usr/local/lib/deus-bootstrap/toolchains/go/bin/go
+elif [ -n "${DEUS_TRUSTED_GO-}" ]; then
+  go_binary=$DEUS_TRUSTED_GO
+else
+  go_binary=$(command -v go || true)
+fi
+case "$go_binary" in
+  /*) ;;
+  *) echo "vet-native-bootstrap-launcher: trusted Go is unavailable" >&2; exit 64 ;;
+esac
+if [ ! -f "$go_binary" ] || [ -L "$go_binary" ]; then
+  echo "vet-native-bootstrap-launcher: trusted Go must be a direct regular file" >&2
+  exit 64
+fi
+temporary=$(/usr/bin/mktemp -d /tmp/deus-bootstrap-go-vet.XXXXXX)
+cleanup() { /bin/rm -rf "$temporary"; }
+trap cleanup EXIT HUP INT TERM
+/bin/mkdir "$temporary/home" "$temporary/cache" "$temporary/tmp"
+cd "$repository"
+/usr/bin/env -i HOME="$temporary/home" TMPDIR="$temporary/tmp" GOTMPDIR="$temporary/tmp" \
+  GOCACHE="$temporary/cache" GOENV=off GOFLAGS= GOTOOLCHAIN=local GOWORK=off CGO_ENABLED=0 \
+  PATH="${go_binary%/*}:/usr/bin:/bin" "$go_binary" vet ./cmd/deus-aws-bootstrap

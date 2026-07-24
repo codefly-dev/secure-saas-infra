@@ -1,0 +1,46 @@
+# Copy this block under `config` in a Pulumi stack file. This is a deliberately
+# small example showing the strict cloud-neutral input shape. Provider adapters
+# decide how to materialize the declared capabilities.
+config:
+  secure-saas-infra:stackKind: disabled
+  secure-saas-infra:deploymentMode: disabled
+  secure-saas-infra:platformBlueprint:
+    apiVersion: security.deus.dev/v1alpha1
+    name: example-secure-platform
+    environment: development
+    posture:
+      forbidPublicControlPlanes: true
+      requireInspectedEgress: false
+      requireImmutableAudit: false
+      minimumAuditRetentionDays: 365
+    requiredCapabilities:
+      - workload-identity
+      - private-control-plane
+    trustZones:
+      - id: platform
+        kind: workload
+        publicAccess: false
+        tenantScope:
+          mode: platform
+        isolationBoundary: platform-account
+    networkDomains: []
+    flows: []
+    workloadPlanes:
+      - id: platform-kubernetes
+        zoneId: platform
+        tenantScope:
+          mode: platform
+        executionTrust: trusted
+        orchestrator: managed-kubernetes
+        runtimeIsolation: container
+        controlPlanePublic: false
+        workloadIdentity: true
+        credentialMode: workload-identity
+    applications: []
+    tenants: []
+    dataBoundaries: []
+    identities: []
+    identityDelegations: []
+    grants: []
+    evidenceSinks: []
+    evidenceRequirements: []

@@ -2,9 +2,23 @@
 
 This repository is the starting implementation for a secure SaaS platform that hosts client code.
 
+> **Current governed release:** AWS Organizations management seed only. This
+> is the first cloud-infrastructure wave, not the final infrastructure scope.
+> VPC/routing, EKS, RDS, ingress/load-balancer prerequisites, identity,
+> observability, backup, and security-service stacks remain planned cloud IaC
+> waves. Kubernetes API objects, Helm/Argo reconciliation, operators, and
+> application migrations belong to the separate platform-delivery layer. See
+> [the cloud IaC boundary](docs/iac-platform-boundary.md) and
+> [the management-seed runbook](docs/management-seed-runbook.md).
+
 The baseline uses:
 
 - Pulumi TypeScript for AWS infrastructure.
+- A cloud-neutral security/tenancy kernel plus provider adapters.
+- A generic, strict infrastructure-controller protocol with version
+  negotiation, stable reason codes, digest-chained operation events, and
+  authenticated resumable watch cursors. See
+  [docs/infrastructure-controller-protocol.md](docs/infrastructure-controller-protocol.md).
 - A centralized inspection and egress VPC pattern.
 - Private-only workload VPCs connected through AWS Transit Gateway.
 - EKS Auto Mode for platform and execution clusters.
@@ -15,7 +29,8 @@ The baseline uses:
   restrictions, protected environments, Dependabot security updates, and
   vulnerability alerts.
 - VPC endpoints for AWS service access.
-- GitOps-ready Kubernetes security baseline manifests.
+- Credential-free cloud-to-platform handoff contracts; in-cluster desired state
+  is owned separately.
 - Vault-ready secrets architecture.
 - E2B BYOC-ready execution specification for customer-code sandboxes.
 - Optional E2B BYOC vendor-access role scaffold with external ID and
@@ -27,15 +42,24 @@ The baseline uses:
 - Expanded SCPs: deny IAM users/access keys, deny disabling KMS rotation,
   deny disabling EBS default encryption, deny mutating organization CloudTrail
   trails.
-- Config-time validators for production firewall posture, private-EKS
-  `adminRoleArns`, shared-services KMS coverage, and `microvm-runtimeclass`
+- Config-time validators for production firewall posture, private-EKS scoped
+  IAM Identity Center `eks.accessGrants`, shared-services KMS coverage, and `microvm-runtimeclass`
   isolation boundary.
 - AWS Backup organization plan: multi-region KMS replicas, vault lock,
   cross-region copy, tag-based selection. See [docs/disaster-recovery.md](docs/disaster-recovery.md).
 - Aurora baseline (PostgreSQL or MySQL) with IAM auth, CMK, deletion
-  protection, RDS Proxy, audit logging. See [docs/database.md](docs/database.md).
-- Agent broker / agent egress namespaces, Kyverno audit metadata enforcement,
-  WAF model-gateway rate limit. See [docs/agentic-ai.md](docs/agentic-ai.md).
+  protection, RDS-managed master credentials outside Pulumi state, end-to-end
+  IAM RDS Proxy, and audit logging. See [docs/database.md](docs/database.md).
+- Executable cloud-neutral resource broker with CAS/idempotency, capability
+  redemption, provider fencing, drift/cancellation/deletion lifecycle, a fake
+  provider conformance suite, explicit database access SGs, and wildcard-free
+  runtime/migration RDS Proxy IAM plans.
+- EKS Pod Identity compilation with exact namespace/ServiceAccount association,
+  `pods.eks.amazonaws.com` trust, source-organization/session-tag constraints,
+  and no IRSA role annotation. The PostgreSQL boundary uses dynamic per-
+  connection IAM tokens and publishes no credential; see
+  [docs/postgres-codefly-aws-auth-boundary.md](docs/postgres-codefly-aws-auth-boundary.md).
+- WAF model-gateway rate limiting. See [docs/waf.md](docs/waf.md).
 - Public WAFv2 Web ACL with managed rule sets, bot control, and a strict
   model-gateway rate limit. See [docs/waf.md](docs/waf.md).
 - EventBridge detection rules + SNS fan-out for GuardDuty, IAM, KMS,
@@ -45,176 +69,152 @@ The baseline uses:
 - Per-tenant AWS Budgets and Cost Anomaly Detection. See [docs/cost-controls.md](docs/cost-controls.md).
 - Macie classification jobs over the customer artifact and Vault backup
   buckets.
-- Vault Helm release (Raft + AWS KMS auto-unseal) and Falco DaemonSet (modern
-  eBPF) wired through Argo CD. See [docs/runtime-security.md](docs/runtime-security.md).
 - VPC-level Route 53 Resolver query logs in every workload VPC.
 - SLSA Level 3 release workflow using `slsa-framework/slsa-github-generator`.
-- Public ingress hub: CloudFront + WAFv2 + ACM (TLS 1.3) + VPC Origin to an
-  internal NLB → Istio ambient → backends. No public IP in any VPC. See
+- Public ingress hub: CloudFront + WAFv2 + ACM (TLS 1.3) + VPC Origin to a
+  platform-owned internal-NLB handoff. No public IP in any VPC. See
   [docs/ingress.md](docs/ingress.md).
-- ExternalDNS reconciles Route 53 from in-cluster `Service`/`Ingress`/Gateway
-  API resources; Argo Rollouts ships canary + blue-green progressive
-  delivery.
 - DNS module: Route 53 root zone + per-environment delegated subdomain zones
   (`dev.<root>`, `staging.<root>`, `prod.<root>`) with public-zone query
   logging.
-- Argo CD installed via Pulumi (`@pulumi/kubernetes` Helm release) — replaces
-  the manual `kubectl apply -k` bootstrap; Argo CD then self-syncs every
-  platform application from the repo.
-- AWS Organizations service-access enabled at the org level for AWS Backup,
-  IAM Access Analyzer, IAM Identity Center, AWS RAM, AWS Firewall Manager,
-  and CloudFormation StackSets so dependent stacks deploy without console
-  clicks.
-- Single-command bootstrap (`npm run bootstrap`) provisions org + accounts +
-  identity + log archive + organization audit + security tooling + shared
-  services + DNS + network + detection + compliance + macie + cost-controls
-  + per-env workload + per-env edge in one orchestrated run with
-  cross-account assume-role wired automatically.
+- AWS Organizations standalone trusted access for the exact six seed
+  principals: CloudTrail, both AWS Config principals, GuardDuty, Security Hub,
+  and Inspector. AWS RAM sharing has its own exclusive Pulumi owner. Other
+  integrations are deferred to separately qualified post-seed waves.
+- Governed bootstrap currently admits only the
+  organization/account seed. Later cloud waves remain fail-closed until real
+  account outputs and exact bounded provider roles exist.
 
-## One-command Bootstrap
+## Management-seed bootstrap
 
 ```sh
 cp onboarding.config.example.json onboarding.local.json
-# Edit onboarding.local.json: githubOrg, pulumiOrg, accountEmailDomain, etc.
+# Replace every example with the real backend, account, and role decision.
+cp Pulumi.management.yaml.example Pulumi.management.yaml
+# Replace every example account email and management account ID.
 
-GITHUB_TOKEN=ghp_xxx npm run bootstrap -- --environment all
+npm run bootstrap:doctor
+env -i HOME="$HOME" LANG=C PATH="$PATH" \
+  mise exec -- ./scripts/prepare-bootstrap-plugins
+npm run bootstrap:access-bundle -- \
+  --config onboarding.local.json \
+  --output artifacts/management-seed-access-bundle.json \
+  --template-output artifacts/management-seed-access.template.json
+npm run bootstrap:verify-access-bundle -- \
+  --config onboarding.local.json \
+  --bundle artifacts/management-seed-access-bundle.json \
+  --template artifacts/management-seed-access.template.json
 ```
 
-`scripts/bootstrap.mjs` walks four phases — foundation, shared, workload,
-edge — and provisions the entire landing zone end-to-end. See
-[docs/bootstrap.md](docs/bootstrap.md) for the human-only prerequisites
-(create the AWS root account, enable IAM Identity Center, create the
-Tailscale OAuth client) and the per-phase stack list.
+From an ordinary checkout, stop there and follow the exact
+[management-seed runbook](docs/management-seed-runbook.md). Credential-free
+qualification is allowed only from
+`/usr/local/lib/deus-bootstrap/execution` after the authenticated release host
+kit has prepared that fixed root on a dedicated native-Linux qualifier. It
+cannot mutate AWS. After a clean commit, three GO reviews, independent signing,
+and configuration of the real Pulumi backend, the irreducible cloud
+prerequisite is the separately audited `DeusBootstrap` SAML federation. The
+governed observation mode then proves the exact empty foundation without a
+mutation. Preparing the reviewed RolePolicy-only CloudFormation change set is
+the first repository-governed cloud-control mutation; executing its exact two
+inline-policy additions is the first IAM mutation. That template requires no
+CloudFormation capability acknowledgement. The next cloud action is a
+policy-checked seed preview through the native anonymous-pipe credential
+protocol. Follow the exact
+[management-seed runbook](docs/management-seed-runbook.md). All non-seed waves
+currently fail closed before configuration or AWS access.
 
 ## First Deployment Flow
 
-1. Install dependencies:
+The raw Pulumi preview/update path is intentionally unsupported. The governed
+flow prevents a preview or update from bypassing the clean-source, exact-role,
+policy, saved-plan, evidence, and account checks.
 
-   ```sh
-   npm install
-   ```
+1. Copy `onboarding.config.example.json` to the ignored
+   `onboarding.local.json` and fill the real
+   ownership/backend/account/role values. Copy
+   `Pulumi.management.yaml.example` to the ignored
+   `Pulumi.management.yaml` and fill the exact seed configuration.
+2. Log in to the selected Pulumi backend and initialize only the management
+   stack. Stack
+   initialization is preparation only; it must not run an AWS provider action.
+3. Run `npm run bootstrap:doctor` offline. Provision the Ed25519
+   qualification key on a different OS identity/host, HSM/KMS-backed signer,
+   or protected signing service, then commit only its public trust root.
+4. Bind the SHA-256 of the exact reviewed UTF-8 SAML metadata bytes and locally
+   render and verify the deterministic access bundle with
+   `npm run bootstrap:access-bundle` and
+   `npm run bootstrap:verify-access-bundle`. The preview/apply source roles
+   will receive only their corresponding capped assume-role policy; the JIT
+   provisioner and independent retirement roles will receive only their
+   rendered exact policies. The target roles are specified with no inline or
+   attached policy and their matching precreated boundaries. Install the exact
+   AWS provider plugin with
+   `env -i HOME="$HOME" LANG=C PATH="$PATH" mise exec -- ./scripts/prepare-bootstrap-plugins`.
+   After authenticating and installing the release host kit, prepare the fixed
+   execution root exactly as documented in the management-seed runbook. Remove
+   cloud credentials and run `credential-free-qualification` only inside that
+   root. It emits an unsigned request and detached signing payload; no
+   private-key path enters repository code.
+5. Transfer the payload to the independent signer and return only its detached
+   signature. Never sign on the qualification or AWS execution host. Then run
+   `npm run bootstrap:finalize -- --signature <raw-signature>` to
+   verify it against the committed public root and create the candidate.
+6. Using only the signed candidate's bundle, establish the exact same-account
+   `DeusBootstrap` SAML provider, four `/deus/bootstrap-source/` roles, two
+   empty target roles, and three immutable managed boundaries through the
+   independently governed initial account-federation procedure. The runbook
+   defines the only permitted console-only root ceremony for a truly greenfield
+   account. Never create a root access key or IAM user. After signing out,
+   activate the exact `managementProvisionerPrincipalArn` assignment at the
+   upstream IdP just in time and assume its short-lived session. Governed
+   `--observe-foundation` compares the AWS-returned metadata with the reviewed
+   digest and verifies empty provider tags/private-key inventory, `Allowed`
+   assertion-encryption mode, and every exact role/boundary. From that same or
+   a renewed short-lived session, run
+   the native credential-envelope-to-root-managed-`runtime-service` pipeline
+   documented in the runbook to create and verify the fixed-region
+   CloudFormation change set. It must contain only the two fixed inline role
+   policies for the already bounded target roles and report no CloudFormation
+   capabilities. After separate review, run the same
+   pipe protocol with `--execute` and its exact confirmation; it re-verifies
+   the change set and performs post-create IAM attestation. Then immediately
+   end that session and use the distinct generated-policy
+   `ManagementSeedRetirement` SAML role with governed `--retire`. It first
+   attaches the pre-created deny-all boundary, then deletes the sole active
+   inline grant, and only then applies the exact retired tags. Every exact
+   intermediate prefix is resumable and emits a bound retirement receipt.
+   Remove the upstream IdP assignment and retain that external evidence.
+   Seed preview refuses any AWS-side drift from that inert state.
+7. Keep `seedWave: organization-only` for the first candidate and apply only
+   the reviewed Organization plan. A newly qualified `seedWave: full`
+   candidate may produce a read-only plan only; apply remains machine-blocked
+   until a qualified member-access wave immediately replaces and retires every
+   `DeusOrganizationBootstrap` account-vending role. Its live gate requires
+   effective quota for nine accounts and rejects external
+   account/invitation drift.
+8. On a fresh execution host/operator identity, pass one short-lived AWS
+   session and Pulumi token through separate anonymous pipes into the fixed
+   root-managed systemd service. Its locked, non-login runtime identity gives
+   Node only scoped authenticated loopback broker capabilities and creates
+   policy-checked saved plans. Review every diff and manifest digest.
+9. For update, assume the distinct `managementApplyRoleArn`; `--apply` uses
+   the same source-bound candidate and immutable reviewed plan descriptor.
 
-2. Run the local safety preflight:
+See [the management-seed runbook](docs/management-seed-runbook.md) for exact
+commands. Never invoke a raw provider preview/update as a substitute for the
+governed wrapper.
 
-   ```sh
-   npm run preflight
-   ```
-
-3. Generate local onboarding files:
-
-   ```sh
-   cp onboarding.config.example.json onboarding.local.json
-   npm run onboard -- --config onboarding.local.json --write
-   npm run preflight:strict
-   npm run verify:onboarding -- --config onboarding.local.json
-   ```
-
-   See [docs/onboarding.md](docs/onboarding.md) for all supported flags.
-
-4. Apply repository governance before AWS account vending:
-
-   ```sh
-   pulumi stack init github-governance
-   cp Pulumi.github-governance.yaml.example Pulumi.github-governance.yaml
-   pulumi preview --stack github-governance
-   pulumi up --stack github-governance
-   ```
-
-   Set `GITHUB_TOKEN` to a GitHub token that can administer the repository.
-   Replace `your-github-org` in `Pulumi.github-governance.yaml` and
-   `.github/CODEOWNERS` first.
-
-5. Create the management/account-vending stack:
-
-   ```sh
-   pulumi stack init management
-   cp Pulumi.management.yaml.example Pulumi.management.yaml
-   ```
-
-   Edit all account email addresses before previewing.
-
-6. Preview the account plan from the AWS Organizations management account:
-
-   ```sh
-   pulumi preview --stack management
-   ```
-
-7. Configure identity after the member accounts are active:
-
-   ```sh
-   pulumi stack init identity
-   cp Pulumi.identity.yaml.example Pulumi.identity.yaml
-   pulumi stack init github-oidc
-   cp Pulumi.github-oidc.yaml.example Pulumi.github-oidc.yaml
-   ```
-
-8. Create the network-account stack after the `network` AWS account exists:
-
-   ```sh
-   pulumi stack init network
-   cp Pulumi.network.yaml.example Pulumi.network.yaml
-   ```
-
-9. Create the log archive and organization audit stacks:
-
-   ```sh
-   pulumi stack init log-archive
-   cp Pulumi.log-archive.yaml.example Pulumi.log-archive.yaml
-   pulumi stack init organization-audit
-   cp Pulumi.organization-audit.yaml.example Pulumi.organization-audit.yaml
-   ```
-
-10. Create security tooling and shared services:
-
-```sh
-pulumi stack init security-tooling
-cp Pulumi.security-tooling.yaml.example Pulumi.security-tooling.yaml
-pulumi stack init shared-services
-cp Pulumi.shared-services.yaml.example Pulumi.shared-services.yaml
-```
-
-11. Create the account-specific platform and execution stacks after the Transit Gateway is shared:
-
-```sh
-pulumi stack init platform-dev
-cp Pulumi.platform-dev.yaml.example Pulumi.platform-dev.yaml
-pulumi stack init execution-dev
-cp Pulumi.execution-dev.yaml.example Pulumi.execution-dev.yaml
-```
-
-Edit `secure-saas-infra:spoke.networkStackRef` in each file so it points to your real `network` stack.
-
-12. Run the network routing stack in the network account after spoke stacks export their attachment IDs:
-
-```sh
-pulumi stack init network-routing
-cp Pulumi.network-routing.yaml.example Pulumi.network-routing.yaml
-```
-
-13. Use the single-account dev stack only for fast local iteration or a proof of concept:
-
-```sh
-pulumi stack init dev
-cp Pulumi.dev.yaml.example Pulumi.dev.yaml
-```
-
-14. Edit stack files for the target AWS account, region, CIDR plan, Pulumi stack references, account IDs, and admin role ARNs.
-
-15. Preview:
-
-```sh
-pulumi preview --policy-pack ./policy --stack <stack-name>
-```
-
-16. Deploy:
-
-```sh
-npm run up
-```
+Governed qualification covers cloud IaC, not resources reconciled inside
+Kubernetes. See
+[the cloud-IaC/platform boundary](docs/iac-platform-boundary.md).
 
 ## Current Scope
 
-This is the foundation slice, not the whole product. It creates the network and cluster security baseline that later layers depend on:
+This is the IaC foundation, not an application platform implementation. This
+repository does not currently test or modify an external CLI, server, plugin,
+Mind, or Warden repository. It creates the infrastructure and security baseline
+that later, explicitly planned integration layers may consume:
 
 - Network-services egress VPC.
 - Transit Gateway and route tables.
@@ -222,10 +222,23 @@ This is the foundation slice, not the whole product. It creates the network and 
 - Cross-account Transit Gateway attachment routing.
 - Optional AWS Network Firewall insertion point.
 - EKS clusters with private API endpoints and Auto Mode.
-- Tailscale operator/admin access baseline.
-- GitOps manifests for default-deny and restricted pod posture.
+- Cloud-side private-access prerequisites and explicit EKS access entries.
+- A versioned handoff boundary for the separately owned in-cluster platform.
 
-See [docs/roadmap.md](docs/roadmap.md) for the next implementation phases.
+See
+[docs/rootless-aws-codefly-execution-roadmap.md](docs/rootless-aws-codefly-execution-roadmap.md)
+for the dependency-ordered rootless AWS implementation backlog, real-AWS gates,
+hostile test matrix, and required evidence.
+See
+[docs/iac-validation-first-execution-todo.md](docs/iac-validation-first-execution-todo.md)
+for the active IaC implementation queue, strict validation ladder,
+adversarial-review blockers, and exact AWS go/no-go gates.
+See
+[docs/infrastructure-controller-protocol.md](docs/infrastructure-controller-protocol.md)
+for the implemented public/internal controller trust boundary and protocol
+verification rules.
+See [docs/cloud-neutral-kernel.md](docs/cloud-neutral-kernel.md) for the cloud-neutral security and tenancy architecture, implemented capabilities, and prioritized TODO list.
+
 See [docs/accounts.md](docs/accounts.md) for the multi-account stack model.
 See [docs/onboarding.md](docs/onboarding.md) for the local onboarding helper.
 See [docs/identity.md](docs/identity.md) for the AWS Identity Center and GitHub OIDC model.

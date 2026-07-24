@@ -1,12 +1,18 @@
 {
-  "githubOrg": "deus-ai",
   "pulumiOrg": "deus",
-  "repo": "secure-saas-infra",
+  "pulumiBackend": "pulumi-cloud",
+  "pulumiBackendUrl": "https://api.pulumi.com",
   "pulumiProject": "secure-saas-infra",
+  "landingZoneOwner": "organizations",
   "organizationName": "deus",
   "accountEmailDomain": "aws.example.com",
-  "awsEmailPrefix": "aws",
-  "codeownersTeam": "platform-security",
+  "managementAccessRegion": "us-east-1",
   "managementAccountId": "111122223333",
-  "deployerPolicyAccountId": "111122223333"
+  "managementPreviewRoleArn": "arn:aws:iam::111122223333:role/OrganizationSeedPreview",
+  "managementApplyRoleArn": "arn:aws:iam::111122223333:role/OrganizationSeedApply",
+  "managementPreviewTrustedPrincipalArn": "arn:aws:iam::111122223333:role/deus/bootstrap-source/ManagementSeedPreview",
+  "managementApplyTrustedPrincipalArn": "arn:aws:iam::111122223333:role/deus/bootstrap-source/ManagementSeedApply",
+  "managementBootstrapSamlProviderArn": "arn:aws:iam::111122223333:saml-provider/DeusBootstrap",
+  "managementBootstrapSamlMetadataSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "managementProvisionerPrincipalArn": "arn:aws:iam::111122223333:role/deus/bootstrap-source/ManagementSeedProvisioner"
 }

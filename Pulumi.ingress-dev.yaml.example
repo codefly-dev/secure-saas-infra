@@ -11,9 +11,10 @@ config:
     subjectAlternativeNames: []
     # Hosted zone created by the dns stack; bootstrap script populates this.
     hostedZoneId: <set-from-dns-stack>
-    # Internal NLB ARN exported by the platform-dev stack.
-    internalNlbArn: <set-from-platform-dev-stack>
-    originDomainName: <set-from-platform-dev-stack>
+    # Observe these only after Argo syncs the Istio gateway Service and EKS
+    # Auto Mode reports the exact internal NLB. Never guess these values.
+    internalNlbArn: <set-from-observed-istio-gateway-nlb>
+    originDomainName: <set-from-observed-istio-gateway-nlb>
     # CLOUDFRONT-scope WAF web ACL ARN exported by the waf-dev stack.
     webAclArn: <set-from-waf-dev-stack>
     priceClass: PriceClass_100

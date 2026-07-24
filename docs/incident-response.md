@@ -92,7 +92,8 @@ Eradication and recovery:
 - replace static credentials with OIDC, workload identity, or brokered dynamic
   credentials;
 - tighten trust policy subjects and protected environment reviewers;
-- require a clean `pulumi preview --policy-pack ./policy` before redeploy.
+- require a fresh credential-free bootstrap candidate and a governed
+  `npm run bootstrap -- --preview` saved plan before redeploy.
 
 ## Tenant Deletion Or Export Failure
 

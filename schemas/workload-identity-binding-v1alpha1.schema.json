@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/workload-identity-binding-v1alpha1.schema.json",
+  "title": "Exact workload identity binding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "id",
+    "organizationId",
+    "platformTenantId",
+    "applicationId",
+    "environment",
+    "cloudContext",
+    "identityId",
+    "kubernetes",
+    "cloud",
+    "allowedResourceIds",
+    "networkBoundary",
+    "evidence"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "security.deus.dev/workload-identity-binding/v1alpha1"
+    },
+    "kind": { "const": "WorkloadIdentityBinding" },
+    "id": { "$ref": "#/$defs/kubernetesLabelValue" },
+    "organizationId": { "$ref": "#/$defs/identifier" },
+    "platformTenantId": { "$ref": "#/$defs/identifier" },
+    "applicationId": { "$ref": "#/$defs/identifier" },
+    "environment": {
+      "enum": ["development", "staging", "production"]
+    },
+    "cloudContext": { "$ref": "#/$defs/cloudContext" },
+    "identityId": { "$ref": "#/$defs/identifier" },
+    "kubernetes": { "$ref": "#/$defs/kubernetes" },
+    "cloud": { "$ref": "#/$defs/cloud" },
+    "allowedResourceIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/identifier" }
+    },
+    "networkBoundary": { "$ref": "#/$defs/networkBoundary" },
+    "evidence": { "$ref": "#/$defs/evidence" }
+  },
+  "$defs": {
+    "cloudContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "generation"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "generation": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "kubernetes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clusterUid",
+        "namespace",
+        "serviceAccount",
+        "oidcSubject",
+        "spiffeTrustDomain",
+        "spiffeId",
+        "audience",
+        "automountServiceAccountToken"
+      ],
+      "properties": {
+        "clusterUid": { "$ref": "#/$defs/identifier" },
+        "namespace": { "$ref": "#/$defs/dnsLabel" },
+        "serviceAccount": { "$ref": "#/$defs/dnsLabel" },
+        "oidcSubject": {
+          "type": "string",
+          "pattern": "^system:serviceaccount:[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?:[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$"
+        },
+        "spiffeTrustDomain": { "$ref": "#/$defs/trustDomain" },
+        "spiffeId": {
+          "type": "string",
+          "maxLength": 512,
+          "pattern": "^spiffe://[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?/ns/[a-z0-9.-]+/sa/[a-z0-9.-]+$"
+        },
+        "audience": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+        },
+        "automountServiceAccountToken": { "const": false }
+      }
+    },
+    "cloud": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "roleRef",
+        "maxSessionDurationSeconds",
+        "administrator",
+        "shared"
+      ],
+      "properties": {
+        "provider": { "enum": ["aws", "gcp", "azure"] },
+        "roleRef": {
+          "type": "string",
+          "maxLength": 512,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/=-]*$"
+        },
+        "maxSessionDurationSeconds": {
+          "type": "integer",
+          "minimum": 900,
+          "maximum": 3600
+        },
+        "administrator": { "const": false },
+        "shared": { "const": false }
+      }
+    },
+    "networkBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "attachmentKind",
+        "providerResourceRef",
+        "enforcingMode"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "attachmentKind": { "const": "pod-security-group" },
+        "providerResourceRef": { "$ref": "#/$defs/exactReference" },
+        "enforcingMode": { "const": "strict" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bindingDigest",
+        "verificationEvidenceRef",
+        "verificationEvidenceDigest",
+        "verifiedAt",
+        "expiresAt"
+      ],
+      "properties": {
+        "bindingDigest": { "$ref": "#/$defs/sha256" },
+        "verificationEvidenceRef": { "$ref": "#/$defs/exactReference" },
+        "verificationEvidenceDigest": { "$ref": "#/$defs/sha256" },
+        "verifiedAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "identifier": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9._:-]*$"
+    },
+    "dnsLabel": {
+      "type": "string",
+      "maxLength": 63,
+      "pattern": "^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$"
+    },
+    "kubernetesLabelValue": {
+      "type": "string",
+      "maxLength": 63,
+      "pattern": "^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$"
+    },
+    "trustDomain": {
+      "type": "string",
+      "maxLength": 253,
+      "pattern": "^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$"
+    },
+    "exactReference": {
+      "type": "string",
+      "maxLength": 512,
+      "pattern": "^[a-z][a-z0-9+.-]*://[A-Za-z0-9._~:/-]+$"
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

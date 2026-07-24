@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/managed-postgres-v1alpha1.schema.json",
+  "title": "Cloud-neutral managed PostgreSQL infrastructure intent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "name", "broker", "plugin", "bindings"],
+  "properties": {
+    "apiVersion": {
+      "const": "security.deus.dev/managed-postgres/v1alpha1"
+    },
+    "name": { "$ref": "#/$defs/name" },
+    "broker": { "$ref": "#/$defs/broker" },
+    "plugin": { "$ref": "#/$defs/plugin" },
+    "bindings": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/binding" }
+    }
+  },
+  "$defs": {
+    "broker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "apiVersion",
+        "resourceKind",
+        "authorization",
+        "tenantBindingRequired",
+        "idempotencyRequired",
+        "directProviderCredentials"
+      ],
+      "properties": {
+        "apiVersion": {
+          "const": "security.deus.dev/resource-broker/v1alpha1"
+        },
+        "resourceKind": { "const": "ManagedPostgres" },
+        "authorization": { "const": "capability" },
+        "tenantBindingRequired": { "const": true },
+        "idempotencyRequired": { "const": true },
+        "directProviderCredentials": { "const": false }
+      }
+    },
+    "plugin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["publisher", "name", "version"],
+      "properties": {
+        "publisher": { "$ref": "#/$defs/name" },
+        "name": { "const": "postgres" },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenantId",
+        "dataBoundaryId",
+        "codefly",
+        "database",
+        "provisioning",
+        "access",
+        "outputs",
+        "audit"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/name" },
+        "tenantId": { "$ref": "#/$defs/name" },
+        "dataBoundaryId": { "$ref": "#/$defs/name" },
+        "codefly": { "$ref": "#/$defs/codefly" },
+        "database": { "$ref": "#/$defs/database" },
+        "provisioning": { "$ref": "#/$defs/provisioning" },
+        "access": { "$ref": "#/$defs/access" },
+        "outputs": { "$ref": "#/$defs/outputs" },
+        "audit": { "$ref": "#/$defs/audit" }
+      }
+    },
+    "codefly": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace", "module", "service"],
+      "properties": {
+        "workspace": { "$ref": "#/$defs/name" },
+        "module": { "$ref": "#/$defs/name" },
+        "service": { "$ref": "#/$defs/name" }
+      }
+    },
+    "database": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "engine", "majorVersion", "port", "extensions"],
+      "properties": {
+        "name": { "$ref": "#/$defs/sqlName" },
+        "engine": { "const": "postgresql" },
+        "majorVersion": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "port": { "const": 5432 },
+        "extensions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/extensionName" }
+        }
+      }
+    },
+    "provisioning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestedBy",
+        "owner",
+        "serviceClass",
+        "networkExposure",
+        "multiZone",
+        "customerManagedEncryption",
+        "deletionProtection",
+        "pointInTimeRecovery",
+        "backupRetentionDays",
+        "restoreTestIntervalDays"
+      ],
+      "properties": {
+        "requestedBy": { "const": "codefly-postgres-plugin" },
+        "owner": { "const": "provider-adapter" },
+        "serviceClass": { "const": "managed-postgresql" },
+        "networkExposure": { "const": "private" },
+        "multiZone": { "const": true },
+        "customerManagedEncryption": { "const": true },
+        "deletionProtection": { "const": true },
+        "pointInTimeRecovery": { "const": true },
+        "backupRetentionDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 35
+        },
+        "restoreTestIntervalDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365
+        }
+      }
+    },
+    "access": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtimeIdentityId",
+        "migrationIdentityId",
+        "networkAccess",
+        "authentication",
+        "tlsMode",
+        "credentialDelivery",
+        "adminCredentialsExposed",
+        "separateMigrationIdentity"
+      ],
+      "properties": {
+        "runtimeIdentityId": { "$ref": "#/$defs/name" },
+        "migrationIdentityId": { "$ref": "#/$defs/name" },
+        "networkAccess": { "$ref": "#/$defs/networkAccess" },
+        "authentication": { "const": "workload-identity" },
+        "tlsMode": { "const": "verify-full" },
+        "credentialDelivery": { "const": "reference-only" },
+        "adminCredentialsExposed": { "const": false },
+        "separateMigrationIdentity": { "const": true }
+      }
+    },
+    "networkAccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "runtimeBoundaryId",
+        "migrationBoundaryId",
+        "separateBoundaries",
+        "allowNetworkCidr"
+      ],
+      "properties": {
+        "mode": { "const": "explicit-source-boundaries" },
+        "runtimeBoundaryId": { "$ref": "#/$defs/name" },
+        "migrationBoundaryId": { "$ref": "#/$defs/name" },
+        "separateBoundaries": { "const": true },
+        "allowNetworkCidr": { "const": false }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "endpoint",
+        "port",
+        "databaseName",
+        "caBundle",
+        "runtimeIdentity",
+        "migrationIdentity",
+        "credentials"
+      ],
+      "properties": {
+        "endpoint": { "const": "reference" },
+        "port": { "const": "value" },
+        "databaseName": { "const": "value" },
+        "caBundle": { "const": "reference" },
+        "runtimeIdentity": { "const": "reference" },
+        "migrationIdentity": { "const": "reference" },
+        "credentials": { "const": "never" }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "immutable",
+        "denialEvents",
+        "accessEvidence",
+        "provisioningEvidence"
+      ],
+      "properties": {
+        "immutable": { "const": true },
+        "denialEvents": { "const": true },
+        "accessEvidence": { "const": true },
+        "provisioningEvidence": { "const": true }
+      }
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$"
+    },
+    "sqlName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,62}$"
+    },
+    "extensionName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,62}$"
+    }
+  }
+}

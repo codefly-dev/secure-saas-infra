@@ -1,0 +1,386 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/postgres-access-observation-v1alpha1.schema.json",
+  "title": "Signed PostgreSQL access readiness observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "evidenceId",
+    "profile",
+    "observedGeneration",
+    "previousEvidenceDigest",
+    "issuedAt",
+    "expiresAt",
+    "nonce",
+    "verifier",
+    "observations",
+    "deploymentAuthority",
+    "postgresBootstrap",
+    "runtimeProbes",
+    "signature"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "evidence.security.deus.dev/postgres-access-observation/v1alpha1"
+    },
+    "kind": { "const": "PostgresAccessObservationEvidence" },
+    "evidenceId": { "$ref": "#/$defs/identifier" },
+    "profile": { "$ref": "#/$defs/profile" },
+    "observedGeneration": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000000
+    },
+    "previousEvidenceDigest": {
+      "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+    },
+    "issuedAt": { "$ref": "#/$defs/timestamp" },
+    "expiresAt": { "$ref": "#/$defs/timestamp" },
+    "nonce": { "$ref": "#/$defs/nonce" },
+    "verifier": { "$ref": "#/$defs/verifier" },
+    "observations": { "$ref": "#/$defs/observations" },
+    "deploymentAuthority": { "$ref": "#/$defs/deploymentAuthority" },
+    "postgresBootstrap": { "$ref": "#/$defs/postgresBootstrap" },
+    "runtimeProbes": { "$ref": "#/$defs/runtimeProbes" },
+    "signature": { "$ref": "#/$defs/signature" }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9._:-]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "maxLength": 32,
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{3})?Z$"
+    },
+    "nonce": {
+      "type": "string",
+      "minLength": 32,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "bindingId",
+        "accessClass",
+        "profileSpecDigest",
+        "bindingDigest",
+        "workloadBundleDigest",
+        "handoffSpecDigest"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "bindingId": { "$ref": "#/$defs/identifier" },
+        "accessClass": { "enum": ["runtime", "migration"] },
+        "profileSpecDigest": { "$ref": "#/$defs/sha256" },
+        "bindingDigest": { "$ref": "#/$defs/sha256" },
+        "workloadBundleDigest": { "$ref": "#/$defs/sha256" },
+        "handoffSpecDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "verifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "keyId",
+        "binaryDigest",
+        "policyDigest",
+        "schemaDigest",
+        "rawReportDigest"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "version": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "keyId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+        },
+        "binaryDigest": { "$ref": "#/$defs/sha256" },
+        "policyDigest": { "$ref": "#/$defs/sha256" },
+        "schemaDigest": { "$ref": "#/$defs/sha256" },
+        "rawReportDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "opaque": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[A-Za-z0-9._:/=-]+$",
+      "not": {
+        "pattern": "(?i:password|secret|credential|access[_-]?key|session[_-]?token)"
+      }
+    },
+    "resourceObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "apiVersion",
+        "kind",
+        "name",
+        "namespace",
+        "uid",
+        "resourceVersion",
+        "specDigest",
+        "status",
+        "observedAt"
+      ],
+      "properties": {
+        "apiVersion": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "kind": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "name": { "$ref": "#/$defs/opaque" },
+        "namespace": {
+          "oneOf": [{ "$ref": "#/$defs/dnsLabel" }, { "type": "null" }]
+        },
+        "uid": { "$ref": "#/$defs/opaque" },
+        "resourceVersion": { "$ref": "#/$defs/opaque" },
+        "specDigest": { "$ref": "#/$defs/sha256" },
+        "status": { "$ref": "#/$defs/resourceStatus" },
+        "observedAt": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "dnsLabel": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+    },
+    "resourceStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "observedGeneration",
+        "conditionDigest",
+        "rawEvidenceDigest"
+      ],
+      "properties": {
+        "state": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "observedGeneration": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "conditionDigest": { "$ref": "#/$defs/sha256" },
+        "rawEvidenceDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "namespace",
+        "serviceAccount",
+        "admissionPolicy",
+        "applicationNetworkPolicy",
+        "nodeClass",
+        "nodePool",
+        "podIdentityAssociation"
+      ],
+      "properties": {
+        "namespace": {
+          "allOf": [
+            { "$ref": "#/$defs/resourceObservation" },
+            {
+              "type": "object",
+              "properties": { "kind": { "const": "Namespace" } }
+            }
+          ]
+        },
+        "serviceAccount": {
+          "allOf": [
+            { "$ref": "#/$defs/resourceObservation" },
+            {
+              "type": "object",
+              "properties": { "kind": { "const": "ServiceAccount" } }
+            }
+          ]
+        },
+        "admissionPolicy": {
+          "allOf": [
+            { "$ref": "#/$defs/resourceObservation" },
+            {
+              "type": "object",
+              "properties": { "kind": { "const": "ClusterPolicy" } }
+            }
+          ]
+        },
+        "applicationNetworkPolicy": {
+          "allOf": [
+            { "$ref": "#/$defs/resourceObservation" },
+            {
+              "type": "object",
+              "properties": {
+                "kind": { "const": "ApplicationNetworkPolicy" }
+              }
+            }
+          ]
+        },
+        "nodeClass": {
+          "allOf": [
+            { "$ref": "#/$defs/resourceObservation" },
+            {
+              "type": "object",
+              "properties": { "kind": { "const": "NodeClass" } }
+            }
+          ]
+        },
+        "nodePool": {
+          "allOf": [
+            { "$ref": "#/$defs/resourceObservation" },
+            {
+              "type": "object",
+              "properties": { "kind": { "const": "NodePool" } }
+            }
+          ]
+        },
+        "podIdentityAssociation": {
+          "allOf": [
+            { "$ref": "#/$defs/resourceObservation" },
+            {
+              "type": "object",
+              "properties": {
+                "kind": { "const": "EksPodIdentityAssociation" }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "deploymentAuthority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "controllerServiceAccountSubject",
+        "sourceRepository",
+        "sourceRevision",
+        "sourcePath",
+        "allowedWorkloadKind",
+        "rbacDenialMatrixDigest",
+        "directPodDenialDigest"
+      ],
+      "properties": {
+        "controllerServiceAccountSubject": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^system:serviceaccount:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+        },
+        "sourceRepository": {
+          "type": "string",
+          "maxLength": 512,
+          "pattern": "^https://[A-Za-z0-9.-]+/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+(?:\\.git)?$"
+        },
+        "sourceRevision": {
+          "type": "string",
+          "minLength": 40,
+          "maxLength": 40,
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "sourcePath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//)[A-Za-z0-9._/-]+$"
+        },
+        "allowedWorkloadKind": { "enum": ["Deployment", "Job"] },
+        "rbacDenialMatrixDigest": { "$ref": "#/$defs/sha256" },
+        "directPodDenialDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "postgresBootstrap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "markerDigest",
+        "rolePolicyDigest",
+        "extensionsDigest",
+        "activationGeneration",
+        "associationId",
+        "activationActorSubject",
+        "bootstrapJobUid",
+        "activatedAt",
+        "completedAt",
+        "removedAt",
+        "finalAssociationAbsenceDigest",
+        "secretAccessAuditDigest"
+      ],
+      "properties": {
+        "markerDigest": { "$ref": "#/$defs/sha256" },
+        "rolePolicyDigest": { "$ref": "#/$defs/sha256" },
+        "extensionsDigest": { "$ref": "#/$defs/sha256" },
+        "activationGeneration": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "associationId": { "$ref": "#/$defs/opaque" },
+        "activationActorSubject": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^system:serviceaccount:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+        },
+        "bootstrapJobUid": { "$ref": "#/$defs/opaque" },
+        "activatedAt": { "$ref": "#/$defs/timestamp" },
+        "completedAt": { "$ref": "#/$defs/timestamp" },
+        "removedAt": { "$ref": "#/$defs/timestamp" },
+        "finalAssociationAbsenceDigest": { "$ref": "#/$defs/sha256" },
+        "secretAccessAuditDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "runtimeProbes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "podIdentityStsDigest",
+        "podSecurityGroupAttachmentDigest",
+        "applicationNetworkPolicyDenialDigest",
+        "rdsProxyIamTlsDigest",
+        "rdsProxyTargetHealthDigest"
+      ],
+      "properties": {
+        "podIdentityStsDigest": { "$ref": "#/$defs/sha256" },
+        "podSecurityGroupAttachmentDigest": { "$ref": "#/$defs/sha256" },
+        "applicationNetworkPolicyDenialDigest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "rdsProxyIamTlsDigest": { "$ref": "#/$defs/sha256" },
+        "rdsProxyTargetHealthDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": { "const": "Ed25519" },
+        "value": {
+          "type": "string",
+          "minLength": 86,
+          "maxLength": 86,
+          "pattern": "^[A-Za-z0-9_-]{86}$"
+        }
+      }
+    }
+  }
+}

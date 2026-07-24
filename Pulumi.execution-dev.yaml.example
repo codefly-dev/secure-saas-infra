@@ -6,8 +6,41 @@ config:
   secure-saas-infra:deploymentMode: disabled
   secure-saas-infra:organizationName: deus
   secure-saas-infra:environment: execution-dev
+  secure-saas-infra:eks:
+    version: "1.33"
+    endpointPublicAccess: false
+    autoModeNodePools:
+      - system
+      - general-purpose
+    networkPolicyMode: strict
+    accessGrants:
+      - id: platform-admin
+        principal:
+          kind: identity-center-permission-set
+          category: workforce
+          permissionSetName: PlatformPowerUser
+        accessPolicy: cluster-admin
+        scope:
+          type: cluster
+      - id: argocd-bootstrap
+        principal:
+          kind: iam-role
+          category: workforce
+          roleArn: arn:aws:iam::<set-execution-dev-account-id-after-organization-creation>:role/InfrastructureApplyNonProd-Workload
+        accessPolicy: cluster-admin
+        scope:
+          type: cluster
+  secure-saas-infra:platformBlueprintPreset:
+    name: warden-mind-v1
+    networkCidrs:
+      egress-net: 10.0.0.0/16
+      control-net: 10.10.0.0/16
+      execution-shared-net: 10.20.0.0/16
+      data-shared-net: 10.30.0.0/16
   secure-saas-infra:spoke:
     name: execution-dev
+    zoneId: execution-shared
+    networkDomainId: execution-shared-net
     kind: execution
     cidr: 10.20.0.0/16
     azCount: 3

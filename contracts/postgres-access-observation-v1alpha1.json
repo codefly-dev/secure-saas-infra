@@ -1,0 +1,176 @@
+{
+  "apiVersion": "evidence.security.deus.dev/postgres-access-observation/v1alpha1",
+  "kind": "PostgresAccessObservationEvidence",
+  "evidenceId": "warden-saas-postgres-runtime-observation-1",
+  "profile": {
+    "id": "warden-saas-postgres-runtime",
+    "bindingId": "warden-saas-postgres",
+    "accessClass": "runtime",
+    "profileSpecDigest": "384864230c6a372c5673dbdf9129394400a7d0916eed8155608d455b59018156",
+    "bindingDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "workloadBundleDigest": "5bb6c125137a3b102640fdef6c299f78388d9dc8616a322597b23b4fdaa53035",
+    "handoffSpecDigest": "4eb239b531fce6f0e61bd149ef51aa26aa54d1dfc83ec50f00da97fd7313fde9"
+  },
+  "observedGeneration": 1,
+  "previousEvidenceDigest": null,
+  "issuedAt": "2026-07-18T12:00:00.000Z",
+  "expiresAt": "2026-07-18T12:05:00.000Z",
+  "nonce": "0123456789abcdef0123456789abcdef",
+  "verifier": {
+    "id": "aws-dev-postgres-observer",
+    "version": "1.0.0",
+    "keyId": "aws-dev-postgres-observer-2026-07",
+    "binaryDigest": "1010101010101010101010101010101010101010101010101010101010101010",
+    "policyDigest": "2020202020202020202020202020202020202020202020202020202020202020",
+    "schemaDigest": "3030303030303030303030303030303030303030303030303030303030303030",
+    "rawReportDigest": "4040404040404040404040404040404040404040404040404040404040404040"
+  },
+  "observations": {
+    "namespace": {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "name": "codefly-db-runtime-warden-saas-postgres-development",
+      "namespace": null,
+      "uid": "uid-namespace-1",
+      "resourceVersion": "resource-version-1",
+      "specDigest": "8f87d0ee13bc32fc1f78ea767cb321a303c07f6444a2cfa492f63f68e564cc0b",
+      "status": {
+        "state": "Active",
+        "observedGeneration": 1,
+        "conditionDigest": "5151515151515151515151515151515151515151515151515151515151515151",
+        "rawEvidenceDigest": "5252525252525252525252525252525252525252525252525252525252525252"
+      },
+      "observedAt": "2026-07-18T11:59:00.000Z"
+    },
+    "serviceAccount": {
+      "apiVersion": "v1",
+      "kind": "ServiceAccount",
+      "name": "warden-saas-service",
+      "namespace": "codefly-db-runtime-warden-saas-postgres-development",
+      "uid": "uid-service-account-1",
+      "resourceVersion": "resource-version-2",
+      "specDigest": "850d1e6ebcb6831bd164a8910b4f836946f73f3c8939ecdff00fd6b537c6541d",
+      "status": {
+        "state": "Observed",
+        "observedGeneration": 1,
+        "conditionDigest": "6161616161616161616161616161616161616161616161616161616161616161",
+        "rawEvidenceDigest": "6262626262626262626262626262626262626262626262626262626262626262"
+      },
+      "observedAt": "2026-07-18T11:59:00.000Z"
+    },
+    "admissionPolicy": {
+      "apiVersion": "kyverno.io/v1",
+      "kind": "ClusterPolicy",
+      "name": "warden-saas-postgres-runtime-access",
+      "namespace": null,
+      "uid": "uid-admission-policy-1",
+      "resourceVersion": "resource-version-3",
+      "specDigest": "79cc34bd309b6aa01f6b51472dc1679845496d4e767cb99b9cd1d934c1026802",
+      "status": {
+        "state": "Enforced",
+        "observedGeneration": 1,
+        "conditionDigest": "7171717171717171717171717171717171717171717171717171717171717171",
+        "rawEvidenceDigest": "7272727272727272727272727272727272727272727272727272727272727272"
+      },
+      "observedAt": "2026-07-18T11:59:00.000Z"
+    },
+    "applicationNetworkPolicy": {
+      "apiVersion": "networking.k8s.aws/v1alpha1",
+      "kind": "ApplicationNetworkPolicy",
+      "name": "warden-saas-postgres-runtime-access",
+      "namespace": "codefly-db-runtime-warden-saas-postgres-development",
+      "uid": "uid-application-network-policy-1",
+      "resourceVersion": "resource-version-4",
+      "specDigest": "80c2331680cb87776465732009783b0199cfc24ef2944cea9e77a2442a761d81",
+      "status": {
+        "state": "Enforced",
+        "observedGeneration": 1,
+        "conditionDigest": "8181818181818181818181818181818181818181818181818181818181818181",
+        "rawEvidenceDigest": "8282828282828282828282828282828282828282828282828282828282828282"
+      },
+      "observedAt": "2026-07-18T11:59:00.000Z"
+    },
+    "nodeClass": {
+      "apiVersion": "eks.amazonaws.com/v1",
+      "kind": "NodeClass",
+      "name": "warden-saas-postgres-runtime-access",
+      "namespace": null,
+      "uid": "uid-node-class-1",
+      "resourceVersion": "resource-version-5",
+      "specDigest": "6ec2c63b152b7c6a6bbe3e982960431f50b5dbafaad279b26673af72f96d365c",
+      "status": {
+        "state": "Ready",
+        "observedGeneration": 1,
+        "conditionDigest": "9191919191919191919191919191919191919191919191919191919191919191",
+        "rawEvidenceDigest": "9292929292929292929292929292929292929292929292929292929292929292"
+      },
+      "observedAt": "2026-07-18T11:59:00.000Z"
+    },
+    "nodePool": {
+      "apiVersion": "karpenter.sh/v1",
+      "kind": "NodePool",
+      "name": "warden-saas-postgres-runtime-access",
+      "namespace": null,
+      "uid": "uid-node-pool-1",
+      "resourceVersion": "resource-version-6",
+      "specDigest": "0e480fecdfc1a36f0e6f7e261ad6a58780317582fd33a517ae598e15aafe60f6",
+      "status": {
+        "state": "Ready",
+        "observedGeneration": 1,
+        "conditionDigest": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "rawEvidenceDigest": "a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2"
+      },
+      "observedAt": "2026-07-18T11:59:00.000Z"
+    },
+    "podIdentityAssociation": {
+      "apiVersion": "eks.amazonaws.com/v1",
+      "kind": "EksPodIdentityAssociation",
+      "name": "a-0123456789abcdef0",
+      "namespace": null,
+      "uid": "uid-pod-identity-association-1",
+      "resourceVersion": "resource-version-7",
+      "specDigest": "dbba6bbc3fa670ea2d45311d1b243c7253bf4105a9d3cc82d1b6ee3091304ed4",
+      "status": {
+        "state": "Active",
+        "observedGeneration": 1,
+        "conditionDigest": "b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1",
+        "rawEvidenceDigest": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+      },
+      "observedAt": "2026-07-18T11:59:00.000Z"
+    }
+  },
+  "deploymentAuthority": {
+    "controllerServiceAccountSubject": "system:serviceaccount:argocd-database:database-infrastructure-application-controller",
+    "sourceRepository": "https://github.com/codefly-dev/secure-saas-infra.git",
+    "sourceRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sourcePath": "gitops/generated/database/warden-saas-postgres/runtime",
+    "allowedWorkloadKind": "Deployment",
+    "rbacDenialMatrixDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "directPodDenialDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "postgresBootstrap": {
+    "markerDigest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "rolePolicyDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "extensionsDigest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "activationGeneration": 1,
+    "associationId": "a-bootstrap-jit-0123456789",
+    "activationActorSubject": "system:serviceaccount:codefly-system:codefly-database-operator",
+    "bootstrapJobUid": "uid-postgres-bootstrap-job-1",
+    "activatedAt": "2026-07-18T11:55:00.000Z",
+    "completedAt": "2026-07-18T11:58:00.000Z",
+    "removedAt": "2026-07-18T11:59:00.000Z",
+    "finalAssociationAbsenceDigest": "1313131313131313131313131313131313131313131313131313131313131313",
+    "secretAccessAuditDigest": "1414141414141414141414141414141414141414141414141414141414141414"
+  },
+  "runtimeProbes": {
+    "podIdentityStsDigest": "1515151515151515151515151515151515151515151515151515151515151515",
+    "podSecurityGroupAttachmentDigest": "1616161616161616161616161616161616161616161616161616161616161616",
+    "applicationNetworkPolicyDenialDigest": "1717171717171717171717171717171717171717171717171717171717171717",
+    "rdsProxyIamTlsDigest": "1818181818181818181818181818181818181818181818181818181818181818",
+    "rdsProxyTargetHealthDigest": "1919191919191919191919191919191919191919191919191919191919191919"
+  },
+  "signature": {
+    "algorithm": "Ed25519",
+    "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+  }
+}

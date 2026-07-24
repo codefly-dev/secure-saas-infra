@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/postgres-access-profile-v1alpha1.schema.json",
+  "title": "Credential-free PostgreSQL access profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "id",
+    "bindingId",
+    "profileSpecDigest",
+    "application",
+    "accessClass",
+    "connection",
+    "authentication",
+    "identity",
+    "network",
+    "enforcement",
+    "readiness",
+    "credentials"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "security.deus.dev/postgres-access-profile/v1alpha1"
+    },
+    "kind": { "const": "PostgresAccessProfile" },
+    "id": { "$ref": "#/$defs/identifier" },
+    "bindingId": { "$ref": "#/$defs/identifier" },
+    "profileSpecDigest": { "$ref": "#/$defs/sha256" },
+    "application": { "$ref": "#/$defs/application" },
+    "accessClass": { "enum": ["runtime", "migration"] },
+    "connection": { "$ref": "#/$defs/connection" },
+    "authentication": { "$ref": "#/$defs/authentication" },
+    "identity": { "$ref": "#/$defs/identity" },
+    "network": { "$ref": "#/$defs/network" },
+    "enforcement": { "$ref": "#/$defs/enforcement" },
+    "readiness": { "$ref": "#/$defs/readiness" },
+    "credentials": { "type": "null" }
+  },
+  "$defs": {
+    "application": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "applicationId",
+        "componentId",
+        "serviceRef",
+        "dataBoundaryId"
+      ],
+      "properties": {
+        "applicationId": { "$ref": "#/$defs/identifier" },
+        "componentId": { "$ref": "#/$defs/identifier" },
+        "serviceRef": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[a-z][a-z0-9-]*/[a-z][a-z0-9-]*/[a-z][a-z0-9-]*$"
+        },
+        "dataBoundaryId": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "connection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["endpoint", "port", "databaseName", "tls"],
+      "properties": {
+        "endpoint": { "$ref": "#/$defs/hostname" },
+        "port": { "const": 5432 },
+        "databaseName": { "$ref": "#/$defs/postgresIdentifier" },
+        "tls": { "$ref": "#/$defs/tls" }
+      }
+    },
+    "tls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "caCertIdentifier", "caBundleRef"],
+      "properties": {
+        "mode": { "const": "verify-full" },
+        "caCertIdentifier": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "caBundleRef": { "$ref": "#/$defs/exactReference" }
+      }
+    },
+    "authentication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "region",
+        "target",
+        "resourceId",
+        "databaseUser",
+        "tokenDelivery"
+      ],
+      "properties": {
+        "kind": { "const": "aws-rds-iam" },
+        "region": {
+          "type": "string",
+          "pattern": "^[a-z]{2}(?:-gov)?-[a-z]+-[0-9]$"
+        },
+        "target": { "const": "rds-proxy" },
+        "resourceId": {
+          "type": "string",
+          "pattern": "^prx-[a-z0-9]{17}$"
+        },
+        "databaseUser": { "$ref": "#/$defs/postgresIdentifier" },
+        "tokenDelivery": { "const": "per-physical-connection" }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semanticIdentityId",
+        "roleArn",
+        "namespace",
+        "serviceAccount",
+        "podIdentityAssociationId"
+      ],
+      "properties": {
+        "semanticIdentityId": { "$ref": "#/$defs/identifier" },
+        "roleArn": {
+          "type": "string",
+          "maxLength": 512,
+          "pattern": "^arn:(?:aws|aws-us-gov|aws-cn):iam::[0-9]{12}:role/[A-Za-z0-9+=,.@_/-]+$"
+        },
+        "namespace": { "$ref": "#/$defs/dnsLabel" },
+        "serviceAccount": { "$ref": "#/$defs/dnsLabel" },
+        "podIdentityAssociationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["securityGroupId", "exposure", "sourceBoundaryMode"],
+      "properties": {
+        "securityGroupId": {
+          "type": "string",
+          "pattern": "^sg-[a-f0-9]{17}$"
+        },
+        "exposure": { "const": "private" },
+        "sourceBoundaryMode": { "const": "exact-pod-security-group" }
+      }
+    },
+    "enforcement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bindingDigest",
+        "workloadBundleDigest",
+        "requiredPodLabels",
+        "requiredPodAnnotations",
+        "requiredPodScheduling"
+      ],
+      "properties": {
+        "bindingDigest": { "$ref": "#/$defs/sha256" },
+        "workloadBundleDigest": { "$ref": "#/$defs/sha256" },
+        "requiredPodLabels": { "$ref": "#/$defs/stringMap" },
+        "requiredPodAnnotations": { "$ref": "#/$defs/stringMap" },
+        "requiredPodScheduling": { "$ref": "#/$defs/scheduling" }
+      }
+    },
+    "scheduling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeSelector", "tolerations"],
+      "properties": {
+        "nodeSelector": { "$ref": "#/$defs/stringMap" },
+        "tolerations": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/toleration" }
+        }
+      }
+    },
+    "toleration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "operator", "value", "effect"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1, "maxLength": 253 },
+        "operator": { "const": "Equal" },
+        "value": { "type": "string", "minLength": 1, "maxLength": 63 },
+        "effect": { "const": "NoSchedule" }
+      }
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "ready", "blockers", "evidenceRefs"],
+      "properties": {
+        "state": { "const": "pending-infrastructure" },
+        "ready": { "const": false },
+        "blockers": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "prefixItems": [
+            { "const": "DATABASE_ACCESS_BUNDLE_NOT_OBSERVED" },
+            { "const": "DATABASE_DEPLOYMENT_AUTHORITY_NOT_OBSERVED" },
+            { "const": "POSTGRES_SQL_BOOTSTRAP_EVIDENCE_REQUIRED" }
+          ],
+          "items": false
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "maxItems": 0
+        }
+      }
+    },
+    "identifier": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9._:-]*$"
+    },
+    "postgresIdentifier": {
+      "type": "string",
+      "maxLength": 63,
+      "pattern": "^[a-z_][a-z0-9_]*$"
+    },
+    "dnsLabel": {
+      "type": "string",
+      "maxLength": 63,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+    },
+    "hostname": {
+      "type": "string",
+      "maxLength": 253,
+      "pattern": "^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\\.[a-z0-9.-]+$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "exactReference": {
+      "type": "string",
+      "maxLength": 512,
+      "pattern": "^[a-z][a-z0-9+.-]*://[A-Za-z0-9][A-Za-z0-9._:/=-]*$"
+    },
+    "stringMap": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      }
+    }
+  }
+}

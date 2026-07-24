@@ -63,8 +63,10 @@ planTransformedFile(".github/CODEOWNERS", ".github/CODEOWNERS", {
 });
 
 for (const file of [
+  "gitops/bootstrap/argocd/base/projects.appproject.yaml",
   "gitops/bootstrap/argocd/base/platform-cluster-baseline.application.yaml",
   "gitops/bootstrap/argocd/base/execution-cluster-baseline.application.yaml",
+  "gitops/base/kyverno/verify-signed-provenance.yaml",
 ]) {
   planTransformedFile(file, file, {
     overwriteExisting: true,
@@ -96,9 +98,8 @@ if (!managementAccountId) {
 
 console.log("");
 console.log("Next checks:");
-console.log("  npm run preflight");
-console.log("  npm run preflight:strict");
-console.log("  npm run verify:onboarding -- --config onboarding.local.json");
+console.log("  npm run bootstrap:doctor -- --config onboarding.local.json");
+console.log("  npm run validate:local");
 
 function validateInputs() {
   const failures = [];
@@ -228,21 +229,21 @@ AWS management account ID: ${managementId}
 ## Verify
 
 \`\`\`sh
-npm run preflight
-npm run preflight:strict
-npm run verify:onboarding -- --config onboarding.local.json
-npm test
+npm run bootstrap:doctor -- --config onboarding.local.json
+npm run validate:local
 \`\`\`
 
 ## First Commands
 
 \`\`\`sh
-export GITHUB_TOKEN=<github-admin-token>
-pulumi stack init github-governance
-pulumi preview --stack github-governance
-
-pulumi stack init management
-pulumi preview --stack management
+npm run bootstrap:doctor
+# Initialize backend stacks without AWS credentials, commit the reviewed
+# source, publish/authenticate the host kit, then prepare the fixed Linux root
+# exactly as documented in docs/management-seed-runbook.md.
+sudo -iu deus-qualify sh -c 'cd /usr/local/lib/deus-bootstrap/execution && ./scripts/credential-free-qualification --config onboarding.local.json'
+# Transfer only artifacts/bootstrap-signing-review-bundle.json to the
+# independently controlled signer. Return only its raw detached signature.
+sudo -iu deus-qualify sh -c 'cd /usr/local/lib/deus-bootstrap/execution && npm run bootstrap:finalize -- --signature /trusted-transfer/bootstrap-candidate.sig'
 \`\`\`
 
 ## Remaining Manual Inputs
@@ -261,9 +262,13 @@ function transform(body) {
     /@your-github-org\/platform-security/g,
     `@${githubOrg}/${codeownersTeam}`,
   );
+  next = next.replace(
+    /(?:your-github-org|codefly-dev)\/secure-saas-infra/g,
+    `${githubOrg}/${repo}`,
+  );
   next = next.replace(/your-github-org/g, githubOrg);
   next = next.replace(
-    /your-org\/secure-saas-infra\.git/g,
+    /(?:your-org|codefly-dev)\/secure-saas-infra\.git/g,
     `${githubOrg}/${repo}.git`,
   );
   next = next.replace(
@@ -298,7 +303,7 @@ function transform(body) {
 }
 
 function hasKnownPlaceholder(body) {
-  return /your-github-org|your-pulumi-org|your-org\/secure-saas-infra\.git|aws\+[^@\s]+@example\.com|security@example\.com|111111111111|123456789012/.test(
+  return /your-github-org|your-pulumi-org|(?:your-org|codefly-dev)\/secure-saas-infra\.git|aws\+[^@\s]+@example\.com|security@example\.com|111111111111|123456789012/.test(
     body,
   );
 }

@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist-management-seed-policy"
+  },
+  "include": ["policy/managementSeedMain.ts"]
+}

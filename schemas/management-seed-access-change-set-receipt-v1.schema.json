@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/management-seed-access-change-set-receipt-v1.schema.json",
+  "title": "Management-seed access CloudFormation change-set receipt",
+  "description": "Mutation flags describe only the invocation that emitted this receipt; a recovered executed receipt binds prior preparation and execution through digests but reports both current-invocation mutation flags false.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "stage",
+    "generatedAt",
+    "candidateDigest",
+    "bundleDigest",
+    "cloudFormationTemplateFileSha256",
+    "managementAccountId",
+    "awsPartition",
+    "region",
+    "stackName",
+    "callerArn",
+    "cloudControlPlaneMutationPerformed",
+    "iamMutationPerformed",
+    "changeSet",
+    "provisionerRetirementRequired",
+    "receiptDigest"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "security.deus.dev/management-seed-access-change-set-receipt/v1"
+    },
+    "kind": { "const": "ManagementSeedAccessChangeSetReceipt" },
+    "stage": { "enum": ["prepared", "executed"] },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "candidateDigest": { "$ref": "#/$defs/sha256" },
+    "bundleDigest": { "$ref": "#/$defs/sha256" },
+    "cloudFormationTemplateFileSha256": { "$ref": "#/$defs/sha256" },
+    "managementAccountId": {
+      "type": "string",
+      "pattern": "^[0-9]{12}$"
+    },
+    "awsPartition": { "const": "aws" },
+    "region": {
+      "type": "string",
+      "pattern": "^(?!cn-)[a-z]{2}-[a-z]+-[0-9]$"
+    },
+    "stackName": { "const": "deus-management-seed-access" },
+    "callerArn": {
+      "type": "string",
+      "pattern": "^arn:aws:sts::[0-9]{12}:assumed-role/ManagementSeedProvisioner/[A-Za-z0-9+=,.@_-]+$"
+    },
+    "cloudControlPlaneMutationPerformed": { "type": "boolean" },
+    "iamMutationPerformed": { "type": "boolean" },
+    "changeSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "stackId",
+        "status",
+        "executionStatus",
+        "changes",
+        "changesDigest"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^arn:aws:cloudformation:(?!cn-)[a-z]{2}-[a-z]+-[0-9]:[0-9]{12}:changeSet/deus-management-seed-access-[a-f0-9]{12}/[A-Za-z0-9-]+$"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^deus-management-seed-access-[a-f0-9]{12}$"
+        },
+        "stackId": {
+          "type": "string",
+          "pattern": "^arn:aws:cloudformation:(?!cn-)[a-z]{2}-[a-z]+-[0-9]:[0-9]{12}:stack/deus-management-seed-access/[A-Za-z0-9-]+$"
+        },
+        "status": { "const": "CREATE_COMPLETE" },
+        "executionStatus": { "const": "AVAILABLE" },
+        "changes": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["action", "logicalResourceId", "resourceType"],
+            "properties": {
+              "action": { "const": "Add" },
+              "logicalResourceId": {
+                "enum": ["ApplyRolePolicy", "PreviewRolePolicy"]
+              },
+              "resourceType": {
+                "const": "AWS::IAM::RolePolicy"
+              }
+            }
+          }
+        },
+        "changesDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "provisionerRetirementRequired": { "const": true },
+    "preparedReceiptDigest": { "$ref": "#/$defs/sha256" },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stackStatus",
+        "attestationDigest",
+        "provisionerAssignmentRetired",
+        "recoveredAfterPriorExecution"
+      ],
+      "properties": {
+        "stackStatus": { "const": "CREATE_COMPLETE" },
+        "attestationDigest": { "$ref": "#/$defs/sha256" },
+        "provisionerAssignmentRetired": { "const": false },
+        "recoveredAfterPriorExecution": { "type": "boolean" }
+      }
+    },
+    "receiptDigest": { "$ref": "#/$defs/sha256" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "stage": { "const": "prepared" } } },
+      "then": {
+        "properties": {
+          "cloudControlPlaneMutationPerformed": { "const": true },
+          "iamMutationPerformed": { "const": false }
+        },
+        "not": {
+          "anyOf": [
+            {
+              "required": ["preparedReceiptDigest"],
+              "properties": { "preparedReceiptDigest": true }
+            },
+            {
+              "required": ["execution"],
+              "properties": { "execution": true }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": { "properties": { "stage": { "const": "executed" } } },
+      "then": {
+        "required": ["preparedReceiptDigest", "execution"],
+        "properties": {
+          "preparedReceiptDigest": true,
+          "execution": true
+        },
+        "oneOf": [
+          {
+            "properties": {
+              "cloudControlPlaneMutationPerformed": { "const": true },
+              "iamMutationPerformed": { "const": true },
+              "execution": {
+                "type": "object",
+                "properties": {
+                  "recoveredAfterPriorExecution": { "const": false }
+                }
+              }
+            }
+          },
+          {
+            "properties": {
+              "cloudControlPlaneMutationPerformed": { "const": false },
+              "iamMutationPerformed": { "const": false },
+              "execution": {
+                "type": "object",
+                "properties": {
+                  "recoveredAfterPriorExecution": { "const": true }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

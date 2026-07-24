@@ -4,7 +4,6 @@ config:
   secure-saas-infra:deploymentMode: disabled
   secure-saas-infra:organizationName: deus
   secure-saas-infra:environment: network
-  secure-saas-infra:adminRoleArns: []
   secure-saas-infra:network:
     egress:
       cidr: 10.0.0.0/16
@@ -29,6 +28,7 @@ config:
       - system
       - general-purpose
     networkPolicyMode: strict
+    accessGrants: []
   secure-saas-infra:security:
     enableGuardDuty: true
     enableSecurityHub: true

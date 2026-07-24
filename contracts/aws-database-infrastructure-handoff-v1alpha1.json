@@ -1,0 +1,242 @@
+{
+  "apiVersion": "infrastructure.deus.dev/aws-database-infrastructure-handoff/v1alpha1",
+  "kind": "AwsDatabaseInfrastructureHandoff",
+  "bindingId": "warden-saas-postgres",
+  "handoffSpecDigest": "4eb239b531fce6f0e61bd149ef51aa26aa54d1dfc83ec50f00da97fd7313fde9",
+  "owner": "external-iac",
+  "authorizedConsumer": "infrastructure-controller",
+  "applicationMutationAllowed": false,
+  "deploymentAuthorization": {
+    "state": "pending-identity-binding",
+    "directPodCreationAllowed": false,
+    "namespaceWriteAccess": "exclusive-controller",
+    "allowedWorkloadKinds": {
+      "runtime": ["Deployment"],
+      "migration": ["Job"],
+      "bootstrap": ["Job"]
+    },
+    "requiredActorEvidence": [
+      "exact-controller-service-account",
+      "exact-source-repository-and-path",
+      "namespace-rbac-denial-matrix",
+      "direct-pod-creation-denied"
+    ]
+  },
+  "accessClasses": {
+    "runtime": {
+      "namespace": "codefly-db-runtime-warden-saas-postgres-development",
+      "serviceAccount": "warden-saas-service",
+      "activationMode": "persistent",
+      "podIdentityAssociationId": "a-0123456789abcdef0",
+      "bindingDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "workloadBundleDigest": "5bb6c125137a3b102640fdef6c299f78388d9dc8616a322597b23b4fdaa53035",
+      "manifests": {
+        "namespace": {
+          "apiVersion": "v1",
+          "kind": "Namespace",
+          "metadata": {
+            "name": "codefly-db-runtime-warden-saas-postgres-development"
+          }
+        },
+        "serviceAccount": {
+          "apiVersion": "v1",
+          "kind": "ServiceAccount",
+          "metadata": {
+            "name": "warden-saas-service",
+            "namespace": "codefly-db-runtime-warden-saas-postgres-development"
+          }
+        },
+        "admissionPolicy": {
+          "apiVersion": "kyverno.io/v1",
+          "kind": "ClusterPolicy",
+          "metadata": { "name": "warden-saas-postgres-runtime-access" }
+        },
+        "applicationNetworkPolicy": {
+          "apiVersion": "networking.k8s.aws/v1alpha1",
+          "kind": "ApplicationNetworkPolicy",
+          "metadata": {
+            "name": "warden-saas-postgres-runtime-access",
+            "namespace": "codefly-db-runtime-warden-saas-postgres-development"
+          }
+        },
+        "nodeClass": {
+          "apiVersion": "eks.amazonaws.com/v1",
+          "kind": "NodeClass",
+          "metadata": { "name": "warden-saas-postgres-runtime-access" }
+        },
+        "nodePool": {
+          "apiVersion": "karpenter.sh/v1",
+          "kind": "NodePool",
+          "metadata": { "name": "warden-saas-postgres-runtime-access" }
+        },
+        "requiredPodScheduling": {
+          "nodeSelector": {
+            "node-restriction.kubernetes.io/database-access-f7f0e299b75bbc5d": "warden-saas-postgres-runtime-database-access"
+          },
+          "tolerations": [
+            {
+              "key": "node-restriction.kubernetes.io/database-access-f7f0e299b75bbc5d",
+              "operator": "Equal",
+              "value": "warden-saas-postgres-runtime-database-access",
+              "effect": "NoSchedule"
+            }
+          ]
+        },
+        "requiredPodLabels": {
+          "security.deus.dev/workload-identity-binding": "warden-saas-service"
+        },
+        "requiredPodAnnotations": {
+          "security.deus.dev/workload-identity-binding-digest": "1111111111111111111111111111111111111111111111111111111111111111"
+        }
+      }
+    },
+    "migration": {
+      "namespace": "codefly-db-migration-warden-saas-postgres-development",
+      "serviceAccount": "warden-saas-migration",
+      "activationMode": "persistent",
+      "podIdentityAssociationId": "a-migration-0123456789abcdef0",
+      "bindingDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "workloadBundleDigest": "0752c4b01662b887af67d68aac35839fb70622ed0060b52bd5b84701bcd024f7",
+      "manifests": {
+        "namespace": {
+          "apiVersion": "v1",
+          "kind": "Namespace",
+          "metadata": {
+            "name": "codefly-db-migration-warden-saas-postgres-development"
+          }
+        },
+        "serviceAccount": {
+          "apiVersion": "v1",
+          "kind": "ServiceAccount",
+          "metadata": {
+            "name": "warden-saas-migration",
+            "namespace": "codefly-db-migration-warden-saas-postgres-development"
+          }
+        },
+        "admissionPolicy": {
+          "apiVersion": "kyverno.io/v1",
+          "kind": "ClusterPolicy",
+          "metadata": { "name": "warden-saas-postgres-migration-access" }
+        },
+        "applicationNetworkPolicy": {
+          "apiVersion": "networking.k8s.aws/v1alpha1",
+          "kind": "ApplicationNetworkPolicy",
+          "metadata": {
+            "name": "warden-saas-postgres-migration-access",
+            "namespace": "codefly-db-migration-warden-saas-postgres-development"
+          }
+        },
+        "nodeClass": {
+          "apiVersion": "eks.amazonaws.com/v1",
+          "kind": "NodeClass",
+          "metadata": { "name": "warden-saas-postgres-migration-access" }
+        },
+        "nodePool": {
+          "apiVersion": "karpenter.sh/v1",
+          "kind": "NodePool",
+          "metadata": { "name": "warden-saas-postgres-migration-access" }
+        },
+        "requiredPodScheduling": {
+          "nodeSelector": {
+            "node-restriction.kubernetes.io/database-access-6431c649cb4b012e": "warden-saas-postgres-migration-database-access"
+          },
+          "tolerations": [
+            {
+              "key": "node-restriction.kubernetes.io/database-access-6431c649cb4b012e",
+              "operator": "Equal",
+              "value": "warden-saas-postgres-migration-database-access",
+              "effect": "NoSchedule"
+            }
+          ]
+        },
+        "requiredPodLabels": {
+          "security.deus.dev/workload-identity-binding": "warden-saas-migration"
+        },
+        "requiredPodAnnotations": {
+          "security.deus.dev/workload-identity-binding-digest": "2222222222222222222222222222222222222222222222222222222222222222"
+        }
+      }
+    },
+    "bootstrap": {
+      "namespace": "codefly-db-bootstrap-warden-saas-postgres-development",
+      "serviceAccount": "warden-saas-postgres-bootstrap",
+      "activationMode": "just-in-time",
+      "podIdentityAssociationId": null,
+      "bindingDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "workloadBundleDigest": "a9e5c8912878c52286ae88723258071e38b71f0ac34733f048e32a81b6501fd2",
+      "manifests": {
+        "namespace": {
+          "apiVersion": "v1",
+          "kind": "Namespace",
+          "metadata": {
+            "name": "codefly-db-bootstrap-warden-saas-postgres-development"
+          }
+        },
+        "serviceAccount": {
+          "apiVersion": "v1",
+          "kind": "ServiceAccount",
+          "metadata": {
+            "name": "warden-saas-postgres-bootstrap",
+            "namespace": "codefly-db-bootstrap-warden-saas-postgres-development"
+          }
+        },
+        "admissionPolicy": {
+          "apiVersion": "kyverno.io/v1",
+          "kind": "ClusterPolicy",
+          "metadata": { "name": "warden-saas-postgres-bootstrap-access" }
+        },
+        "applicationNetworkPolicy": {
+          "apiVersion": "networking.k8s.aws/v1alpha1",
+          "kind": "ApplicationNetworkPolicy",
+          "metadata": {
+            "name": "warden-saas-postgres-bootstrap-access",
+            "namespace": "codefly-db-bootstrap-warden-saas-postgres-development"
+          }
+        },
+        "nodeClass": {
+          "apiVersion": "eks.amazonaws.com/v1",
+          "kind": "NodeClass",
+          "metadata": { "name": "warden-saas-postgres-bootstrap-access" }
+        },
+        "nodePool": {
+          "apiVersion": "karpenter.sh/v1",
+          "kind": "NodePool",
+          "metadata": { "name": "warden-saas-postgres-bootstrap-access" }
+        },
+        "requiredPodScheduling": {
+          "nodeSelector": {
+            "node-restriction.kubernetes.io/database-access-1af5602a295c09e4": "warden-saas-postgres-bootstrap-database-access"
+          },
+          "tolerations": [
+            {
+              "key": "node-restriction.kubernetes.io/database-access-1af5602a295c09e4",
+              "operator": "Equal",
+              "value": "warden-saas-postgres-bootstrap-database-access",
+              "effect": "NoSchedule"
+            }
+          ]
+        },
+        "requiredPodLabels": {
+          "security.deus.dev/workload-identity-binding": "warden-saas-postgres-bootstrap"
+        },
+        "requiredPodAnnotations": {
+          "security.deus.dev/workload-identity-binding-digest": "3333333333333333333333333333333333333333333333333333333333333333"
+        }
+      }
+    }
+  },
+  "readiness": {
+    "state": "pending-application",
+    "reason": "DATABASE_ACCESS_BUNDLE_NOT_OBSERVED",
+    "requiredEvidence": [
+      "namespace-observed",
+      "service-account-observed",
+      "admission-policy-enforced",
+      "application-network-policy-enforced",
+      "node-class-ready",
+      "node-pool-ready",
+      "pod-identity-association-observed",
+      "deployment-authority-observed"
+    ]
+  }
+}

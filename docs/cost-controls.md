@@ -47,7 +47,7 @@ This catches:
 
 ## Application-layer enforcement
 
-AWS Budgets is the *floor*, not the *ceiling*. The agent broker enforces:
+AWS Budgets is the _floor_, not the _ceiling_. The agent broker enforces:
 
 - per-tenant token budget (`agenticAi.perTenantTokenBudget`);
 - per-tenant inference timeout (`agenticAi.perTenantInferenceTimeoutSeconds`);

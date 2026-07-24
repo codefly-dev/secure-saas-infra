@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/bootstrap-signing-review-bundle-v1.schema.json",
+  "title": "Confidential independent bootstrap signing review bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "candidateDigest", "files", "bundleDigest"],
+  "properties": {
+    "apiVersion": {
+      "const": "security.deus.dev/bootstrap-signing-review-bundle/v1"
+    },
+    "candidateDigest": { "$ref": "#/$defs/sha256" },
+    "files": {
+      "type": "array",
+      "minItems": 13,
+      "maxItems": 13,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "sourcePath", "sha256", "encoding", "content"],
+        "properties": {
+          "role": {
+            "enum": [
+              "access-bundle",
+              "access-template",
+              "contract-validation",
+              "local-gate-evidence",
+              "native-launcher",
+              "onboarding-configuration",
+              "pulumi-configuration",
+              "qualification-payload",
+              "qualification-request",
+              "release-evidence",
+              "runtime-provenance",
+              "seal-inventory",
+              "sbom"
+            ]
+          },
+          "sourcePath": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "sha256": { "$ref": "#/$defs/sha256" },
+          "encoding": { "const": "base64" },
+          "content": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+          }
+        }
+      }
+    },
+    "bundleDigest": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

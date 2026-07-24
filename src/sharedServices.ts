@@ -22,18 +22,24 @@ export function createSharedServices(config: SharedServicesConfig) {
     ? new aws.s3.Bucket(named("vault-backups"), {
         forceDestroy: false,
         objectLockEnabled: true,
-        tags: tag("vault-backups", { DataClass: "secrets-backup" }),
+        tags: tag("vault-backups", {
+          DataClass: "secrets-backup",
+          EvidenceSinkId: "audit-log",
+        }),
       })
     : undefined;
 
   if (backupBucket) {
-    new aws.s3.BucketPublicAccessBlock(named("vault-backups-public-access-block"), {
-      bucket: backupBucket.id,
-      blockPublicAcls: true,
-      blockPublicPolicy: true,
-      ignorePublicAcls: true,
-      restrictPublicBuckets: true,
-    });
+    new aws.s3.BucketPublicAccessBlock(
+      named("vault-backups-public-access-block"),
+      {
+        bucket: backupBucket.id,
+        blockPublicAcls: true,
+        blockPublicPolicy: true,
+        ignorePublicAcls: true,
+        restrictPublicBuckets: true,
+      },
+    );
 
     new aws.s3.BucketVersioning(named("vault-backups-versioning"), {
       bucket: backupBucket.id,
@@ -42,19 +48,22 @@ export function createSharedServices(config: SharedServicesConfig) {
       },
     });
 
-    new aws.s3.BucketServerSideEncryptionConfiguration(named("vault-backups-encryption"), {
-      bucket: backupBucket.id,
-      rules: [
-        {
-          applyServerSideEncryptionByDefault: {
-            kmsMasterKeyId: vaultKey?.arn,
-            sseAlgorithm: vaultKey ? "aws:kms" : "AES256",
+    new aws.s3.BucketServerSideEncryptionConfiguration(
+      named("vault-backups-encryption"),
+      {
+        bucket: backupBucket.id,
+        rules: [
+          {
+            applyServerSideEncryptionByDefault: {
+              kmsMasterKeyId: vaultKey?.arn,
+              sseAlgorithm: vaultKey ? "aws:kms" : "AES256",
+            },
+            bucketKeyEnabled: Boolean(vaultKey),
+            blockedEncryptionTypes: ["SSE-C"],
           },
-          bucketKeyEnabled: Boolean(vaultKey),
-          blockedEncryptionTypes: ["SSE-C"],
-        },
-      ],
-    });
+        ],
+      },
+    );
 
     new aws.s3.BucketLifecycleConfiguration(named("vault-backups-lifecycle"), {
       bucket: backupBucket.id,
@@ -75,10 +84,14 @@ export function createSharedServices(config: SharedServicesConfig) {
   }
 
   if (config.createTailscaleBootstrapSecrets) {
-    for (const secretName of ["tailscale-oauth-client-id", "tailscale-oauth-client-secret"]) {
+    for (const secretName of [
+      "tailscale-oauth-client-id",
+      "tailscale-oauth-client-secret",
+    ]) {
       new aws.secretsmanager.Secret(named(secretName), {
         name: named(secretName),
-        description: "Bootstrap placeholder. Put the real Tailscale OAuth value after stack creation.",
+        description:
+          "Bootstrap placeholder. Put the real Tailscale OAuth value after stack creation.",
         kmsKeyId: vaultKey?.arn,
         recoveryWindowInDays: 30,
         tags: tag(secretName, { SecretClass: "bootstrap" }),

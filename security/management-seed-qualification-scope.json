@@ -1,0 +1,418 @@
+{
+  "apiVersion": "security.deus.dev/management-seed-qualification-scope/v1",
+  "build": {
+    "programEntrypoint": "src/managementSeed.ts",
+    "programDirectory": "dist-management-seed",
+    "programOutputs": [
+      "managementSeed.js",
+      "managementSeedConfig.js",
+      "organization.js"
+    ],
+    "policyEntrypoint": "policy/managementSeedMain.ts",
+    "policyDirectory": "dist-management-seed-policy",
+    "policyOutputs": ["managementSeed.js", "managementSeedMain.js"],
+    "supportEntrypoint": "src/dependencySecurity.ts",
+    "supportDirectory": "dist-management-seed-support",
+    "supportOutputs": ["dependencySecurity.js"]
+  },
+  "tests": {
+    "compilationSourceFiles": [
+      "policy/managementSeed.ts",
+      "src/dependencySecurity.ts",
+      "src/managementSeedConfig.ts",
+      "src/organization.ts",
+      "tests/adversarialReviewDisposition.test.ts",
+      "tests/bootstrap.test.ts",
+      "tests/bootstrapDoctor.test.ts",
+      "tests/bootstrapQualification.test.ts",
+      "tests/bootstrapRuntimeIntegrity.test.ts",
+      "tests/contractSchemaValidation.test.ts",
+      "tests/dependencySecurity.test.ts",
+      "tests/helpers/managementSeedPulumiMocks.ts",
+      "tests/managementSeedConfig.test.ts",
+      "tests/managementSeedPolicy.test.ts",
+      "tests/organization.test.ts",
+      "tests/release.test.ts",
+      "tests/releaseEvidence.test.ts"
+    ],
+    "compiledOutputs": [
+      "policy/managementSeed.js",
+      "scripts/management-seed-model.cjs",
+      "scripts/management-seed-policy-model.cjs",
+      "src/dependencySecurity.js",
+      "src/managementSeedConfig.js",
+      "src/organization.js",
+      "tests/adversarialReviewDisposition.test.js",
+      "tests/bootstrap.test.js",
+      "tests/bootstrapDoctor.test.js",
+      "tests/bootstrapQualification.test.js",
+      "tests/bootstrapRuntimeIntegrity.test.js",
+      "tests/contractSchemaValidation.test.js",
+      "tests/dependencySecurity.test.js",
+      "tests/helpers/managementSeedPulumiMocks.js",
+      "tests/managementSeedConfig.test.js",
+      "tests/managementSeedPolicy.test.js",
+      "tests/organization.test.js",
+      "tests/release.test.js",
+      "tests/releaseEvidence.test.js"
+    ],
+    "included": [
+      "tests/adversarialReviewDisposition.test.ts",
+      "tests/bootstrap.test.ts",
+      "tests/bootstrapDoctor.test.ts",
+      "tests/bootstrapQualification.test.ts",
+      "tests/bootstrapRuntimeIntegrity.test.ts",
+      "tests/contractSchemaValidation.test.ts",
+      "tests/dependencySecurity.test.ts",
+      "tests/managementSeedConfig.test.ts",
+      "tests/managementSeedPolicy.test.ts",
+      "tests/organization.test.ts",
+      "tests/release.test.ts",
+      "tests/releaseEvidence.test.ts"
+    ],
+    "quarantined": [
+      "tests/adapterContracts.test.ts",
+      "tests/agenticAi.test.ts",
+      "tests/argocd.test.ts",
+      "tests/awsAdapter.test.ts",
+      "tests/awsBootstrapAccess.test.ts",
+      "tests/awsDataAdapter.test.ts",
+      "tests/awsDatabaseBackupAdapter.test.ts",
+      "tests/awsDatabaseInfrastructureHandoff.test.ts",
+      "tests/awsEksAccess.test.ts",
+      "tests/awsIamAdapter.test.ts",
+      "tests/awsManagedPostgresAdapter.test.ts",
+      "tests/awsPostgresIamAuth.test.ts",
+      "tests/awsWorkloadAdapter.test.ts",
+      "tests/awsWorkloadIdentityBinding.test.ts",
+      "tests/backup.test.ts",
+      "tests/blueprintMigrations.test.ts",
+      "tests/blueprintSchema.test.ts",
+      "tests/cidr.test.ts",
+      "tests/cloudContextPublication.test.ts",
+      "tests/cloudContextVerification.test.ts",
+      "tests/compliance.test.ts",
+      "tests/config.test.ts",
+      "tests/contractDifferential.test.ts",
+      "tests/core.test.ts",
+      "tests/costControls.test.ts",
+      "tests/credentialFree.test.ts",
+      "tests/customerData.test.ts",
+      "tests/database.test.ts",
+      "tests/databaseAccess.test.ts",
+      "tests/detection.test.ts",
+      "tests/disposableClusterReportVerifier.test.ts",
+      "tests/dns.test.ts",
+      "tests/e2bByoc.test.ts",
+      "tests/eks.test.ts",
+      "tests/entitlements.test.ts",
+      "tests/environments.test.ts",
+      "tests/githubGovernance.test.ts",
+      "tests/githubOidc.test.ts",
+      "tests/gitops.test.ts",
+      "tests/identity.test.ts",
+      "tests/infrastructureController.test.ts",
+      "tests/infrastructureControllerProtocol.test.ts",
+      "tests/ingress.test.ts",
+      "tests/logArchive.test.ts",
+      "tests/macie.test.ts",
+      "tests/managedPostgresMigrations.test.ts",
+      "tests/network.test.ts",
+      "tests/networkRouting.test.ts",
+      "tests/onboard.test.ts",
+      "tests/policy.test.ts",
+      "tests/policyFixtures.test.ts",
+      "tests/policyStackFixtures.test.ts",
+      "tests/postgresAccessObservation.test.ts",
+      "tests/postgresAccessProfile.test.ts",
+      "tests/preflight.test.ts",
+      "tests/reachability.test.ts",
+      "tests/referenceBlueprints.test.ts",
+      "tests/resourceBroker.test.ts",
+      "tests/securityTooling.test.ts",
+      "tests/sharedServices.test.ts",
+      "tests/spoke.test.ts",
+      "tests/waf.test.ts",
+      "tests/workloadIdentityBinding.test.ts",
+      "tests/workloadPlane.test.ts",
+      "tests/workloadTokenScanner.test.ts"
+    ]
+  },
+  "contracts": {
+    "includedChecked": [],
+    "includedSchemaOnly": [
+      {
+        "schema": "adversarial-review-disposition-v1.schema.json",
+        "owner": "secure-saas-infra/adversarial-review"
+      },
+      {
+        "schema": "bootstrap-qualification-trust-v1.schema.json",
+        "owner": "secure-saas-infra/bootstrap-qualification-trust"
+      },
+      {
+        "schema": "bootstrap-candidate-v1.schema.json",
+        "owner": "secure-saas-infra/bootstrap-candidate"
+      },
+      {
+        "schema": "bootstrap-host-source-manifest-v1.schema.json",
+        "owner": "secure-saas-infra/bootstrap-host-source-manifest"
+      },
+      {
+        "schema": "bootstrap-qualification-request-v1.schema.json",
+        "owner": "secure-saas-infra/bootstrap-qualification-request"
+      },
+      {
+        "schema": "bootstrap-signing-review-bundle-v1.schema.json",
+        "owner": "secure-saas-infra/bootstrap-signing-review"
+      },
+      {
+        "schema": "bootstrap-runtime-provenance-v1.schema.json",
+        "owner": "secure-saas-infra/bootstrap-runtime-provenance"
+      },
+      {
+        "schema": "contract-schema-validation-v1.schema.json",
+        "owner": "secure-saas-infra/contract-schema-validation"
+      },
+      {
+        "schema": "management-seed-release-evidence-v1.schema.json",
+        "owner": "secure-saas-infra/management-seed-release-evidence"
+      },
+      {
+        "schema": "local-gate-evidence-v1.schema.json",
+        "owner": "secure-saas-infra/local-gate-evidence"
+      },
+      {
+        "schema": "management-seed-access-bundle-v1.schema.json",
+        "owner": "secure-saas-infra/management-seed-access"
+      },
+      {
+        "schema": "management-seed-access-change-set-receipt-v1.schema.json",
+        "owner": "secure-saas-infra/management-seed-access-provisioning"
+      },
+      {
+        "schema": "management-seed-access-foundation-observation-receipt-v1.schema.json",
+        "owner": "secure-saas-infra/management-seed-access-provisioning"
+      },
+      {
+        "schema": "management-seed-organization-recovery-receipt-v1.schema.json",
+        "owner": "secure-saas-infra/management-seed-organization-recovery"
+      },
+      {
+        "schema": "management-seed-provisioner-retirement-receipt-v1.schema.json",
+        "owner": "secure-saas-infra/management-seed-access-provisioning"
+      },
+      {
+        "schema": "pulumi-plan-manifest-v1alpha1.schema.json",
+        "owner": "secure-saas-infra/pulumi-plan-manifest"
+      },
+      {
+        "schema": "system-runtime-closure-v1.schema.json",
+        "owner": "secure-saas-infra/system-runtime-closure"
+      }
+    ],
+    "quarantinedChecked": [
+      {
+        "contract": "aws-bootstrap-access-v1alpha1.json",
+        "schema": "aws-bootstrap-access-v1alpha1.schema.json"
+      },
+      {
+        "contract": "aws-database-infrastructure-handoff-v1alpha1.json",
+        "schema": "aws-database-infrastructure-handoff-v1alpha1.schema.json"
+      },
+      {
+        "contract": "cloud-context-observation-v1alpha1.json",
+        "schema": "cloud-context-observation-v1alpha1.schema.json"
+      },
+      {
+        "contract": "cloud-context-v1alpha1.json",
+        "schema": "cloud-context-v1alpha1.schema.json"
+      },
+      {
+        "contract": "infrastructure-controller-protocol-v1alpha1.json",
+        "schema": "infrastructure-controller-protocol-v1alpha1.schema.json"
+      },
+      {
+        "contract": "infrastructure-controller-request-v1alpha1.json",
+        "schema": "infrastructure-controller-request-v1alpha1.schema.json"
+      },
+      {
+        "contract": "managed-postgres-v1alpha1.json",
+        "schema": "managed-postgres-v1alpha1.schema.json"
+      },
+      {
+        "contract": "managed-postgres-v1alpha2.json",
+        "schema": "managed-postgres-v1alpha2.schema.json"
+      },
+      {
+        "contract": "postgres-access-observation-v1alpha1.json",
+        "schema": "postgres-access-observation-v1alpha1.schema.json"
+      },
+      {
+        "contract": "postgres-access-profile-v1alpha1.json",
+        "schema": "postgres-access-profile-v1alpha1.schema.json"
+      },
+      {
+        "contract": "workload-identity-binding-v1alpha1.json",
+        "schema": "workload-identity-binding-v1alpha1.schema.json"
+      }
+    ],
+    "quarantinedSchemaOnly": [
+      "disposable-cluster-validation-v1.schema.json",
+      "resource-broker-state-v1alpha1.schema.json",
+      "resource-claim-v1alpha1.schema.json"
+    ]
+  },
+  "sourceFiles": [
+    ".github/CODEOWNERS",
+    ".github/pull_request_template.md",
+    ".github/workflows/infra-ci.yml",
+    ".github/workflows/release.yml",
+    ".github/workflows/review-promotion.yml",
+    ".tool-versions",
+    "Pulumi.management.yaml.example",
+    "Pulumi.yaml",
+    "cmd/deus-aws-bootstrap/anonymous_pipe_linux.go",
+    "cmd/deus-aws-bootstrap/anonymous_pipe_other.go",
+    "cmd/deus-aws-bootstrap/credential_broker.go",
+    "cmd/deus-aws-bootstrap/elf_closure_linux.go",
+    "cmd/deus-aws-bootstrap/hardening_linux.go",
+    "cmd/deus-aws-bootstrap/hardening_linux_test.go",
+    "cmd/deus-aws-bootstrap/hardening_other.go",
+    "cmd/deus-aws-bootstrap/host_kit_archive.go",
+    "cmd/deus-aws-bootstrap/host_kit_archive_test.go",
+    "cmd/deus-aws-bootstrap/landlock_linux_test.go",
+    "cmd/deus-aws-bootstrap/main.go",
+    "cmd/deus-aws-bootstrap/main_test.go",
+    "cmd/deus-aws-bootstrap/plan_review_linux.go",
+    "cmd/deus-aws-bootstrap/plan_review_other.go",
+    "cmd/deus-aws-bootstrap/runtime_service_linux.go",
+    "cmd/deus-aws-bootstrap/runtime_service_other.go",
+    "cmd/deus-aws-bootstrap/seal_inventory_linux.go",
+    "cmd/deus-aws-bootstrap/seal_inventory_linux_test.go",
+    "cmd/deus-aws-bootstrap/seal_inventory_other.go",
+    "cmd/deus-aws-bootstrap/signer_sudoers_linux.go",
+    "cmd/deus-aws-bootstrap/signer_sudoers_other.go",
+    "cmd/deus-aws-bootstrap/signer_tree_linux.go",
+    "cmd/deus-aws-bootstrap/signing_service_linux.go",
+    "cmd/deus-aws-bootstrap/signing_service_other.go",
+    "cmd/deus-aws-bootstrap/sudoers_linux.go",
+    "cmd/deus-aws-bootstrap/sudoers_other.go",
+    "cmd/deus-aws-bootstrap/uid_unix.go",
+    "docs/iac-platform-boundary.md",
+    "docs/management-seed-runbook.md",
+    "go.mod",
+    "onboarding.config.example.json",
+    "package-lock.json",
+    "package.json",
+    "policy/PulumiPolicy.yaml",
+    "policy/managementSeed.ts",
+    "policy/managementSeedMain.ts",
+    "policy/package.json",
+    "schemas/adversarial-review-disposition-v1.schema.json",
+    "schemas/bootstrap-candidate-v1.schema.json",
+    "schemas/bootstrap-host-source-manifest-v1.schema.json",
+    "schemas/bootstrap-qualification-request-v1.schema.json",
+    "schemas/bootstrap-qualification-trust-v1.schema.json",
+    "schemas/bootstrap-runtime-provenance-v1.schema.json",
+    "schemas/bootstrap-signing-review-bundle-v1.schema.json",
+    "schemas/contract-schema-validation-v1.schema.json",
+    "schemas/local-gate-evidence-v1.schema.json",
+    "schemas/management-seed-access-bundle-v1.schema.json",
+    "schemas/management-seed-access-change-set-receipt-v1.schema.json",
+    "schemas/management-seed-access-foundation-observation-receipt-v1.schema.json",
+    "schemas/management-seed-organization-recovery-receipt-v1.schema.json",
+    "schemas/management-seed-provisioner-retirement-receipt-v1.schema.json",
+    "schemas/management-seed-release-evidence-v1.schema.json",
+    "schemas/pulumi-plan-manifest-v1alpha1.schema.json",
+    "schemas/system-runtime-closure-v1.schema.json",
+    "schemas/vendor/spdx-2.3.schema.json",
+    "scripts/audit-dependencies.mjs",
+    "scripts/bootstrap-candidate-runtime.mjs",
+    "scripts/bootstrap-doctor.mjs",
+    "scripts/bootstrap-host-toolchain.mjs",
+    "scripts/bootstrap-main.mjs",
+    "scripts/bootstrap-runtime-integrity.mjs",
+    "scripts/bootstrap-seal-inventory.mjs",
+    "scripts/bootstrap-signing-stage0.mjs",
+    "scripts/bootstrap.mjs",
+    "scripts/build-native-bootstrap-launcher",
+    "scripts/check-management-seed-format.mjs",
+    "scripts/credential-free-qualification",
+    "scripts/credentialed-bootstrap",
+    "scripts/credentialed-bootstrap-stage1.mjs",
+    "scripts/finalize-bootstrap-candidate.mjs",
+    "scripts/generate-release-evidence.mjs",
+    "scripts/generate-sbom.mjs",
+    "scripts/immutable-plan.mjs",
+    "scripts/install-bootstrap-runtime",
+    "scripts/management-seed-access-live.mjs",
+    "scripts/management-seed-access-provisioner",
+    "scripts/management-seed-access-provisioning.mjs",
+    "scripts/management-seed-access.mjs",
+    "scripts/management-seed-capacity.mjs",
+    "scripts/management-seed-contract.mjs",
+    "scripts/management-seed-model.cjs",
+    "scripts/management-seed-organization-recovery.mjs",
+    "scripts/management-seed-organization-state.mjs",
+    "scripts/management-seed-policy-model.cjs",
+    "scripts/management-seed-sbom.mjs",
+    "scripts/management-seed-scope.mjs",
+    "scripts/management-seed-source-closure.mjs",
+    "scripts/management-seed-test-runtime-guard.cjs",
+    "scripts/package-bootstrap-host-kit",
+    "scripts/prepare-bootstrap-plugins",
+    "scripts/prepare-bootstrap-plugins.mjs",
+    "scripts/prepare-qualified-execution-root",
+    "scripts/provision-management-seed-access-main.mjs",
+    "scripts/provision-management-seed-access.mjs",
+    "scripts/pulumi-lifecycle.mjs",
+    "scripts/qualify-bootstrap-candidate.mjs",
+    "scripts/render-management-seed-access.mjs",
+    "scripts/review-disposition.mjs",
+    "scripts/run-iac-unit-tests.mjs",
+    "scripts/run-local-gates.mjs",
+    "scripts/safe-git.mjs",
+    "scripts/test-native-bootstrap-launcher",
+    "scripts/validate-contract-schemas.mjs",
+    "scripts/validate-management-seed-policies.mjs",
+    "scripts/validate-management-seed-syntax.mjs",
+    "scripts/verify-bootstrap-signing-review.mjs",
+    "scripts/verify-management-seed-access.mjs",
+    "scripts/verify-management-seed-release-evidence.mjs",
+    "scripts/verify-management-seed-scope.mjs",
+    "scripts/verify-review-promotion.mjs",
+    "scripts/vet-native-bootstrap-launcher",
+    "scripts/write-bootstrap-host-source-manifest.mjs",
+    "scripts/write-bootstrap-runtime-provenance.mjs",
+    "scripts/write-management-seed-release-manifest.mjs",
+    "security/adversarial-review-disposition.json",
+    "security/aws-management-seed-apply-policy.json",
+    "security/aws-management-seed-preview-policy.json",
+    "security/bootstrap-host-toolchain.json",
+    "security/bootstrap-qualification-trust.json",
+    "security/dependency-exceptions.json",
+    "security/management-seed-qualification-scope.json",
+    "src/dependencySecurity.ts",
+    "src/managementSeed.ts",
+    "src/managementSeedConfig.ts",
+    "src/organization.ts",
+    "tests/adversarialReviewDisposition.test.ts",
+    "tests/bootstrap.test.ts",
+    "tests/bootstrapDoctor.test.ts",
+    "tests/bootstrapQualification.test.ts",
+    "tests/bootstrapRuntimeIntegrity.test.ts",
+    "tests/contractSchemaValidation.test.ts",
+    "tests/dependencySecurity.test.ts",
+    "tests/helpers/managementSeedPulumiMocks.ts",
+    "tests/managementSeedConfig.test.ts",
+    "tests/managementSeedPolicy.test.ts",
+    "tests/organization.test.ts",
+    "tests/release.test.ts",
+    "tests/releaseEvidence.test.ts",
+    "tsconfig.json",
+    "tsconfig.management-seed-policy.json",
+    "tsconfig.management-seed-support.json",
+    "tsconfig.management-seed-test.json",
+    "tsconfig.management-seed.json"
+  ]
+}

@@ -1,0 +1,196 @@
+#!/bin/sh
+set -eu
+
+install_root=/usr/local/lib/deus-bootstrap
+aws_fingerprint=FB5DB77FD5C118B80511ADA8A6310ACC4672475C
+
+if [ "$(/usr/bin/id -u)" -ne 0 ] || [ "$(/usr/bin/uname -s)" != Linux ]; then
+  echo "install-bootstrap-runtime: requires root on a dedicated Linux host" >&2
+  exit 64
+fi
+if [ -n "${AWS_ACCESS_KEY_ID-}${AWS_SECRET_ACCESS_KEY-}${AWS_SESSION_TOKEN-}${AWS_PROFILE-}${AWS_WEB_IDENTITY_TOKEN_FILE-}${PULUMI_ACCESS_TOKEN-}${PULUMI_CONFIG_PASSPHRASE-}${NODE_OPTIONS-}${LD_PRELOAD-}${LD_AUDIT-}" ]; then
+  echo "install-bootstrap-runtime: credentials and loader indirection are forbidden" >&2
+  exit 64
+fi
+if [ -e "$install_root" ] || [ -L "$install_root" ]; then
+  echo "install-bootstrap-runtime: $install_root must not exist" >&2
+  exit 78
+fi
+ptrace_scope=$(/bin/cat /proc/sys/kernel/yama/ptrace_scope 2>/dev/null || true)
+case "$ptrace_scope" in
+  2|3) ;;
+  *)
+    echo "install-bootstrap-runtime: requires kernel.yama.ptrace_scope=2 or 3 before installation" >&2
+    exit 65
+    ;;
+esac
+
+case "$0" in
+  /*) installer=$0 ;;
+  *) installer=$PWD/$0 ;;
+esac
+repository=$(CDPATH= cd -- "${installer%/*}/.." && pwd -P)
+
+assert_root_protected() {
+  value=$1
+  current=/
+  old_ifs=$IFS
+  IFS=/
+  set -- ${value#/}
+  IFS=$old_ifs
+  for part in "$@"; do
+    current=${current%/}/$part
+    if [ -L "$current" ]; then
+      echo "install-bootstrap-runtime: privileged kit path contains a symlink: $current" >&2
+      exit 65
+    fi
+    owner=$(/usr/bin/stat -c '%u' "$current")
+    mode=$(/usr/bin/stat -c '%a' "$current")
+    if [ "$owner" -ne 0 ] || [ $((0$mode & 022)) -ne 0 ]; then
+      echo "install-bootstrap-runtime: privileged kit path is not root-owned and protected: $current" >&2
+      exit 65
+    fi
+  done
+}
+assert_root_protected "$installer"
+assert_root_protected "$repository/scripts/bootstrap-signing-stage0.mjs"
+assert_root_protected "$repository/scripts/write-bootstrap-runtime-provenance.mjs"
+assert_root_protected "$repository/management-seed-source-manifest.json"
+assert_root_protected "$repository/RELEASE"
+assert_root_protected "${install_root%/*}"
+
+go_archive=
+node_archive=
+pulumi_archive=
+aws_archive=
+aws_signature=
+aws_public_key=
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --go-archive) go_archive=${2-}; shift 2 ;;
+    --node-archive) node_archive=${2-}; shift 2 ;;
+    --pulumi-archive) pulumi_archive=${2-}; shift 2 ;;
+    --aws-archive) aws_archive=${2-}; shift 2 ;;
+    --aws-signature) aws_signature=${2-}; shift 2 ;;
+    --aws-public-key) aws_public_key=${2-}; shift 2 ;;
+    *) echo "install-bootstrap-runtime: unknown argument $1" >&2; exit 64 ;;
+  esac
+done
+for input in "$go_archive" "$node_archive" "$pulumi_archive" "$aws_archive" "$aws_signature" "$aws_public_key"; do
+  if [ -z "$input" ] || [ ! -f "$input" ] || [ -L "$input" ]; then
+    echo "install-bootstrap-runtime: every input must be a direct regular file" >&2
+    exit 64
+  fi
+done
+
+case "$(/usr/bin/uname -m)" in
+  x86_64)
+    architecture=amd64
+    go_file=go1.26.5.linux-amd64.tar.gz
+    go_sha=5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053
+    node_file=node-v24.18.0-linux-x64.tar.xz
+    node_sha=55aa7153f9d88f28d765fcdad5ae6945b5c0f98a36881703817e4c450fa76742
+    pulumi_file=pulumi-v3.253.0-linux-x64.tar.gz
+    pulumi_sha=33161e521280e6c77395a46344dba5ff9c118a90df254801e662087143b4d1ac
+    aws_file=awscli-exe-linux-x86_64-2.36.2.zip
+    ;;
+  aarch64|arm64)
+    architecture=arm64
+    go_file=go1.26.5.linux-arm64.tar.gz
+    go_sha=fe4789e92b1f33358680864bbe8704289e7bb5fc207d80623c308935bd696d49
+    node_file=node-v24.18.0-linux-arm64.tar.xz
+    node_sha=58c9520501f6ae2b52d5b210444e24b9d0c029a58c5011b797bc1fe7105886f6
+    pulumi_file=pulumi-v3.253.0-linux-arm64.tar.gz
+    pulumi_sha=7d7074d67a76139226c163b2365f14fbd45d8e2251362a2e10dc4602b3b577ea
+    aws_file=awscli-exe-linux-aarch64-2.36.2.zip
+    ;;
+  *) echo "install-bootstrap-runtime: unsupported architecture" >&2; exit 64 ;;
+esac
+
+temporary=$(/usr/bin/mktemp -d "${install_root%/*}/.deus-bootstrap-runtime.XXXXXX")
+cleanup() { /bin/rm -rf "$temporary"; }
+trap cleanup EXIT HUP INT TERM
+/bin/cp "$go_archive" "$temporary/$go_file"
+/bin/cp "$node_archive" "$temporary/$node_file"
+/bin/cp "$pulumi_archive" "$temporary/$pulumi_file"
+/bin/cp "$aws_archive" "$temporary/$aws_file"
+/bin/cp "$aws_signature" "$temporary/$aws_file.sig"
+/bin/cp "$aws_public_key" "$temporary/aws-cli-team.asc"
+
+verify_sha() {
+  expected=$1
+  file=$2
+  observed=$(/usr/bin/sha256sum "$file" | /usr/bin/awk '{print $1}')
+  if [ "$observed" != "$expected" ]; then
+    echo "install-bootstrap-runtime: checksum mismatch for ${file##*/}" >&2
+    exit 65
+  fi
+}
+verify_sha "$go_sha" "$temporary/$go_file"
+verify_sha "$node_sha" "$temporary/$node_file"
+verify_sha "$pulumi_sha" "$temporary/$pulumi_file"
+aws_sha=$(/usr/bin/sha256sum "$temporary/$aws_file" | /usr/bin/awk '{print $1}')
+
+/bin/mkdir -m 0700 "$temporary/gnupg"
+GNUPGHOME="$temporary/gnupg" /usr/bin/gpg --batch --quiet --import "$temporary/aws-cli-team.asc"
+observed_primary_fingerprints=$(GNUPGHOME="$temporary/gnupg" /usr/bin/gpg --batch --with-colons --fingerprint | /usr/bin/awk -F: '$1 == "pub" { want = 1; next } want && $1 == "fpr" { print $10; want = 0 }')
+if [ "$observed_primary_fingerprints" != "$aws_fingerprint" ]; then
+  echo "install-bootstrap-runtime: AWS CLI signing key fingerprint mismatch" >&2
+  exit 65
+fi
+signature_status=$(GNUPGHOME="$temporary/gnupg" /usr/bin/gpg --batch --status-fd 1 --verify "$temporary/$aws_file.sig" "$temporary/$aws_file" 2>/dev/null)
+valid_signature=$(/bin/echo "$signature_status" | /usr/bin/awk -v expected="$aws_fingerprint" '$2 == "VALIDSIG" && $3 == expected { print $3 }')
+if [ "$valid_signature" != "$aws_fingerprint" ]; then
+  echo "install-bootstrap-runtime: AWS CLI archive was not signed by the pinned primary key" >&2
+  exit 65
+fi
+
+runtime="$temporary/runtime"
+/bin/mkdir -p "$runtime/bin" "$runtime/qualification-bin" "$runtime/qualification/node_modules" "$runtime/toolchains/go" "$runtime/toolchains/pulumi"
+/usr/bin/install -m 0444 "$repository/scripts/bootstrap-signing-stage0.mjs" "$runtime/bootstrap-signing-stage0.mjs"
+/usr/bin/install -m 0444 "$repository/management-seed-source-manifest.json" "$runtime/management-seed-source-manifest.json"
+/usr/bin/install -m 0444 "$repository/RELEASE" "$runtime/RELEASE"
+/bin/mkdir "$temporary/node" "$temporary/pulumi" "$temporary/aws"
+/bin/tar -C "$runtime/toolchains/go" --strip-components=1 --no-same-owner -xzf "$temporary/$go_file"
+/bin/tar -C "$temporary/node" --strip-components=1 --no-same-owner -xJf "$temporary/$node_file"
+/usr/bin/install -m 0555 "$temporary/node/bin/node" "$runtime/bin/node"
+/bin/cp -a "$temporary/node/lib/node_modules/npm" "$runtime/qualification/node_modules/npm"
+/bin/ln -s ../qualification/node_modules/npm/bin/npm-cli.js "$runtime/qualification-bin/npm"
+/bin/ln -s ../qualification/node_modules/npm/bin/npx-cli.js "$runtime/qualification-bin/npx"
+/bin/tar -C "$runtime/toolchains/pulumi" --strip-components=1 --no-same-owner -xzf "$temporary/$pulumi_file"
+for command in pulumi pulumi-analyzer-policy pulumi-language-nodejs pulumi-resource-pulumi-nodejs; do
+  if [ ! -f "$runtime/toolchains/pulumi/$command" ]; then
+    echo "install-bootstrap-runtime: Pulumi distribution is missing $command" >&2
+    exit 65
+  fi
+  /bin/ln -s "../toolchains/pulumi/$command" "$runtime/bin/$command"
+done
+/usr/bin/unzip -q "$temporary/$aws_file" -d "$temporary/aws"
+"$temporary/aws/aws/install" --install-dir "$runtime/toolchains/aws-cli" --bin-dir "$runtime/bin"
+/bin/rm -f "$runtime/bin/aws"
+/bin/ln -s ../toolchains/aws-cli/v2/current/bin/aws "$runtime/bin/aws"
+
+"$repository/deus-aws-bootstrap" runtime-elf-closure \
+  --root "$runtime" \
+  --output "$runtime/system-runtime-closure.json"
+
+"$runtime/bin/node" "$repository/scripts/write-bootstrap-runtime-provenance.mjs" \
+  --root "$runtime" \
+  --architecture "$architecture" \
+  --go-file "$go_file" --go-sha256 "$go_sha" \
+  --node-file "$node_file" --node-sha256 "$node_sha" \
+  --pulumi-file "$pulumi_file" --pulumi-sha256 "$pulumi_sha" \
+  --aws-file "$aws_file" --aws-sha256 "$aws_sha" \
+  --aws-signing-key-fingerprint "$aws_fingerprint"
+
+/bin/chown -R 0:0 "$runtime"
+/usr/bin/find "$runtime" -type d -exec /bin/chmod 0755 {} \;
+/usr/bin/find "$runtime" -type f -exec /bin/chmod go-w {} \;
+/bin/chmod 0444 "$runtime/runtime-provenance.json"
+/bin/chmod 0444 "$runtime/system-runtime-closure.json"
+/bin/chmod 0555 "$runtime/bin/node" "$runtime/toolchains/go/bin/go"
+/bin/mkdir -p "${install_root%/*}"
+/bin/mv "$runtime" "$install_root"
+trap - EXIT HUP INT TERM
+/bin/rm -rf "$temporary"
+echo "Installed authenticated bootstrap runtime at $install_root"

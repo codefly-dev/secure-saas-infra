@@ -44,6 +44,7 @@ if (failures.length === 0) {
   verifyStackRefs();
   verifyCodeowners();
   verifyGitopsRepoUrls();
+  verifySupplyChainTrust();
   verifyGeneratedSummary();
 }
 
@@ -228,6 +229,18 @@ function verifyGitopsRepoUrls() {
   }
 }
 
+function verifySupplyChainTrust() {
+  const file = "gitops/base/kyverno/verify-signed-provenance.yaml";
+  const body = read(file);
+  if (!body) return;
+  mustContain(file, body, `ghcr.io/${githubOrg}/${repo}/*`);
+  mustContain(
+    file,
+    body,
+    `github\\.com/${githubOrg}/${repo}/\\.github/workflows/`,
+  );
+}
+
 function verifyGeneratedSummary() {
   const file = "ONBOARDING.generated.md";
   const body = read(file);
@@ -259,6 +272,7 @@ function requiredGeneratedFiles() {
     ".github/CODEOWNERS",
     "gitops/bootstrap/argocd/base/platform-cluster-baseline.application.yaml",
     "gitops/bootstrap/argocd/base/execution-cluster-baseline.application.yaml",
+    "gitops/base/kyverno/verify-signed-provenance.yaml",
     "ONBOARDING.generated.md",
   ];
 }

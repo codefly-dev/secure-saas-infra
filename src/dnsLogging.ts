@@ -27,20 +27,18 @@ export function createDnsQueryLogging(args: {
     },
   );
 
-  const associations = pulumi
-    .output(args.vpcIds)
-    .apply((ids) =>
-      ids.map(
-        (vpcId, index) =>
-          new aws.route53.ResolverQueryLogConfigAssociation(
-            named(`${args.name}-dns-log-assoc-${index + 1}`),
-            {
-              resolverQueryLogConfigId: resolverLogConfig.id,
-              resourceId: vpcId,
-            },
-          ),
-      ),
-    );
+  const associations = pulumi.output(args.vpcIds).apply((ids) =>
+    ids.map(
+      (vpcId, index) =>
+        new aws.route53.ResolverQueryLogConfigAssociation(
+          named(`${args.name}-dns-log-assoc-${index + 1}`),
+          {
+            resolverQueryLogConfigId: resolverLogConfig.id,
+            resourceId: vpcId,
+          },
+        ),
+    ),
+  );
 
   return associations.apply((assoc) => ({
     logGroup,

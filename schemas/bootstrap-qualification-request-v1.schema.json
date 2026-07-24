@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/bootstrap-qualification-request-v1.schema.json",
+  "title": "Unsigned credential-free AWS bootstrap qualification request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "generatedAt",
+    "signingKeyId",
+    "source",
+    "configuration",
+    "pulumiBackend",
+    "build",
+    "localGateEvidence",
+    "nativeLauncher",
+    "releaseEvidence",
+    "tools",
+    "runtime",
+    "runtimeProvenance",
+    "sealInventory",
+    "candidateDigest"
+  ],
+  "properties": {
+    "apiVersion": {
+      "$ref": "bootstrap-candidate-v1.schema.json#/properties/apiVersion"
+    },
+    "generatedAt": {
+      "$ref": "bootstrap-candidate-v1.schema.json#/properties/generatedAt"
+    },
+    "signingKeyId": {
+      "$ref": "bootstrap-candidate-v1.schema.json#/properties/signingKeyId"
+    },
+    "source": {
+      "$ref": "bootstrap-candidate-v1.schema.json#/properties/source"
+    },
+    "configuration": {
+      "$ref": "bootstrap-candidate-v1.schema.json#/properties/configuration"
+    },
+    "pulumiBackend": {
+      "$ref": "bootstrap-candidate-v1.schema.json#/properties/pulumiBackend"
+    },
+    "build": {
+      "$ref": "bootstrap-candidate-v1.schema.json#/properties/build"
+    },
+    "localGateEvidence": {
+      "$ref": "bootstrap-candidate-v1.schema.json#/properties/localGateEvidence"
+    },
+    "nativeLauncher": {
+      "$ref": "bootstrap-candidate-v1.schema.json#/properties/nativeLauncher"
+    },
+    "releaseEvidence": {
+      "$ref": "bootstrap-candidate-v1.schema.json#/properties/releaseEvidence"
+    },
+    "tools": {
+      "$ref": "bootstrap-candidate-v1.schema.json#/properties/tools"
+    },
+    "runtime": {
+      "$ref": "bootstrap-candidate-v1.schema.json#/properties/runtime"
+    },
+    "runtimeProvenance": {
+      "$ref": "bootstrap-candidate-v1.schema.json#/properties/runtimeProvenance"
+    },
+    "sealInventory": {
+      "$ref": "bootstrap-candidate-v1.schema.json#/properties/sealInventory"
+    },
+    "candidateDigest": {
+      "$ref": "bootstrap-candidate-v1.schema.json#/properties/candidateDigest"
+    }
+  }
+}

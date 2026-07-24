@@ -1,0 +1,135 @@
+#!/bin/sh
+set -eu
+
+if [ "$(/usr/bin/uname -s)" != Linux ]; then
+  echo "package-bootstrap-host-kit: Linux release builder required" >&2
+  exit 64
+fi
+if [ -n "${AWS_ACCESS_KEY_ID-}${AWS_SECRET_ACCESS_KEY-}${AWS_SESSION_TOKEN-}${AWS_PROFILE-}${PULUMI_ACCESS_TOKEN-}${PULUMI_CONFIG_PASSPHRASE-}${NODE_OPTIONS-}${LD_PRELOAD-}${LD_AUDIT-}" ]; then
+  echo "package-bootstrap-host-kit: credentials and loader indirection are forbidden" >&2
+  exit 64
+fi
+
+tag=
+revision=
+architecture=
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --tag) tag=${2-}; shift 2 ;;
+    --revision) revision=${2-}; shift 2 ;;
+    --architecture) architecture=${2-}; shift 2 ;;
+    *) echo "package-bootstrap-host-kit: unknown argument $1" >&2; exit 64 ;;
+  esac
+done
+if ! /bin/echo "$tag" | /bin/grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+([+-][A-Za-z0-9.-]+)?$'; then
+  echo "package-bootstrap-host-kit: --tag must be an exact release tag" >&2
+  exit 64
+fi
+if ! /bin/echo "$revision" | /bin/grep -Eq '^[a-f0-9]{40}$'; then
+  echo "package-bootstrap-host-kit: --revision must be a full Git revision" >&2
+  exit 64
+fi
+case "$architecture:$(/usr/bin/uname -m)" in
+  amd64:x86_64|arm64:aarch64|arm64:arm64) ;;
+  *) echo "package-bootstrap-host-kit: --architecture must match the native builder" >&2; exit 64 ;;
+esac
+
+case "$0" in
+  /*) launcher=$0 ;;
+  *) launcher=$PWD/$0 ;;
+esac
+repository=$(CDPATH= cd -- "${launcher%/*}/.." && pwd -P)
+cd "$repository"
+actual_revision=$(/usr/bin/env -i HOME=/nonexistent PATH=/usr/bin:/bin \
+  GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null GIT_CONFIG_NOSYSTEM=1 \
+  /usr/bin/git -c core.fsmonitor=false -c core.hooksPath=/dev/null \
+  -c credential.helper= rev-parse HEAD)
+actual_tag=$(/usr/bin/env -i HOME=/nonexistent PATH=/usr/bin:/bin \
+  GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null GIT_CONFIG_NOSYSTEM=1 \
+  /usr/bin/git -c core.fsmonitor=false -c core.hooksPath=/dev/null \
+  -c credential.helper= describe --tags --exact-match HEAD)
+if [ "$actual_revision" != "$revision" ] || [ "$actual_tag" != "$tag" ]; then
+  echo "package-bootstrap-host-kit: release arguments do not match checkout" >&2
+  exit 65
+fi
+
+for input in \
+  artifacts/deus-aws-bootstrap \
+  scripts/bootstrap-signing-stage0.mjs \
+  scripts/install-bootstrap-runtime \
+  scripts/write-bootstrap-host-source-manifest.mjs \
+  scripts/write-bootstrap-runtime-provenance.mjs \
+  scripts/credentialed-bootstrap-stage1.mjs \
+  security/bootstrap-host-toolchain.json \
+  security/bootstrap-qualification-trust.json
+do
+  if [ ! -f "$input" ] || [ -L "$input" ]; then
+    echo "package-bootstrap-host-kit: unsafe or missing input $input" >&2
+    exit 65
+  fi
+done
+
+node_binary=$(command -v node)
+case "$node_binary" in
+  /*) ;;
+  *) echo "package-bootstrap-host-kit: exact Node is unavailable" >&2; exit 65 ;;
+esac
+if [ "$($node_binary --version)" != v24.18.0 ]; then
+  echo "package-bootstrap-host-kit: Node must be exactly 24.18.0" >&2
+  exit 65
+fi
+"$node_binary" --input-type=module -e '
+  import { createHash, createPublicKey } from "node:crypto";
+  import { readFileSync } from "node:fs";
+  const trust = JSON.parse(readFileSync("security/bootstrap-qualification-trust.json", "utf8"));
+  const publicDer = Buffer.from(trust.publicKeySpki ?? "", "base64url");
+  let publicKey;
+  try {
+    publicKey = createPublicKey({ key: publicDer, format: "der", type: "spki" });
+  } catch {
+    throw new Error("release host kit qualification trust is not valid SPKI");
+  }
+  if (trust.configured !== true || trust.algorithm !== "Ed25519" ||
+      publicKey.asymmetricKeyType !== "ed25519" ||
+      createHash("sha256").update(publicDer).digest("hex") !== trust.keyId) {
+    throw new Error("release host kit requires a configured Ed25519 qualification trust root");
+  }
+'
+
+staging="$repository/artifacts/bootstrap-host-kit"
+archive="$repository/artifacts/deus-bootstrap-host-kit-$tag-$architecture.tar.gz"
+/bin/rm -rf "$staging" "$archive"
+/bin/mkdir -p "$staging/scripts" "$staging/security"
+/bin/chmod 0755 "$staging" "$staging/scripts" "$staging/security"
+/usr/bin/install -m 0555 artifacts/deus-aws-bootstrap "$staging/deus-aws-bootstrap"
+/usr/bin/install -m 0444 scripts/bootstrap-signing-stage0.mjs "$staging/scripts/bootstrap-signing-stage0.mjs"
+/usr/bin/install -m 0555 scripts/install-bootstrap-runtime "$staging/scripts/install-bootstrap-runtime"
+/usr/bin/install -m 0444 scripts/write-bootstrap-runtime-provenance.mjs "$staging/scripts/write-bootstrap-runtime-provenance.mjs"
+/usr/bin/install -m 0444 scripts/credentialed-bootstrap-stage1.mjs "$staging/scripts/credentialed-bootstrap-stage1.mjs"
+/usr/bin/install -m 0444 security/bootstrap-host-toolchain.json "$staging/security/bootstrap-host-toolchain.json"
+/usr/bin/install -m 0444 security/bootstrap-qualification-trust.json "$staging/security/bootstrap-qualification-trust.json"
+/usr/bin/printf 'releaseTag=%s\nsourceRevision=%s\narchitecture=%s\n' "$tag" "$revision" "$architecture" > "$staging/RELEASE"
+/bin/chmod 0444 "$staging/RELEASE"
+"$node_binary" scripts/write-bootstrap-host-source-manifest.mjs \
+  --tag "$tag" \
+  --revision "$revision" \
+  --output "artifacts/bootstrap-host-kit/management-seed-source-manifest.json"
+(
+  cd "$staging"
+  /usr/bin/sha256sum \
+    RELEASE \
+    management-seed-source-manifest.json \
+    deus-aws-bootstrap \
+    scripts/bootstrap-signing-stage0.mjs \
+    scripts/credentialed-bootstrap-stage1.mjs \
+    scripts/install-bootstrap-runtime \
+    scripts/write-bootstrap-runtime-provenance.mjs \
+    security/bootstrap-host-toolchain.json \
+    security/bootstrap-qualification-trust.json > SHA256SUMS
+  /bin/chmod 0444 SHA256SUMS
+)
+
+/bin/tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner \
+  -C "$staging" -cf - . | /bin/gzip -n > "$archive"
+/bin/chmod 0444 "$archive"
+echo "Packaged authenticated-stage input at ${archive#$repository/}"

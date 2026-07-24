@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/aws-database-infrastructure-handoff-v1alpha1.schema.json",
+  "title": "Content-addressed AWS database infrastructure handoff",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "bindingId",
+    "handoffSpecDigest",
+    "owner",
+    "authorizedConsumer",
+    "applicationMutationAllowed",
+    "deploymentAuthorization",
+    "accessClasses",
+    "readiness"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "infrastructure.deus.dev/aws-database-infrastructure-handoff/v1alpha1"
+    },
+    "kind": { "const": "AwsDatabaseInfrastructureHandoff" },
+    "bindingId": { "$ref": "#/$defs/identifier" },
+    "handoffSpecDigest": { "$ref": "#/$defs/sha256" },
+    "owner": { "const": "external-iac" },
+    "authorizedConsumer": { "const": "infrastructure-controller" },
+    "applicationMutationAllowed": { "const": false },
+    "deploymentAuthorization": {
+      "$ref": "#/$defs/deploymentAuthorization"
+    },
+    "accessClasses": { "$ref": "#/$defs/accessClasses" },
+    "readiness": { "$ref": "#/$defs/readiness" }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9._:-]*$"
+    },
+    "dnsLabel": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+    },
+    "sha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "opaque": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[A-Za-z0-9._:/=-]+$"
+    },
+    "deploymentAuthorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "directPodCreationAllowed",
+        "namespaceWriteAccess",
+        "allowedWorkloadKinds",
+        "requiredActorEvidence"
+      ],
+      "properties": {
+        "state": { "const": "pending-identity-binding" },
+        "directPodCreationAllowed": { "const": false },
+        "namespaceWriteAccess": { "const": "exclusive-controller" },
+        "allowedWorkloadKinds": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runtime", "migration", "bootstrap"],
+          "properties": {
+            "runtime": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "prefixItems": [{ "const": "Deployment" }],
+              "items": false
+            },
+            "migration": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "prefixItems": [{ "const": "Job" }],
+              "items": false
+            },
+            "bootstrap": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "prefixItems": [{ "const": "Job" }],
+              "items": false
+            }
+          }
+        },
+        "requiredActorEvidence": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "prefixItems": [
+            { "const": "exact-controller-service-account" },
+            { "const": "exact-source-repository-and-path" },
+            { "const": "namespace-rbac-denial-matrix" },
+            { "const": "direct-pod-creation-denied" }
+          ],
+          "items": false
+        }
+      }
+    },
+    "manifestBundle": {
+      "type": "object",
+      "minProperties": 9,
+      "required": [
+        "namespace",
+        "serviceAccount",
+        "admissionPolicy",
+        "applicationNetworkPolicy",
+        "nodeClass",
+        "nodePool",
+        "requiredPodScheduling",
+        "requiredPodLabels",
+        "requiredPodAnnotations"
+      ],
+      "properties": {
+        "namespace": { "type": "object", "minProperties": 1 },
+        "serviceAccount": { "type": "object", "minProperties": 1 },
+        "admissionPolicy": { "type": "object", "minProperties": 1 },
+        "applicationNetworkPolicy": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "nodeClass": { "type": "object", "minProperties": 1 },
+        "nodePool": { "type": "object", "minProperties": 1 },
+        "requiredPodScheduling": { "type": "object", "minProperties": 1 },
+        "requiredPodLabels": { "type": "object", "minProperties": 1 },
+        "requiredPodAnnotations": { "type": "object", "minProperties": 1 }
+      },
+      "additionalProperties": true
+    },
+    "persistentAccessClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "namespace",
+        "serviceAccount",
+        "activationMode",
+        "podIdentityAssociationId",
+        "bindingDigest",
+        "workloadBundleDigest",
+        "manifests"
+      ],
+      "properties": {
+        "namespace": { "$ref": "#/$defs/dnsLabel" },
+        "serviceAccount": { "$ref": "#/$defs/dnsLabel" },
+        "activationMode": { "const": "persistent" },
+        "podIdentityAssociationId": { "$ref": "#/$defs/opaque" },
+        "bindingDigest": { "$ref": "#/$defs/sha256" },
+        "workloadBundleDigest": { "$ref": "#/$defs/sha256" },
+        "manifests": { "$ref": "#/$defs/manifestBundle" }
+      }
+    },
+    "bootstrapAccessClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "namespace",
+        "serviceAccount",
+        "activationMode",
+        "podIdentityAssociationId",
+        "bindingDigest",
+        "workloadBundleDigest",
+        "manifests"
+      ],
+      "properties": {
+        "namespace": { "$ref": "#/$defs/dnsLabel" },
+        "serviceAccount": { "$ref": "#/$defs/dnsLabel" },
+        "activationMode": { "const": "just-in-time" },
+        "podIdentityAssociationId": { "type": "null" },
+        "bindingDigest": { "$ref": "#/$defs/sha256" },
+        "workloadBundleDigest": { "$ref": "#/$defs/sha256" },
+        "manifests": { "$ref": "#/$defs/manifestBundle" }
+      }
+    },
+    "accessClasses": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime", "migration", "bootstrap"],
+      "properties": {
+        "runtime": { "$ref": "#/$defs/persistentAccessClass" },
+        "migration": { "$ref": "#/$defs/persistentAccessClass" },
+        "bootstrap": { "$ref": "#/$defs/bootstrapAccessClass" }
+      }
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "reason", "requiredEvidence"],
+      "properties": {
+        "state": { "const": "pending-application" },
+        "reason": { "const": "DATABASE_ACCESS_BUNDLE_NOT_OBSERVED" },
+        "requiredEvidence": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "prefixItems": [
+            { "const": "namespace-observed" },
+            { "const": "service-account-observed" },
+            { "const": "admission-policy-enforced" },
+            { "const": "application-network-policy-enforced" },
+            { "const": "node-class-ready" },
+            { "const": "node-pool-ready" },
+            { "const": "pod-identity-association-observed" },
+            { "const": "deployment-authority-observed" }
+          ],
+          "items": false
+        }
+      }
+    }
+  }
+}

@@ -7,13 +7,15 @@ config:
   secure-saas-infra:organizationName: deus
   secure-saas-infra:environment: backup-dev
   secure-saas-infra:backup:
-    replicaRegion: 
+    replicaRegion: us-west-2
     vaultLockEnabled: true
     vaultLockMinRetentionDays: 35
     vaultLockMaxRetentionDays: 2555
     vaultLockChangeableForDays: 3
     createPlan: true
     dailyScheduleExpression: "cron(0 5 ? * * *)"
+    backupIntervalMinutes: 1440
+    restoreTestIntervalDays: 30
     coldStorageAfterDays: 30
     deleteAfterDays: 90
     selectionTags:

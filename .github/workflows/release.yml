@@ -9,9 +9,62 @@ permissions:
   contents: read
 
 jobs:
+  provider-smoke:
+    name: exact AWS provider smoke (${{ matrix.architecture }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: amd64
+            runner: ubuntu-24.04
+            machine: x86_64
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+            machine: aarch64
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact release source without credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.ref }}
+      - name: Prove tag identity and protected-main reachability
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_REVISION: ${{ github.sha }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][A-Za-z0-9.-]+)?$ ]]
+          [[ "$RELEASE_REVISION" =~ ^[a-f0-9]{40}$ ]]
+          test "$(/usr/bin/git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")" = "$RELEASE_REVISION"
+          /usr/bin/git merge-base --is-ancestor "$RELEASE_REVISION" refs/remotes/origin/main
+      - name: Setup exact Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.18.0"
+      - name: Setup exact Pulumi CLI
+        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7
+        with:
+          pulumi-version: "3.253.0"
+      - name: Download and verify the exact provider archive
+        env:
+          EXPECTED_MACHINE: ${{ matrix.machine }}
+        run: |
+          node_path=$(command -v node)
+          pulumi_path=$(command -v pulumi)
+          test "$(uname -m)" = "$EXPECTED_MACHINE"
+          env -i HOME="$RUNNER_TEMP/provider-smoke-home" LANG=C PATH=/usr/bin:/bin \
+            "$node_path" scripts/prepare-bootstrap-plugins.mjs --pulumi "$pulumi_path"
+          provider=artifacts/bootstrap-pulumi-home/plugins/resource-aws-v7.27.0/pulumi-resource-aws
+          test -x "$provider"
+          test "$(env -i HOME="$RUNNER_TEMP/provider-smoke-home" LANG=C "$provider" --version)" = "7.27.0"
+
   build:
     name: build artifact
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     outputs:
@@ -21,33 +74,185 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.ref }}
+      - name: Validate release identity as data
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_REVISION: ${{ github.sha }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][A-Za-z0-9.-]+)?$ ]]
+          [[ "$RELEASE_REVISION" =~ ^[a-f0-9]{40}$ ]]
+          test "$(/usr/bin/git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")" = "$RELEASE_REVISION"
+          /usr/bin/git merge-base --is-ancestor "$RELEASE_REVISION" refs/remotes/origin/main
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: "22"
+          node-version: "24.18.0"
           cache: npm
-      - name: Install
-        run: npm ci
-      - name: Build
-        run: npm run build
-      - name: Package artifact
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: "1.26.5"
+          cache: false
+      - name: Install exact npm version
+        run: npm install --global npm@11.16.0
+      - name: Install exact Pulumi CLI
+        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7
+        with:
+          pulumi-version: "3.253.0"
+      - name: Verify exact toolchain
         run: |
-          tar --owner=0 --group=0 --numeric-owner \
-              -czf secure-saas-infra-${{ github.ref_name }}.tar.gz \
-              dist policy package.json package-lock.json README.md docs gitops
+          test "$(node --version)" = "v24.18.0"
+          test "$(npm --version)" = "11.16.0"
+          test "$(pulumi version)" = "v3.253.0"
+          test "$(go version | awk '{print $3}')" = "go1.26.5"
+      - name: Run exact source qualification
+        run: npm run validate:source
+      - name: Require the exact approved disposition-only release child
+        run: node scripts/verify-review-promotion.mjs --release
+      - name: Emit explicitly unqualified source-release evidence
+        run: >-
+          npm run evidence:release --
+          --require-clean
+          --output artifacts/security-contract-evidence.json
+      - name: Package artifact
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          npm run release:manifest -- --source-release
+          tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner \
+              --no-recursion -cf - \
+              -T artifacts/management-seed-release-files.txt | \
+            gzip -n > "secure-saas-infra-${RELEASE_TAG}.tar.gz"
       - name: Generate hash for SLSA provenance
         id: hash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          digest=$(sha256sum secure-saas-infra-${{ github.ref_name }}.tar.gz | base64 -w0)
+          digest=$(sha256sum \
+            "secure-saas-infra-${RELEASE_TAG}.tar.gz" \
+            artifacts/secure-saas-infra.spdx.json \
+            artifacts/security-contract-evidence.json \
+            artifacts/contract-schema-validation.json \
+            artifacts/management-seed-release-manifest.json | base64 -w0)
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"
       - name: Upload artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: secure-saas-infra-${{ github.ref_name }}
-          path: secure-saas-infra-${{ github.ref_name }}.tar.gz
+          path: |
+            secure-saas-infra-${{ github.ref_name }}.tar.gz
+            artifacts/secure-saas-infra.spdx.json
+            artifacts/security-contract-evidence.json
+            artifacts/contract-schema-validation.json
+            artifacts/management-seed-release-manifest.json
           if-no-files-found: error
           retention-days: 30
+
+  host-kit:
+    name: build isolated privileged host kit (${{ matrix.architecture }})
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: amd64
+            runner: ubuntu-24.04
+            filePattern: x86-64
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+            filePattern: ARM aarch64
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact release source without credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.ref }}
+      - name: Validate release identity as data
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_REVISION: ${{ github.sha }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][A-Za-z0-9.-]+)?$ ]]
+          [[ "$RELEASE_REVISION" =~ ^[a-f0-9]{40}$ ]]
+          test "$(/usr/bin/git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")" = "$RELEASE_REVISION"
+          /usr/bin/git merge-base --is-ancestor "$RELEASE_REVISION" refs/remotes/origin/main
+      - name: Setup authenticated Node runtime without package installation
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.18.0"
+      - name: Setup authenticated Go compiler
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: "1.26.5"
+          cache: false
+      - name: Build and package with minimal toolchain
+        env:
+          RELEASE_ARCHITECTURE: ${{ matrix.architecture }}
+          RELEASE_FILE_PATTERN: ${{ matrix.filePattern }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_REVISION: ${{ github.sha }}
+        run: |
+          test "$(node --version)" = "v24.18.0"
+          test "$(go version | awk '{print $3}')" = "go1.26.5"
+          test "$(go env GOARCH)" = "$RELEASE_ARCHITECTURE"
+          go test -count=1 ./cmd/deus-aws-bootstrap
+          DEUS_TRUSTED_GO="$(command -v go)" \
+            ./scripts/build-native-bootstrap-launcher
+          file artifacts/deus-aws-bootstrap | grep -F "$RELEASE_FILE_PATTERN"
+          ./scripts/package-bootstrap-host-kit \
+            --tag "$RELEASE_TAG" \
+            --revision "$RELEASE_REVISION" \
+            --architecture "$RELEASE_ARCHITECTURE"
+          artifacts/deus-aws-bootstrap verify-host-kit-archive \
+            --archive "artifacts/deus-bootstrap-host-kit-${RELEASE_TAG}-${RELEASE_ARCHITECTURE}.tar.gz" \
+            --tag "$RELEASE_TAG" \
+            --revision "$RELEASE_REVISION" \
+            --architecture "$RELEASE_ARCHITECTURE"
+      - name: Upload isolated host kit
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: deus-bootstrap-host-kit-${{ github.ref_name }}-${{ matrix.architecture }}
+          path: artifacts/deus-bootstrap-host-kit-${{ github.ref_name }}-${{ matrix.architecture }}.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
+  host-kit-subjects:
+    name: bind both native host kits
+    needs: host-kit
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      digest: ${{ steps.hash.outputs.digest }}
+    steps:
+      - name: Download both isolated host kits
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: deus-bootstrap-host-kit-${{ github.ref_name }}-*
+          path: artifacts/host-kit-download
+          merge-multiple: true
+      - name: Generate exact two-architecture subjects
+        id: hash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          test -f "artifacts/host-kit-download/deus-bootstrap-host-kit-${RELEASE_TAG}-amd64.tar.gz"
+          test -f "artifacts/host-kit-download/deus-bootstrap-host-kit-${RELEASE_TAG}-arm64.tar.gz"
+          test "$(find artifacts/host-kit-download -maxdepth 1 -type f | wc -l)" = 2
+          digest=$(cd artifacts/host-kit-download && sha256sum \
+            "deus-bootstrap-host-kit-${RELEASE_TAG}-amd64.tar.gz" \
+            "deus-bootstrap-host-kit-${RELEASE_TAG}-arm64.tar.gz" | base64 -w0)
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
 
   provenance:
     needs: build
@@ -61,12 +266,30 @@ jobs:
       upload-assets: false
       provenance-name: secure-saas-infra-${{ github.ref_name }}.intoto.jsonl
 
+  host-kit-provenance:
+    needs: host-kit-subjects
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
+      base64-subjects: ${{ needs.host-kit-subjects.outputs.digest }}
+      upload-assets: false
+      provenance-name: deus-bootstrap-host-kit-${{ github.ref_name }}.intoto.jsonl
+
   publish:
-    needs: [build, provenance]
-    runs-on: ubuntu-latest
+    needs:
+      [
+        build,
+        provider-smoke,
+        host-kit-subjects,
+        provenance,
+        host-kit-provenance,
+      ]
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
-      id-token: write
     environment: production
     steps:
       - name: Download artifact
@@ -77,12 +300,56 @@ jobs:
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: ${{ needs.provenance.outputs.provenance-name }}
+      - name: Download isolated host kit
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: deus-bootstrap-host-kit-${{ github.ref_name }}-*
+          path: artifacts/host-kit-download
+          merge-multiple: true
+      - name: Download host-kit provenance
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ${{ needs.host-kit-provenance.outputs.provenance-name }}
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_REVISION: ${{ github.sha }}
+          MAIN_PROVENANCE: ${{ needs.provenance.outputs.provenance-name }}
+          HOST_KIT_PROVENANCE: ${{ needs.host-kit-provenance.outputs.provenance-name }}
         run: |
-          gh release create "${{ github.ref_name }}" \
-            --title "${{ github.ref_name }}" \
-            --notes "Signed SLSA Level 3 release. Verify provenance with slsa-verifier." \
-            secure-saas-infra-${{ github.ref_name }}.tar.gz \
-            ${{ needs.provenance.outputs.provenance-name }}
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][A-Za-z0-9.-]+)?$ ]]
+          [[ "$RELEASE_REVISION" =~ ^[a-f0-9]{40}$ ]]
+          peel_live_tag() {
+            local object object_type object_sha depth
+            object=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}")
+            object_type=$(jq -er .object.type <<<"$object")
+            object_sha=$(jq -er .object.sha <<<"$object")
+            depth=0
+            while test "$object_type" = "tag"; do
+              depth=$((depth + 1))
+              test "$depth" -le 4
+              object=$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object_sha}")
+              object_type=$(jq -er .object.type <<<"$object")
+              object_sha=$(jq -er .object.sha <<<"$object")
+            done
+            test "$object_type" = "commit"
+            printf '%s\n' "$object_sha"
+          }
+          test "$(peel_live_tag)" = "$RELEASE_REVISION"
+          gh release create "$RELEASE_TAG" --verify-tag \
+            --title "$RELEASE_TAG" \
+            --notes "Signed SLSA Level 3 source and host-kit release. Production qualification evidence is generated only in the sealed Linux execution root. Verify provenance with slsa-verifier." \
+            "secure-saas-infra-${RELEASE_TAG}.tar.gz" \
+            "artifacts/host-kit-download/deus-bootstrap-host-kit-${RELEASE_TAG}-amd64.tar.gz" \
+            "artifacts/host-kit-download/deus-bootstrap-host-kit-${RELEASE_TAG}-arm64.tar.gz" \
+            artifacts/secure-saas-infra.spdx.json \
+            artifacts/security-contract-evidence.json \
+            artifacts/contract-schema-validation.json \
+            artifacts/management-seed-release-manifest.json \
+            "$MAIN_PROVENANCE" \
+            "$HOST_KIT_PROVENANCE"
+          test "$(peel_live_tag)" = "$RELEASE_REVISION"
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" --jq .tag_name)" = "$RELEASE_TAG"
+          test "$(gh release view "$RELEASE_TAG" --json isImmutable --jq .isImmutable)" = true

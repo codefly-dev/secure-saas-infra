@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist-management-seed-support",
+    "noEmit": false
+  },
+  "include": ["src/dependencySecurity.ts"]
+}

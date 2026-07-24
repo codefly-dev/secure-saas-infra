@@ -27,6 +27,9 @@ export interface SpokeNetwork {
   transitSubnets: aws.ec2.Subnet[];
   privateRouteTables: aws.ec2.RouteTable[];
   attachment: aws.ec2transitgateway.VpcAttachment;
+  interfaceEndpoints: Readonly<Record<string, aws.ec2.VpcEndpoint>>;
+  interfaceEndpointSecurityGroup: aws.ec2.SecurityGroup;
+  secretsManagerEndpointSecurityGroup: aws.ec2.SecurityGroup;
 }
 
 export interface CentralizedEgressNetwork {
@@ -344,7 +347,7 @@ export function createCentralizedEgressNetwork(
       );
     });
 
-    createAwsServiceEndpoints(
+    const serviceEndpoints = createAwsServiceEndpoints(
       spokeConfig.name,
       spokeConfig.cidr,
       vpc,
@@ -393,6 +396,10 @@ export function createCentralizedEgressNetwork(
       transitSubnets: subnets.transit,
       privateRouteTables,
       attachment,
+      interfaceEndpoints: serviceEndpoints.endpoints,
+      interfaceEndpointSecurityGroup: serviceEndpoints.securityGroup,
+      secretsManagerEndpointSecurityGroup:
+        serviceEndpoints.secretsManagerSecurityGroup,
     };
   }
 
@@ -487,7 +494,7 @@ export function createDetachedSpokeNetwork(
     );
   });
 
-  createAwsServiceEndpoints(
+  const serviceEndpoints = createAwsServiceEndpoints(
     config.name,
     config.cidr,
     vpc,
@@ -505,6 +512,10 @@ export function createDetachedSpokeNetwork(
     transitSubnets: subnets.transit,
     privateRouteTables,
     attachment,
+    interfaceEndpoints: serviceEndpoints.endpoints,
+    interfaceEndpointSecurityGroup: serviceEndpoints.securityGroup,
+    secretsManagerEndpointSecurityGroup:
+      serviceEndpoints.secretsManagerSecurityGroup,
   };
 }
 
@@ -567,11 +578,14 @@ function createSubnets(args: {
 }
 
 function createDnsQueryLog(name: string, vpc: aws.ec2.Vpc) {
-  const logGroup = new aws.cloudwatch.LogGroup(named(`${name}-dns-query-logs`), {
-    name: `/aws/route53/${named(name)}/resolver`,
-    retentionInDays: 365,
-    tags: tag(`${name}-dns-query-logs`, { EvidenceClass: "dns-query" }),
-  });
+  const logGroup = new aws.cloudwatch.LogGroup(
+    named(`${name}-dns-query-logs`),
+    {
+      name: `/aws/route53/${named(name)}/resolver`,
+      retentionInDays: 365,
+      tags: tag(`${name}-dns-query-logs`, { EvidenceClass: "dns-query" }),
+    },
+  );
 
   const config = new aws.route53.ResolverQueryLogConfig(
     named(`${name}-dns-log-config`),
@@ -791,6 +805,19 @@ function createAwsServiceEndpoints(
       tags: tag(`${name}-endpoints-sg`, { NetworkRole: "private-spoke" }),
     },
   );
+  const secretsManagerSecurityGroup = new aws.ec2.SecurityGroup(
+    named(`${name}-secrets-manager-endpoint-sg`),
+    {
+      vpcId: vpc.id,
+      description:
+        "Dedicated Secrets Manager endpoint boundary; callers require explicit SG-to-SG rules.",
+      ingress: [],
+      egress: [],
+      tags: tag(`${name}-secrets-manager-endpoint-sg`, {
+        NetworkRole: "postgres-bootstrap-endpoint",
+      }),
+    },
+  );
 
   const interfaceServices = [
     "ec2",
@@ -809,8 +836,9 @@ function createAwsServiceEndpoints(
     "sts",
   ];
 
+  const interfaceEndpoints: Record<string, aws.ec2.VpcEndpoint> = {};
   for (const service of interfaceServices) {
-    new aws.ec2.VpcEndpoint(
+    interfaceEndpoints[service] = new aws.ec2.VpcEndpoint(
       named(`${name}-${service.replace(".", "-")}-vpce`),
       {
         vpcId: vpc.id,
@@ -819,7 +847,11 @@ function createAwsServiceEndpoints(
         subnetIds: endpointSubnets.map((subnet) => subnet.id),
         privateDnsEnabled: true,
         policy: endpointPolicy(service, currentAccountId),
-        securityGroupIds: [endpointSecurityGroup.id],
+        securityGroupIds: [
+          service === "secretsmanager"
+            ? secretsManagerSecurityGroup.id
+            : endpointSecurityGroup.id,
+        ],
         tags: tag(`${name}-${service.replace(".", "-")}-vpce`, {
           NetworkRole: "private-spoke",
         }),
@@ -835,6 +867,11 @@ function createAwsServiceEndpoints(
     policy: endpointPolicy("s3", currentAccountId),
     tags: tag(`${name}-s3-vpce`, { NetworkRole: "private-spoke" }),
   });
+  return {
+    endpoints: interfaceEndpoints,
+    securityGroup: endpointSecurityGroup,
+    secretsManagerSecurityGroup,
+  };
 }
 
 function endpointPolicy(service: string, accountId: pulumi.Input<string>) {

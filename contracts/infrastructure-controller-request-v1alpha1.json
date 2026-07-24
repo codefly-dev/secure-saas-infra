@@ -1,0 +1,89 @@
+{
+  "apiVersion": "security.deus.dev/infrastructure-controller/v1alpha1",
+  "kind": "InfrastructureControllerRequest",
+  "requestId": "request-reconcile-1",
+  "operation": "reconcile",
+  "environmentClass": "production",
+  "actor": {
+    "principalId": "operator-1",
+    "organizationId": "org-deus",
+    "tenantId": "warden",
+    "authenticationMethods": ["oidc", "mtls"]
+  },
+  "claim": {
+    "claimId": "postgres-warden",
+    "tenantId": "warden",
+    "contextId": "aws-platform-production",
+    "generation": 1,
+    "desiredStateDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "plugin": {
+    "pluginId": "infrastructure-request-adapter",
+    "kind": "infrastructure-request",
+    "sandbox": {
+      "network": "broker-only",
+      "providerCredentials": false,
+      "pulumiBackendAccess": false,
+      "kubernetesAdminAccess": false,
+      "hostAccess": false,
+      "unixSockets": false
+    },
+    "permissions": [
+      {
+        "action": "infra.claim.reconcile",
+        "resourcePrefix": "organization/org-deus/tenant/warden/context/aws-platform-production/claim/"
+      }
+    ]
+  },
+  "grant": {
+    "grantId": "grant-reconcile-1",
+    "subjectId": "operator-1",
+    "organizationId": "org-deus",
+    "tenantId": "warden",
+    "actions": ["infra.claim.reconcile"],
+    "resourcePrefixes": [
+      "organization/org-deus/tenant/warden/context/aws-platform-production/claim/"
+    ],
+    "expiresAtEpochSeconds": 1800000600
+  },
+  "capability": {
+    "capabilityId": "cap-reconcile-1",
+    "format": "v2-ed25519",
+    "issuer": "https://auth.infrastructure.invalid",
+    "subjectId": "operator-1",
+    "audience": "infrastructure-controller",
+    "organizationId": "org-deus",
+    "tenantId": "warden",
+    "action": "infra.claim.reconcile",
+    "resource": "organization/org-deus/tenant/warden/context/aws-platform-production/claim/postgres-warden",
+    "claimGeneration": 1,
+    "desiredStateDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "planDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "issuedAtEpochSeconds": 1799999990,
+    "notBeforeEpochSeconds": 1799999990,
+    "expiresAtEpochSeconds": 1800000300,
+    "oneUse": true,
+    "cryptographicallyVerified": true
+  },
+  "plan": {
+    "planDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "desiredStateDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "controllerVersion": "1.0.0",
+    "providerId": "aws-managed-postgres",
+    "providerVersion": "1.0.0",
+    "createdAtEpochSeconds": 1799999940,
+    "expiresAtEpochSeconds": 1800000300,
+    "policyChecksPassed": true,
+    "destructive": false
+  },
+  "approvals": [
+    {
+      "approvalId": "approval-1",
+      "approverPrincipalId": "approver-1",
+      "planDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "approvedAtEpochSeconds": 1799999995
+    }
+  ],
+  "idempotencyKey": "idempotency-reconcile-1",
+  "deadlineEpochSeconds": 1800000120
+}

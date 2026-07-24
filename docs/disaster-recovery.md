@@ -5,13 +5,13 @@ production system: deployed by Pulumi, monitored, alerted, and exercised.
 
 ## Targets
 
-| Tier            | RPO       | RTO       | Notes                                                                |
-| --------------- | --------- | --------- | -------------------------------------------------------------------- |
-| Audit logs      | 0         | n/a       | Immutable Object Lock + multi-region replica.                        |
-| Customer code   | 1 hour    | 4 hours   | Continuous backup + cross-region copy.                               |
-| Customer data   | 5 minutes | 1 hour    | RDS PITR + AWS Backup continuous backup; cross-region copy.          |
-| Control plane   | 24 hours  | 4 hours   | Daily AWS Backup with 365 day retention.                             |
-| Pulumi state    | 1 hour    | 1 hour    | Pulumi Cloud or S3 backend with versioning + replication separate.   |
+| Tier          | RPO       | RTO     | Notes                                                              |
+| ------------- | --------- | ------- | ------------------------------------------------------------------ |
+| Audit logs    | 0         | n/a     | Immutable Object Lock + multi-region replica.                      |
+| Customer code | 1 hour    | 4 hours | Continuous backup + cross-region copy.                             |
+| Customer data | 5 minutes | 1 hour  | RDS PITR + AWS Backup continuous backup; cross-region copy.        |
+| Control plane | 24 hours  | 4 hours | Daily AWS Backup with 365 day retention.                           |
+| Pulumi state  | 1 hour    | 1 hour  | Pulumi Cloud or S3 backend with versioning + replication separate. |
 
 These targets are **commitments** to customers; they drive backup frequency,
 copy actions, and the quarterly restore drill.
@@ -52,7 +52,7 @@ and Vault Raft volumes.
 
 ## Pulumi state
 
-The Pulumi state backend is *not* in the same account or region as the
+The Pulumi state backend is _not_ in the same account or region as the
 production workloads. Recommended setup:
 
 - Use Pulumi Cloud (managed); or

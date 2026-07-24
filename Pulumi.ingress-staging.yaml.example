@@ -12,8 +12,8 @@ config:
     # Hosted zone created by the dns stack; bootstrap script populates this.
     hostedZoneId: <set-from-dns-stack>
     # Internal NLB ARN exported by the platform-staging stack.
-    internalNlbArn: <set-from-platform-staging-stack>
-    originDomainName: <set-from-platform-staging-stack>
+    internalNlbArn: <set-from-observed-istio-gateway-nlb>
+    originDomainName: <set-from-observed-istio-gateway-nlb>
     # CLOUDFRONT-scope WAF web ACL ARN exported by the waf-staging stack.
     webAclArn: <set-from-waf-staging-stack>
     priceClass: PriceClass_100

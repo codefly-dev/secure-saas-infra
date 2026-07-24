@@ -1,5 +1,7 @@
 import * as aws from "@pulumi/aws";
-import { EksConfig, adminRoleArns, baseTags, named } from "./config";
+import * as pulumi from "@pulumi/pulumi";
+import { compileAwsEksAccessGrants } from "./adapters/aws";
+import { EksConfig, baseTags, named } from "./config";
 import { SpokeNetwork } from "./network";
 
 export interface EksClusterResult {
@@ -8,13 +10,19 @@ export interface EksClusterResult {
   nodeRole: aws.iam.Role;
 }
 
-export function createEksCluster(spoke: SpokeNetwork, config: EksConfig): EksClusterResult {
-  const clusterRole = new aws.iam.Role(named(`${spoke.name}-eks-cluster-role`), {
-    assumeRolePolicy: aws.iam.assumeRolePolicyForPrincipal({
-      Service: "eks.amazonaws.com",
-    }),
-    tags: tag(`${spoke.name}-eks-cluster-role`),
-  });
+export function createEksCluster(
+  spoke: SpokeNetwork,
+  config: EksConfig,
+): EksClusterResult {
+  const clusterRole = new aws.iam.Role(
+    named(`${spoke.name}-eks-cluster-role`),
+    {
+      assumeRolePolicy: aws.iam.assumeRolePolicyForPrincipal({
+        Service: "eks.amazonaws.com",
+      }),
+      tags: tag(`${spoke.name}-eks-cluster-role`),
+    },
+  );
 
   const clusterPolicyArns = [
     "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy",
@@ -26,10 +34,13 @@ export function createEksCluster(spoke: SpokeNetwork, config: EksConfig): EksClu
 
   const clusterPolicyAttachments = clusterPolicyArns.map(
     (policyArn, index) =>
-      new aws.iam.RolePolicyAttachment(named(`${spoke.name}-eks-cluster-policy-${index + 1}`), {
-        role: clusterRole.name,
-        policyArn,
-      }),
+      new aws.iam.RolePolicyAttachment(
+        named(`${spoke.name}-eks-cluster-policy-${index + 1}`),
+        {
+          role: clusterRole.name,
+          policyArn,
+        },
+      ),
   );
 
   const nodeRole = new aws.iam.Role(named(`${spoke.name}-eks-auto-node-role`), {
@@ -46,10 +57,13 @@ export function createEksCluster(spoke: SpokeNetwork, config: EksConfig): EksClu
 
   const nodePolicyAttachments = nodePolicies.map(
     (policyArn, index) =>
-      new aws.iam.RolePolicyAttachment(named(`${spoke.name}-eks-auto-node-policy-${index + 1}`), {
-        role: nodeRole.name,
-        policyArn,
-      }),
+      new aws.iam.RolePolicyAttachment(
+        named(`${spoke.name}-eks-auto-node-policy-${index + 1}`),
+        {
+          role: nodeRole.name,
+          policyArn,
+        },
+      ),
   );
 
   const clusterName = named(`${spoke.name}-eks`);
@@ -66,11 +80,14 @@ export function createEksCluster(spoke: SpokeNetwork, config: EksConfig): EksClu
     targetKeyId: secretsKey.keyId,
   });
 
-  const logGroup = new aws.cloudwatch.LogGroup(named(`${spoke.name}-eks-control-plane-logs`), {
-    name: `/aws/eks/${clusterName}/cluster`,
-    retentionInDays: 365,
-    tags: tag(`${spoke.name}-eks-control-plane-logs`),
-  });
+  const logGroup = new aws.cloudwatch.LogGroup(
+    named(`${spoke.name}-eks-control-plane-logs`),
+    {
+      name: `/aws/eks/${clusterName}/cluster`,
+      retentionInDays: 365,
+      tags: tag(`${spoke.name}-eks-control-plane-logs`),
+    },
+  );
 
   const cluster = new aws.eks.Cluster(
     clusterName,
@@ -78,7 +95,13 @@ export function createEksCluster(spoke: SpokeNetwork, config: EksConfig): EksClu
       name: clusterName,
       version: config.version,
       roleArn: clusterRole.arn,
-      enabledClusterLogTypes: ["api", "audit", "authenticator", "controllerManager", "scheduler"],
+      enabledClusterLogTypes: [
+        "api",
+        "audit",
+        "authenticator",
+        "controllerManager",
+        "scheduler",
+      ],
       accessConfig: {
         authenticationMode: "API",
         bootstrapClusterCreatorAdminPermissions: false,
@@ -98,57 +121,83 @@ export function createEksCluster(spoke: SpokeNetwork, config: EksConfig): EksClu
         enabled: true,
         nodeRoleArn: nodeRole.arn,
         nodePools: config.autoModeNodePools,
-      } as any,
+      },
       kubernetesNetworkConfig: {
         elasticLoadBalancing: {
           enabled: true,
         },
-      } as any,
+      },
       storageConfig: {
         blockStorage: {
           enabled: true,
         },
-      } as any,
+      },
       upgradePolicy: {
         supportType: "STANDARD",
       },
       tags: tag(`${spoke.name}-eks`, {
         SpokeKind: spoke.kind,
       }),
-    } as any,
+    },
     {
-      dependsOn: [logGroup, ...clusterPolicyAttachments, ...nodePolicyAttachments, spoke.attachment],
+      dependsOn: [
+        logGroup,
+        ...clusterPolicyAttachments,
+        ...nodePolicyAttachments,
+        spoke.attachment,
+      ],
     },
   );
 
-  new aws.eks.AccessEntry(named(`${spoke.name}-eks-auto-node-access`), {
-    clusterName: cluster.name,
-    principalArn: nodeRole.arn,
-    type: "EC2",
-  });
-
-  adminRoleArns.forEach((roleArn, index) => {
-    const accessEntry = new aws.eks.AccessEntry(named(`${spoke.name}-admin-${index + 1}-access`), {
+  const nodeAccessEntry = new aws.eks.AccessEntry(
+    named(`${spoke.name}-eks-auto-node-access`),
+    {
       clusterName: cluster.name,
-      principalArn: roleArn,
-      type: "STANDARD",
-    });
+      principalArn: nodeRole.arn,
+      type: "EC2",
+    },
+  );
+  new aws.eks.AccessPolicyAssociation(
+    named(`${spoke.name}-eks-auto-node-policy`),
+    {
+      clusterName: cluster.name,
+      principalArn: nodeRole.arn,
+      policyArn:
+        "arn:aws:eks::aws:cluster-access-policy/AmazonEKSAutoNodePolicy",
+      accessScope: { type: "cluster" },
+    },
+    { dependsOn: nodeAccessEntry },
+  );
 
-    new aws.eks.AccessPolicyAssociation(
-      named(`${spoke.name}-admin-${index + 1}-cluster-admin`),
+  for (const grant of compileAwsEksAccessGrants(config.accessGrants)) {
+    const roleArn = resolveEksAccessPrincipal(grant.principal);
+    const accessEntry = new aws.eks.AccessEntry(
+      named(`${spoke.name}-${grant.id}-access`),
       {
         clusterName: cluster.name,
         principalArn: roleArn,
-        policyArn: "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy",
-        accessScope: {
-          type: "cluster",
-        },
+        type: "STANDARD",
+        tags: tag(`${spoke.name}-${grant.id}-access`, {
+          AccessCategory: grant.principal.category,
+          AccessPolicy: grant.accessPolicy,
+        }),
+      },
+    );
+
+    new aws.eks.AccessPolicyAssociation(
+      named(`${spoke.name}-${grant.id}-${grant.accessPolicy}`),
+      {
+        clusterName: cluster.name,
+        principalArn: roleArn,
+        policyArn: grant.policyArn,
+        accessScope:
+          grant.scope.type === "cluster"
+            ? { type: "cluster" }
+            : { type: "namespace", namespaces: [...grant.scope.namespaces] },
       },
       { dependsOn: accessEntry },
     );
-  });
-
-  createEksAddons(spoke.name, cluster, config);
+  }
 
   return {
     cluster,
@@ -157,32 +206,31 @@ export function createEksCluster(spoke: SpokeNetwork, config: EksConfig): EksClu
   };
 }
 
-function createEksAddons(name: string, cluster: aws.eks.Cluster, config: EksConfig) {
-  const addonDefaults = {
-    clusterName: cluster.name,
-    resolveConflictsOnCreate: "OVERWRITE",
-    resolveConflictsOnUpdate: "OVERWRITE",
-  };
-
-  new aws.eks.Addon(`${named(`${name}-pod-identity-agent`)}`, {
-    ...addonDefaults,
-    addonName: "eks-pod-identity-agent",
-    tags: tag(`${name}-pod-identity-agent`),
+function resolveEksAccessPrincipal(
+  principal: ReturnType<typeof compileAwsEksAccessGrants>[number]["principal"],
+): pulumi.Input<string> {
+  if (principal.kind === "iam-role") return principal.roleArn;
+  const roles = aws.iam.getRolesOutput({
+    nameRegex: principal.roleNameRegex,
+    pathPrefix: principal.rolePathPrefix,
   });
-
-  new aws.eks.Addon(`${named(`${name}-vpc-cni`)}`, {
-    ...addonDefaults,
-    addonName: "vpc-cni",
-    configurationValues: JSON.stringify({
-      enableNetworkPolicy: "true",
-      env: {
-        NETWORK_POLICY_ENFORCING_MODE: config.networkPolicyMode,
-      },
-      nodeAgent: {
-        enablePolicyEventLogs: "true",
-      },
-    }),
-    tags: tag(`${name}-vpc-cni`),
+  return roles.arns.apply((arns) => {
+    if (arns.length !== 1) {
+      throw new Error(
+        `EKS_ACCESS_IDENTITY_CENTER_RESOLUTION expected exactly one IAM role for permission set '${principal.permissionSetName}', found ${arns.length}. Ensure its account assignment is provisioned before this stack.`,
+      );
+    }
+    const roleArn = arns[0];
+    if (
+      !/^arn:(?:aws|aws-us-gov|aws-cn):iam::\d{12}:role\/aws-reserved\/sso\.amazonaws\.com\/(?:[a-z0-9-]+\/)?AWSReservedSSO_[A-Za-z0-9+=,.@_-]+_[A-Fa-f0-9]{16}$/.test(
+        roleArn,
+      )
+    ) {
+      throw new Error(
+        `EKS_ACCESS_IDENTITY_CENTER_RESOLUTION resolved role for '${principal.permissionSetName}' has an unexpected ARN shape.`,
+      );
+    }
+    return roleArn;
   });
 }
 

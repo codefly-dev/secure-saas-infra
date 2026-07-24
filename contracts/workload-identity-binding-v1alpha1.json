@@ -1,0 +1,45 @@
+{
+  "apiVersion": "security.deus.dev/workload-identity-binding/v1alpha1",
+  "kind": "WorkloadIdentityBinding",
+  "id": "tenant-a-runtime",
+  "organizationId": "deus",
+  "platformTenantId": "tenant-a",
+  "applicationId": "mind",
+  "environment": "development",
+  "cloudContext": {
+    "id": "aws-platform-dev",
+    "generation": 7
+  },
+  "identityId": "tenant-a-workload",
+  "kubernetes": {
+    "clusterUid": "eks-platform-dev-01",
+    "namespace": "mind",
+    "serviceAccount": "tenant-a",
+    "oidcSubject": "system:serviceaccount:mind:tenant-a",
+    "spiffeTrustDomain": "cluster.local",
+    "spiffeId": "spiffe://cluster.local/ns/mind/sa/tenant-a",
+    "audience": "pods.eks.amazonaws.com",
+    "automountServiceAccountToken": false
+  },
+  "cloud": {
+    "provider": "aws",
+    "roleRef": "arn:aws:iam::123456789012:role/tenant-a-workload",
+    "maxSessionDurationSeconds": 3600,
+    "administrator": false,
+    "shared": false
+  },
+  "allowedResourceIds": ["tenant-a-data", "tenant-a-audit"],
+  "networkBoundary": {
+    "id": "tenant-a-runtime-db-access",
+    "attachmentKind": "pod-security-group",
+    "providerResourceRef": "aws://ec2/security-group/sg-0123456789abcdef0",
+    "enforcingMode": "strict"
+  },
+  "evidence": {
+    "bindingDigest": "9e7bba5fa677a0632ec5e76c6f7ef6fbf8bcb95fd75cc635b622bf7da31fe841",
+    "verificationEvidenceRef": "evidence://workload-identity/tenant-a-runtime/verification-01",
+    "verificationEvidenceDigest": "47d9f4ee17f32bb18d0e0ff9db22bc09575e23ce5da46afae73fe7077b8b4f5a",
+    "verifiedAt": "2026-07-16T12:00:00.000Z",
+    "expiresAt": "2026-07-16T13:00:00.000Z"
+  }
+}

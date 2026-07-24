@@ -8,15 +8,15 @@ and per-tenant isolation.
 
 ## Boundary
 
-| Namespace        | Trust zone           | Talks to                          |
-| ---------------- | -------------------- | --------------------------------- |
-| `agent-broker`   | agent-control-plane  | `agent-egress` only (8443).       |
-| `agent-egress`   | agent-egress         | Approved model providers via the centralized egress VPC. |
-| `execution`      | untrusted-code       | brokered tool calls only.         |
+| Namespace      | Trust zone          | Talks to                                                 |
+| -------------- | ------------------- | -------------------------------------------------------- |
+| `agent-broker` | agent-control-plane | `agent-egress` only (8443).                              |
+| `agent-egress` | agent-egress        | Approved model providers via the centralized egress VPC. |
+| `execution`    | untrusted-code      | brokered tool calls only.                                |
 
 `agent-broker` is where the per-tenant orchestrator runs. It owns the
 prompt+tool-call+completion ledger, signs tool calls, enforces per-tenant
-quotas, and writes the audit trail. It is *not* allowed to make direct calls
+quotas, and writes the audit trail. It is _not_ allowed to make direct calls
 to OpenAI / Anthropic / Bedrock — those go through `agent-egress`.
 
 `agent-egress` runs the model gateway (LiteLLM, your own gateway, or Bedrock

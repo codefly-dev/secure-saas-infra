@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/management-seed-release-evidence-v1.schema.json",
+  "title": "AWS Organizations management-seed release evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "generatedAt",
+    "scope",
+    "source",
+    "buildInputs",
+    "validation",
+    "evidenceDigest"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "evidence.security.deus.dev/management-seed-release/v1"
+    },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "qualificationScope",
+        "awsMutationPerformed",
+        "cleanInstallResultsBound",
+        "staticValidationResultsBound",
+        "unitTestResultsBound",
+        "dependencyAuditResultsBound",
+        "sbomResultsBound",
+        "adversarialReviewResultsBound"
+      ],
+      "properties": {
+        "repository": { "const": "secure-saas-infra" },
+        "qualificationScope": {
+          "const": "aws-organizations-management-seed"
+        },
+        "awsMutationPerformed": { "const": false },
+        "cleanInstallResultsBound": { "type": "boolean" },
+        "staticValidationResultsBound": { "type": "boolean" },
+        "unitTestResultsBound": { "type": "boolean" },
+        "dependencyAuditResultsBound": { "type": "boolean" },
+        "sbomResultsBound": { "type": "boolean" },
+        "adversarialReviewResultsBound": { "type": "boolean" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "dirty"],
+      "properties": {
+        "revision": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "dirty": { "type": "boolean" }
+      }
+    },
+    "buildInputs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/fileDigest" }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractSchemas", "sbom"],
+      "properties": {
+        "contractSchemas": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256",
+            "apiVersion",
+            "publishedSchemaAggregateSha256",
+            "validatedContractAggregateSha256"
+          ],
+          "properties": {
+            "path": { "$ref": "#/$defs/path" },
+            "sha256": { "$ref": "#/$defs/sha256" },
+            "apiVersion": {
+              "const": "evidence.security.deus.dev/contract-schema-validation/v1"
+            },
+            "publishedSchemaAggregateSha256": { "$ref": "#/$defs/sha256" },
+            "validatedContractAggregateSha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "sbom": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256", "spdxVersion", "packageCount"],
+          "properties": {
+            "path": { "$ref": "#/$defs/path" },
+            "sha256": { "$ref": "#/$defs/sha256" },
+            "spdxVersion": { "const": "SPDX-2.3" },
+            "packageCount": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "localGates": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256",
+            "apiVersion",
+            "reportDigest",
+            "gateCount",
+            "sourceTreeDigest",
+            "adversarialReviewSha256"
+          ],
+          "properties": {
+            "path": { "$ref": "#/$defs/path" },
+            "sha256": { "$ref": "#/$defs/sha256" },
+            "apiVersion": {
+              "const": "evidence.security.deus.dev/local-gates/v1"
+            },
+            "reportDigest": { "$ref": "#/$defs/sha256" },
+            "gateCount": { "const": 5 },
+            "sourceTreeDigest": { "$ref": "#/$defs/sha256" },
+            "adversarialReviewSha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      }
+    },
+    "evidenceDigest": { "$ref": "#/$defs/sha256" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "validation": {
+            "type": "object",
+            "properties": { "localGates": true },
+            "required": ["localGates"]
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "object",
+            "properties": {
+              "cleanInstallResultsBound": { "const": true },
+              "staticValidationResultsBound": { "const": true },
+              "unitTestResultsBound": { "const": true },
+              "dependencyAuditResultsBound": { "const": true },
+              "sbomResultsBound": { "const": true },
+              "adversarialReviewResultsBound": { "const": true }
+            }
+          }
+        }
+      },
+      "else": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "object",
+            "properties": {
+              "cleanInstallResultsBound": { "const": false },
+              "staticValidationResultsBound": { "const": false },
+              "unitTestResultsBound": { "const": false },
+              "dependencyAuditResultsBound": { "const": false },
+              "sbomResultsBound": { "const": false },
+              "adversarialReviewResultsBound": { "const": false }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$"
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "fileDigest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

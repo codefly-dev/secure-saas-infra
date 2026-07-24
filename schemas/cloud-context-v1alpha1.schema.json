@@ -1,0 +1,487 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/cloud-context-v1alpha1.schema.json",
+  "title": "Credential-free cloud context catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "name",
+    "environment",
+    "contexts",
+    "placements"
+  ],
+  "properties": {
+    "apiVersion": { "const": "security.deus.dev/cloud-context/v1alpha1" },
+    "kind": { "const": "CloudContextCatalog" },
+    "name": { "$ref": "#/$defs/name" },
+    "environment": { "$ref": "#/$defs/environment" },
+    "contexts": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/context" }
+    },
+    "placements": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/placement" }
+    }
+  },
+  "$defs": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9]*(?:[._:-][a-z0-9]+)*$"
+    },
+    "nameArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/name" }
+    },
+    "nonEmptyNameArray": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/name" }
+    },
+    "environment": {
+      "enum": ["development", "staging", "production"]
+    },
+    "reference": {
+      "type": "string",
+      "maxLength": 512,
+      "pattern": "^[a-z][a-z0-9+.-]*://[A-Za-z0-9._~:/-]+$",
+      "not": {
+        "pattern": "(?i:credential|password|secret|access[_-]?key|session[_-]?token)"
+      }
+    },
+    "status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phase",
+        "generation",
+        "observedGeneration",
+        "verifiedAt",
+        "evidenceRef"
+      ],
+      "properties": {
+        "phase": { "enum": ["planned", "ready", "degraded", "unavailable"] },
+        "generation": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+        "observedGeneration": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "verifiedAt": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$"
+            }
+          ]
+        },
+        "evidenceRef": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/reference" }]
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "environment",
+        "provider",
+        "provisioning",
+        "posture",
+        "capabilities",
+        "resourceBindings",
+        "status"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/name" },
+        "environment": { "$ref": "#/$defs/environment" },
+        "provider": { "$ref": "#/$defs/provider" },
+        "provisioning": { "$ref": "#/$defs/provisioning" },
+        "posture": { "$ref": "#/$defs/posture" },
+        "capabilities": { "$ref": "#/$defs/capabilities" },
+        "resourceBindings": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/resourceBinding" }
+        },
+        "status": { "$ref": "#/$defs/status" }
+      }
+    },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "boundaryRef", "location"],
+      "properties": {
+        "kind": { "enum": ["aws", "gcp", "azure"] },
+        "boundaryRef": { "$ref": "#/$defs/reference" },
+        "location": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9-]+$"
+        }
+      }
+    },
+    "provisioning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "owner", "physicalMutationFromCodefly"],
+      "properties": {
+        "mode": { "const": "pre-provisioned" },
+        "owner": { "const": "external-iac" },
+        "physicalMutationFromCodefly": { "const": false }
+      }
+    },
+    "posture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "privateNetworking",
+        "inspectedEgress",
+        "immutableAudit",
+        "credentialDelivery",
+        "directProviderCredentials"
+      ],
+      "properties": {
+        "privateNetworking": { "const": true },
+        "inspectedEgress": { "const": true },
+        "immutableAudit": { "const": true },
+        "credentialDelivery": { "const": "reference-only" },
+        "directProviderCredentials": { "const": false }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtimes",
+        "networks",
+        "registries",
+        "dns",
+        "identities",
+        "observability"
+      ],
+      "properties": {
+        "runtimes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/runtime" }
+        },
+        "networks": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/network" }
+        },
+        "registries": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/registry" }
+        },
+        "dns": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/dns" }
+        },
+        "identities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identity" }
+        },
+        "observability": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/observability" }
+        }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "workloadPlaneIds",
+        "orchestrator",
+        "executionTrust",
+        "runtimeIsolation",
+        "credentialMode",
+        "privateControlPlane",
+        "workloadIdentity",
+        "directHostAccess",
+        "reference"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/name" },
+        "workloadPlaneIds": { "$ref": "#/$defs/nonEmptyNameArray" },
+        "orchestrator": {
+          "enum": [
+            "managed-kubernetes",
+            "serverless",
+            "microvm",
+            "external-sandbox"
+          ]
+        },
+        "executionTrust": { "enum": ["trusted", "semi-trusted", "untrusted"] },
+        "runtimeIsolation": {
+          "enum": ["process", "container", "microvm", "dedicated-vm"]
+        },
+        "credentialMode": { "enum": ["workload-identity", "brokered"] },
+        "privateControlPlane": { "const": true },
+        "workloadIdentity": { "const": true },
+        "directHostAccess": { "const": false },
+        "reference": { "$ref": "#/$defs/reference" }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "networkDomainIds",
+        "private",
+        "directInternetAccess",
+        "inspectedEgress",
+        "brokeredEgress",
+        "reference"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/name" },
+        "networkDomainIds": { "$ref": "#/$defs/nonEmptyNameArray" },
+        "private": { "const": true },
+        "directInternetAccess": { "const": false },
+        "inspectedEgress": { "const": true },
+        "brokeredEgress": { "const": true },
+        "reference": { "$ref": "#/$defs/reference" }
+      }
+    },
+    "registry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "immutableDigestsOnly",
+        "signatureVerification",
+        "provenanceVerification",
+        "reference"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/name" },
+        "immutableDigestsOnly": { "const": true },
+        "signatureVerification": { "const": true },
+        "provenanceVerification": { "const": true },
+        "reference": { "$ref": "#/$defs/reference" }
+      }
+    },
+    "dns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "visibility", "managedRecordsOnly", "reference"],
+      "properties": {
+        "id": { "$ref": "#/$defs/name" },
+        "visibility": { "enum": ["private", "public"] },
+        "managedRecordsOnly": { "const": true },
+        "reference": { "$ref": "#/$defs/reference" }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "mode",
+        "allowedIdentityIds",
+        "shortLived",
+        "administrator",
+        "maxSessionMinutes",
+        "reference"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/name" },
+        "mode": { "const": "workload-identity" },
+        "allowedIdentityIds": { "$ref": "#/$defs/nonEmptyNameArray" },
+        "shortLived": { "const": true },
+        "administrator": { "const": false },
+        "maxSessionMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
+        },
+        "reference": { "$ref": "#/$defs/reference" }
+      }
+    },
+    "observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "immutableAudit",
+        "auditRetentionDays",
+        "auditRef",
+        "logsRef",
+        "metricsRef",
+        "tracesRef"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/name" },
+        "immutableAudit": { "const": true },
+        "auditRetentionDays": {
+          "type": "integer",
+          "minimum": 365,
+          "maximum": 3650
+        },
+        "auditRef": { "$ref": "#/$defs/reference" },
+        "logsRef": { "$ref": "#/$defs/reference" },
+        "metricsRef": { "$ref": "#/$defs/reference" },
+        "tracesRef": { "$ref": "#/$defs/reference" }
+      }
+    },
+    "resourceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "lifecycle",
+        "applicationId",
+        "componentId",
+        "serviceRef",
+        "dataBoundaryId",
+        "providerResourceRef",
+        "network",
+        "identities",
+        "outputs",
+        "status"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/name" },
+        "kind": { "const": "ManagedPostgres" },
+        "lifecycle": { "const": "pre-provisioned" },
+        "applicationId": { "$ref": "#/$defs/name" },
+        "componentId": { "$ref": "#/$defs/name" },
+        "serviceRef": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*/[a-z][a-z0-9-]*/[a-z][a-z0-9-]*$"
+        },
+        "dataBoundaryId": { "$ref": "#/$defs/name" },
+        "providerResourceRef": { "$ref": "#/$defs/reference" },
+        "network": { "$ref": "#/$defs/bindingNetwork" },
+        "identities": { "$ref": "#/$defs/bindingIdentities" },
+        "outputs": { "$ref": "#/$defs/bindingOutputs" },
+        "status": { "$ref": "#/$defs/status" }
+      }
+    },
+    "bindingNetwork": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtimeBoundaryId",
+        "migrationBoundaryId",
+        "separateBoundaries",
+        "allowNetworkCidr"
+      ],
+      "properties": {
+        "runtimeBoundaryId": { "$ref": "#/$defs/name" },
+        "migrationBoundaryId": { "$ref": "#/$defs/name" },
+        "separateBoundaries": { "const": true },
+        "allowNetworkCidr": { "const": false }
+      }
+    },
+    "bindingIdentities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtimeIdentityId", "migrationIdentityId", "separate"],
+      "properties": {
+        "runtimeIdentityId": { "$ref": "#/$defs/name" },
+        "migrationIdentityId": { "$ref": "#/$defs/name" },
+        "separate": { "const": true }
+      }
+    },
+    "bindingOutputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "endpointRef",
+        "port",
+        "databaseName",
+        "caBundleRef",
+        "runtimeIdentityRef",
+        "migrationIdentityRef",
+        "credentialValue"
+      ],
+      "properties": {
+        "endpointRef": { "$ref": "#/$defs/reference" },
+        "port": { "const": 5432 },
+        "databaseName": {
+          "type": "string",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$"
+        },
+        "caBundleRef": { "$ref": "#/$defs/reference" },
+        "runtimeIdentityRef": { "$ref": "#/$defs/reference" },
+        "migrationIdentityRef": { "$ref": "#/$defs/reference" },
+        "credentialValue": { "type": "null" }
+      }
+    },
+    "placement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "applicationId",
+        "componentId",
+        "contextId",
+        "runtimeCapabilityId",
+        "networkCapabilityId",
+        "registryCapabilityId",
+        "identityCapabilityId",
+        "observabilityCapabilityId",
+        "dnsCapabilityIds",
+        "resourceBindingIds",
+        "delegatedRuntimes"
+      ],
+      "properties": {
+        "applicationId": { "$ref": "#/$defs/name" },
+        "componentId": { "$ref": "#/$defs/name" },
+        "contextId": { "$ref": "#/$defs/name" },
+        "runtimeCapabilityId": { "$ref": "#/$defs/name" },
+        "networkCapabilityId": { "$ref": "#/$defs/name" },
+        "registryCapabilityId": { "$ref": "#/$defs/name" },
+        "identityCapabilityId": { "$ref": "#/$defs/name" },
+        "observabilityCapabilityId": { "$ref": "#/$defs/name" },
+        "dnsCapabilityIds": { "$ref": "#/$defs/nameArray" },
+        "resourceBindingIds": { "$ref": "#/$defs/nameArray" },
+        "delegatedRuntimes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/delegatedRuntime" }
+        }
+      }
+    },
+    "delegatedRuntime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contextId", "runtimeCapabilityId", "purpose"],
+      "properties": {
+        "contextId": { "$ref": "#/$defs/name" },
+        "runtimeCapabilityId": { "$ref": "#/$defs/name" },
+        "purpose": { "const": "customer-code-execution" }
+      }
+    }
+  }
+}

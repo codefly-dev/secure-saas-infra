@@ -3,8 +3,8 @@ runtime:
   name: nodejs
   options:
     packagemanager: npm
-main: dist/index.js
-description: Secure SaaS infrastructure baseline with centralized egress, EKS, Vault-ready secrets, and GitOps.
+main: dist-management-seed/managementSeed.js
+description: Fail-closed AWS Organizations management-seed infrastructure.
 config:
   aws:region:
     value: us-east-1

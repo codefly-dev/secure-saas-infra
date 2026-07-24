@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/management-seed-organization-recovery-receipt-v1.schema.json",
+  "title": "Management-seed Organizations post-apply recovery receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "generatedAt",
+    "recoveryReason",
+    "sourceRevision",
+    "managementAccountId",
+    "bootstrapCandidateDigest",
+    "planManifestDigest",
+    "plan",
+    "reviewedStandaloneState",
+    "observedBaselineState",
+    "pulumiInvoked",
+    "cloudMutationPerformed",
+    "receiptDigest"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "security.deus.dev/management-seed-organization-recovery-receipt/v1"
+    },
+    "kind": { "const": "ManagementSeedOrganizationRecoveryReceipt" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "recoveryReason": { "const": "post-apply-attestation-convergence" },
+    "sourceRevision": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "managementAccountId": { "$ref": "#/$defs/accountId" },
+    "bootstrapCandidateDigest": { "$ref": "#/$defs/sha256" },
+    "planManifestDigest": { "$ref": "#/$defs/sha256" },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stack", "planFile", "sha256"],
+      "properties": {
+        "stack": { "const": "management" },
+        "planFile": { "const": "management.plan.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "reviewedStandaloneState": { "$ref": "#/$defs/standaloneState" },
+    "observedBaselineState": { "$ref": "#/$defs/baselineState" },
+    "pulumiInvoked": { "const": false },
+    "cloudMutationPerformed": { "const": false },
+    "receiptDigest": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "accountId": { "type": "string", "pattern": "^[0-9]{12}$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "emptyArray": {
+      "type": "array",
+      "items": false,
+      "maxItems": 0
+    },
+    "commonStateProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "apiVersion",
+        "expectedState",
+        "managementAccountId",
+        "bootstrapCandidateDigest",
+        "configurationDigest",
+        "observationRegion",
+        "organizationPresent",
+        "pass",
+        "attestationDigest"
+      ],
+      "properties": {
+        "apiVersion": {
+          "const": "security.deus.dev/management-seed-organization-state/v1"
+        },
+        "expectedState": { "const": "standalone" },
+        "managementAccountId": { "$ref": "#/$defs/accountId" },
+        "bootstrapCandidateDigest": { "$ref": "#/$defs/sha256" },
+        "configurationDigest": { "$ref": "#/$defs/sha256" },
+        "observationRegion": { "const": "us-east-1" },
+        "organizationPresent": { "const": false },
+        "pass": { "const": true },
+        "attestationDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "standaloneState": { "$ref": "#/$defs/commonStateProperties" },
+    "baselineState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "apiVersion",
+        "expectedState",
+        "managementAccountId",
+        "bootstrapCandidateDigest",
+        "configurationDigest",
+        "observationRegion",
+        "organizationPresent",
+        "organizationId",
+        "organizationArn",
+        "featureSet",
+        "rootId",
+        "rootArn",
+        "rootPolicyTypes",
+        "rootTags",
+        "managementAccount",
+        "organizationalUnits",
+        "trustedServicePrincipals",
+        "delegatedAdministrators",
+        "resourcePolicyPresent",
+        "customerPolicies",
+        "fullAwsAccessTargetId",
+        "openInvitations",
+        "pendingAccountCreations",
+        "pass",
+        "attestationDigest"
+      ],
+      "properties": {
+        "apiVersion": {
+          "const": "security.deus.dev/management-seed-organization-state/v1"
+        },
+        "expectedState": { "const": "organization-baseline" },
+        "managementAccountId": { "$ref": "#/$defs/accountId" },
+        "bootstrapCandidateDigest": { "$ref": "#/$defs/sha256" },
+        "configurationDigest": { "$ref": "#/$defs/sha256" },
+        "observationRegion": { "const": "us-east-1" },
+        "organizationPresent": { "const": true },
+        "organizationId": {
+          "type": "string",
+          "pattern": "^o-[a-z0-9]{10,32}$"
+        },
+        "organizationArn": {
+          "type": "string",
+          "pattern": "^arn:aws:organizations::[0-9]{12}:organization/o-[a-z0-9]{10,32}$"
+        },
+        "featureSet": { "const": "ALL" },
+        "rootId": { "type": "string", "pattern": "^r-[0-9a-z]{4,32}$" },
+        "rootArn": {
+          "type": "string",
+          "pattern": "^arn:aws:organizations::[0-9]{12}:root/o-[a-z0-9]{10,32}/r-[0-9a-z]{4,32}$"
+        },
+        "rootPolicyTypes": {
+          "type": "array",
+          "prefixItems": [
+            { "const": "S3_POLICY" },
+            { "const": "SERVICE_CONTROL_POLICY" }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "rootTags": { "$ref": "#/$defs/emptyArray" },
+        "managementAccount": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "name", "email", "state", "tags"],
+          "properties": {
+            "id": { "$ref": "#/$defs/accountId" },
+            "name": { "type": "string", "minLength": 1, "maxLength": 50 },
+            "email": { "type": "string", "format": "email" },
+            "state": { "const": "ACTIVE" },
+            "tags": { "$ref": "#/$defs/emptyArray" }
+          }
+        },
+        "organizationalUnits": { "$ref": "#/$defs/emptyArray" },
+        "trustedServicePrincipals": { "$ref": "#/$defs/emptyArray" },
+        "delegatedAdministrators": { "$ref": "#/$defs/emptyArray" },
+        "resourcePolicyPresent": { "const": false },
+        "customerPolicies": { "$ref": "#/$defs/emptyArray" },
+        "fullAwsAccessTargetId": {
+          "type": "string",
+          "pattern": "^r-[0-9a-z]{4,32}$"
+        },
+        "openInvitations": { "const": 0 },
+        "pendingAccountCreations": { "const": 0 },
+        "pass": { "const": true },
+        "attestationDigest": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "checkedContracts": [
+    {
+      "contract": "aws-database-infrastructure-handoff-v1alpha1.json",
+      "schema": "aws-database-infrastructure-handoff-v1alpha1.schema.json",
+      "owner": "secure-saas-infra/aws-database-infrastructure-handoff"
+    },
+    {
+      "contract": "aws-bootstrap-access-v1alpha1.json",
+      "schema": "aws-bootstrap-access-v1alpha1.schema.json",
+      "owner": "secure-saas-infra/aws-bootstrap"
+    },
+    {
+      "contract": "cloud-context-observation-v1alpha1.json",
+      "schema": "cloud-context-observation-v1alpha1.schema.json",
+      "owner": "secure-saas-infra/cloud-context-observation"
+    },
+    {
+      "contract": "cloud-context-v1alpha1.json",
+      "schema": "cloud-context-v1alpha1.schema.json",
+      "owner": "secure-saas-infra/cloud-context"
+    },
+    {
+      "contract": "infrastructure-controller-protocol-v1alpha1.json",
+      "schema": "infrastructure-controller-protocol-v1alpha1.schema.json",
+      "owner": "secure-saas-infra/infrastructure-controller-protocol"
+    },
+    {
+      "contract": "infrastructure-controller-request-v1alpha1.json",
+      "schema": "infrastructure-controller-request-v1alpha1.schema.json",
+      "owner": "secure-saas-infra/infrastructure-controller"
+    },
+    {
+      "contract": "managed-postgres-v1alpha1.json",
+      "schema": "managed-postgres-v1alpha1.schema.json",
+      "owner": "secure-saas-infra/managed-postgres"
+    },
+    {
+      "contract": "managed-postgres-v1alpha2.json",
+      "schema": "managed-postgres-v1alpha2.schema.json",
+      "owner": "secure-saas-infra/managed-postgres"
+    },
+    {
+      "contract": "postgres-access-observation-v1alpha1.json",
+      "schema": "postgres-access-observation-v1alpha1.schema.json",
+      "owner": "secure-saas-infra/postgres-access-observation"
+    },
+    {
+      "contract": "postgres-access-profile-v1alpha1.json",
+      "schema": "postgres-access-profile-v1alpha1.schema.json",
+      "owner": "secure-saas-infra/postgres-access-profile"
+    },
+    {
+      "contract": "workload-identity-binding-v1alpha1.json",
+      "schema": "workload-identity-binding-v1alpha1.schema.json",
+      "owner": "secure-saas-infra/workload-identity-binding"
+    }
+  ],
+  "schemaOnly": [
+    {
+      "schema": "adversarial-review-disposition-v1.schema.json",
+      "owner": "secure-saas-infra/adversarial-review"
+    },
+    {
+      "schema": "bootstrap-qualification-trust-v1.schema.json",
+      "owner": "secure-saas-infra/bootstrap-qualification-trust"
+    },
+    {
+      "schema": "bootstrap-candidate-v1.schema.json",
+      "owner": "secure-saas-infra/bootstrap-candidate"
+    },
+    {
+      "schema": "bootstrap-qualification-request-v1.schema.json",
+      "owner": "secure-saas-infra/bootstrap-qualification-request"
+    },
+    {
+      "schema": "contract-schema-validation-v1.schema.json",
+      "owner": "secure-saas-infra/contract-schema-validation"
+    },
+    {
+      "schema": "disposable-cluster-validation-v1.schema.json",
+      "owner": "secure-saas-infra/disposable-cluster-validation"
+    },
+    {
+      "schema": "management-seed-release-evidence-v1.schema.json",
+      "owner": "secure-saas-infra/management-seed-release-evidence"
+    },
+    {
+      "schema": "local-gate-evidence-v1.schema.json",
+      "owner": "secure-saas-infra/local-gate-evidence"
+    },
+    {
+      "schema": "management-seed-access-bundle-v1.schema.json",
+      "owner": "secure-saas-infra/management-seed-access"
+    },
+    {
+      "schema": "management-seed-access-change-set-receipt-v1.schema.json",
+      "owner": "secure-saas-infra/management-seed-access-provisioning"
+    },
+    {
+      "schema": "pulumi-plan-manifest-v1alpha1.schema.json",
+      "owner": "secure-saas-infra/pulumi-plan-manifest"
+    },
+    {
+      "schema": "resource-broker-state-v1alpha1.schema.json",
+      "owner": "secure-saas-infra/resource-broker-state"
+    },
+    {
+      "schema": "resource-claim-v1alpha1.schema.json",
+      "owner": "secure-saas-infra/resource-claim"
+    }
+  ]
+}

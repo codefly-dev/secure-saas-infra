@@ -1,0 +1,39 @@
+{
+  "apiVersion": "security.deus.dev/adversarial-review-disposition/v1alpha1",
+  "reviewedAt": "2026-07-20T18:23:13.134Z",
+  "source": {
+    "revision": "6a673aa676508b248ddf71e5c229ebb348129c17",
+    "treeDigest": "3487b202cc5da037d892b72942ceadc647c778df749845b9a5cdfe5608f12053"
+  },
+  "approvedForLocalQualification": false,
+  "approvedForAwsMutation": false,
+  "reviews": [
+    {
+      "discipline": "architecture",
+      "reviewer": "seam_architecture_critic",
+      "reviewMode": "read-only",
+      "identityAssurance": "process-label-only",
+      "localFindings": "unresolved",
+      "findingSummary": "PENDING EXACT-TREE RE-REVIEW: the dedicated signer UID, root-frozen review tree, transaction lock, mandatory plan export, provider smoke, and evidence-only review commit changed after the prior disposition.",
+      "awsBoundary": "Only a real management-seed preview can verify the Organizations diff and returned account outputs. Every post-seed cloud wave remains fail-closed."
+    },
+    {
+      "discipline": "security",
+      "reviewer": "seam_security_critic",
+      "reviewMode": "read-only",
+      "identityAssurance": "process-label-only",
+      "localFindings": "unresolved",
+      "findingSummary": "PENDING EXACT-TREE RE-REVIEW: the two-phase signer, ignored-path purge, peer-process denial, root freeze, retired qualification tools, narrowed Landlock reads, and sealed-memfd handoff require native adversarial validation.",
+      "awsBoundary": "The exact STS caller, assumed-role permissions, AWS Organizations authorization behavior, and provider plan still require a read-only real AWS preview. No mutation is approved."
+    },
+    {
+      "discipline": "validation",
+      "reviewer": "seam_validation_critic",
+      "reviewMode": "read-only",
+      "identityAssurance": "process-label-only",
+      "localFindings": "unresolved",
+      "findingSummary": "PENDING EXACT-TREE RE-REVIEW: the 71-test source gate passes, but tagged native Linux lifecycle, provider smoke workflows, sudo/visudo, and release evidence must run before recording GO.",
+      "awsBoundary": "Pulumi preview behavior and AWS Organizations semantics require a clean signed candidate, real backend/account configuration, and the exact short-lived preview role."
+    }
+  ]
+}

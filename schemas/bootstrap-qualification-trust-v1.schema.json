@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/bootstrap-qualification-trust-v1.schema.json",
+  "title": "Pinned bootstrap qualification signer trust root",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["apiVersion", "configured"],
+      "properties": {
+        "apiVersion": {
+          "const": "security.deus.dev/bootstrap-qualification-trust/v1"
+        },
+        "configured": { "const": false }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "apiVersion",
+        "configured",
+        "algorithm",
+        "keyId",
+        "publicKeySpki"
+      ],
+      "properties": {
+        "apiVersion": {
+          "const": "security.deus.dev/bootstrap-qualification-trust/v1"
+        },
+        "configured": { "const": true },
+        "algorithm": { "const": "Ed25519" },
+        "keyId": { "$ref": "#/$defs/sha256" },
+        "publicKeySpki": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{59}$"
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

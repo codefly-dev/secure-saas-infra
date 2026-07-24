@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/resource-claim-v1alpha1.schema.json",
+  "title": "Cloud-neutral resource broker claim",
+  "$ref": "#/$defs/claim",
+  "$defs": {
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "apiVersion",
+        "kind",
+        "claimId",
+        "tenantId",
+        "generation",
+        "resourceKind",
+        "resourceApiVersion",
+        "desiredStateDigest",
+        "desiredStateRef",
+        "requiredProviderCapabilities",
+        "lifecycle"
+      ],
+      "properties": {
+        "apiVersion": {
+          "const": "security.deus.dev/resource-broker/v1alpha1"
+        },
+        "kind": { "const": "ResourceClaim" },
+        "claimId": { "$ref": "#/$defs/name" },
+        "tenantId": { "$ref": "#/$defs/name" },
+        "generation": { "type": "integer", "minimum": 1 },
+        "resourceKind": { "$ref": "#/$defs/resourceKind" },
+        "resourceApiVersion": { "$ref": "#/$defs/apiVersion" },
+        "desiredStateDigest": { "$ref": "#/$defs/digest" },
+        "desiredStateRef": {
+          "type": "string",
+          "pattern": "^broker://[^@]+$",
+          "maxLength": 512
+        },
+        "requiredProviderCapabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/name" }
+        },
+        "lifecycle": { "$ref": "#/$defs/lifecycle" }
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deletionProtection",
+        "destructionApprovalRequired",
+        "finalizationEvidenceRequired",
+        "maxReconcileAttempts"
+      ],
+      "properties": {
+        "deletionProtection": { "const": true },
+        "destructionApprovalRequired": { "const": true },
+        "finalizationEvidenceRequired": { "const": true },
+        "maxReconcileAttempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        }
+      }
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$",
+      "maxLength": 128
+    },
+    "resourceKind": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9]{0,126}$",
+      "maxLength": 127
+    },
+    "apiVersion": {
+      "type": "string",
+      "pattern": "^[a-z0-9.-]+/[a-z0-9.-]+/v[0-9]+(?:alpha|beta)?[0-9]*$"
+    },
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

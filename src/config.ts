@@ -1,8 +1,35 @@
 import * as pulumi from "@pulumi/pulumi";
+import { lstatSync, readFileSync } from "node:fs";
+import {
+  awsWorkloadProviderExtensionsFromConfig,
+  compileAwsBackups,
+  compileAwsDataBoundaries,
+  compileAwsDatabases,
+  compileAwsApplyLaneIamConstraint,
+  compileAwsEksAccessGrants,
+  compileAwsNetworkBlueprint,
+  compileAwsWorkloads,
+  parseAwsBootstrapAccessPlan,
+  validateAndCompileAwsNetwork,
+  type AwsEksAccessGrantConfig,
+} from "./adapters/aws";
+import {
+  assertBlueprint,
+  BlueprintMigrationReport,
+  createWardenMindBlueprint,
+  currentBlueprintApiVersion,
+  loadPlatformBlueprint,
+  LoadedPlatformBlueprint,
+  PlatformBlueprint,
+  type ManagedPostgresEnvironment,
+  WardenMindNetworkDomainId,
+  wardenMindNetworkDomainIds,
+} from "./core";
 
 export type DeploymentMode = "organization" | "workload" | "all" | "disabled";
 export type StackKind =
   | "management"
+  | "account-access"
   | "network-hub"
   | "network-routing"
   | "organization-audit"
@@ -26,6 +53,10 @@ export type StackKind =
   | "argocd"
   | "disabled";
 export type SpokeKind = "platform" | "execution" | "data" | "shared";
+export interface PlatformBlueprintPresetConfig {
+  name: "warden-mind-v1";
+  networkCidrs: Record<WardenMindNetworkDomainId, string>;
+}
 export type OrganizationAccountKind =
   | "management"
   | "security"
@@ -93,11 +124,20 @@ export interface SpokeStackConfig {
   createEks: boolean;
   networkStackRef: string;
   transitGatewayId?: string;
+  zoneId?: string;
+  networkDomainId?: string;
+}
+
+export interface NetworkRoutingSpokeBinding {
+  stackRef: string;
+  zoneId: string;
+  networkDomainId: string;
 }
 
 export interface NetworkRoutingConfig {
   networkStackRef: string;
   spokeStackRefs: string[];
+  spokeBindings?: NetworkRoutingSpokeBinding[];
   azCount: number;
   networkFirewallEnabled: boolean;
 }
@@ -107,11 +147,19 @@ export interface EksConfig {
   endpointPublicAccess: boolean;
   autoModeNodePools: string[];
   networkPolicyMode: "standard" | "strict";
+  accessGrants: AwsEksAccessGrantConfig[];
 }
 
 export interface SecurityConfig {
   enableGuardDuty: boolean;
   enableSecurityHub: boolean;
+}
+
+export interface CodeflyRegistryConfig {
+  enabled: boolean;
+  repositories: string[];
+  retainImageCount: number;
+  untaggedRetentionDays: number;
 }
 
 export interface LogArchiveConfig {
@@ -288,6 +336,8 @@ export interface BackupConfig {
   vaultLockChangeableForDays: number;
   createPlan: boolean;
   dailyScheduleExpression: string;
+  backupIntervalMinutes: number;
+  restoreTestIntervalDays: number;
   coldStorageAfterDays: number;
   deleteAfterDays: number;
   selectionTags: Array<{ key: string; value: string }>;
@@ -308,6 +358,7 @@ export interface DatabaseConfig {
   backupRetentionDays: number;
   deletionProtection: boolean;
   createProxy: boolean;
+  replicaRegion?: string;
 }
 
 export interface WafConfig {
@@ -372,9 +423,14 @@ export interface DnsConfig {
 export interface ArgocdConfig {
   clusterStackRef: string;
   clusterName: string;
+  clusterAccessRoleArn: string;
   argocdHostname: string;
   chartVersion: string;
   bootstrapDirectory: string;
+  oidcIssuer: string;
+  oidcClientId: string;
+  oidcClientSecretRef: string;
+  oidcAdminGroup: string;
 }
 
 export interface IngressConfig {
@@ -419,16 +475,67 @@ export const stackKind =
   (projectConfig.get("stackKind") as StackKind | undefined) ??
   stackKindFromDeploymentMode(deploymentMode);
 export const awsRegion = awsConfig.get("region") ?? "us-east-1";
+export const awsAllowedAccountIds =
+  awsConfig.getObject<string[]>("allowedAccountIds") ?? [];
 export const organizationName = projectConfig.get("organizationName") ?? "deus";
+export const awsOrganizationId = projectConfig.get("awsOrganizationId");
 export const environment = projectConfig.get("environment") ?? stackName;
-export const adminRoleArns =
-  projectConfig.getObject<string[]>("adminRoleArns") ?? [];
+const rawPlatformBlueprint =
+  projectConfig.getObject<unknown>("platformBlueprint");
+const rawPlatformBlueprintPreset = projectConfig.getObject<unknown>(
+  "platformBlueprintPreset",
+);
+const loadedPlatformBlueprint = resolvePlatformBlueprintConfig(
+  rawPlatformBlueprint,
+  rawPlatformBlueprintPreset,
+);
+export const platformBlueprint: PlatformBlueprint | undefined =
+  loadedPlatformBlueprint?.blueprint;
+export const platformBlueprintMigrationReport:
+  | BlueprintMigrationReport
+  | undefined = loadedPlatformBlueprint?.migrationReport;
+export const managedPostgresContractPath = projectConfig.get(
+  "managedPostgresContractPath",
+);
+export const managedPostgresEnvironment = projectConfig.get(
+  "managedPostgresEnvironment",
+) as ManagedPostgresEnvironment | undefined;
+const awsBootstrapAccessPlanObject = projectConfig.getObject<unknown>(
+  "awsBootstrapAccessPlan",
+);
+const awsBootstrapAccessPlanJson = projectConfig.get(
+  "awsBootstrapAccessPlanJson",
+);
+const awsBootstrapAccessPlanPath = projectConfig.get(
+  "awsBootstrapAccessPlanPath",
+);
+if (
+  [
+    awsBootstrapAccessPlanObject,
+    awsBootstrapAccessPlanJson,
+    awsBootstrapAccessPlanPath,
+  ].filter((value) => value !== undefined).length > 1
+) {
+  throw new Error(
+    "Configure exactly one of awsBootstrapAccessPlan, awsBootstrapAccessPlanJson, or awsBootstrapAccessPlanPath.",
+  );
+}
+export const awsBootstrapAccessPlan =
+  awsBootstrapAccessPlanObject ??
+  (awsBootstrapAccessPlanJson
+    ? parseJsonConfig(awsBootstrapAccessPlanJson, "awsBootstrapAccessPlanJson")
+    : awsBootstrapAccessPlanPath
+      ? loadAwsBootstrapAccessPlan(awsBootstrapAccessPlanPath)
+      : undefined);
+export const awsBootstrapAccessAccountName = projectConfig.get(
+  "awsBootstrapAccessAccountName",
+);
 
 export const organizationConfig =
   projectConfig.getObject<OrganizationConfig>("organization") ??
   ({
     createOrganization: false,
-    defaultAccountRoleName: "OrganizationAccountAccessRole",
+    defaultAccountRoleName: "DeusOrganizationBootstrap",
     enableRamSharing: true,
     enableSecurityDelegatedAdmin: true,
     securityDelegatedAdminAccountName: "security-tooling",
@@ -444,17 +551,14 @@ export const organizationConfig =
       { name: "Security" },
       { name: "Infrastructure" },
       { name: "Workloads" },
-      { name: "Execution" },
+      { name: "NonProd", parent: "Workloads" },
+      { name: "PreProd", parent: "Workloads" },
+      { name: "Prod", parent: "Workloads" },
       { name: "Suspended" },
     ],
     accounts: [],
     guardrailScpsEnabled: true,
-    guardrailTargetOuNames: [
-      "Security",
-      "Infrastructure",
-      "Workloads",
-      "Execution",
-    ],
+    guardrailTargetOuNames: ["Security", "Infrastructure", "Workloads"],
   } satisfies OrganizationConfig);
 
 export const networkConfig =
@@ -496,6 +600,7 @@ export const eksConfig =
     endpointPublicAccess: false,
     autoModeNodePools: ["system", "general-purpose"],
     networkPolicyMode: "strict",
+    accessGrants: [],
   } satisfies EksConfig);
 
 export const securityConfig =
@@ -504,6 +609,15 @@ export const securityConfig =
     enableGuardDuty: false,
     enableSecurityHub: false,
   } satisfies SecurityConfig);
+
+export const codeflyRegistryConfig =
+  projectConfig.getObject<CodeflyRegistryConfig>("codeflyRegistry") ??
+  ({
+    enabled: false,
+    repositories: [],
+    retainImageCount: 100,
+    untaggedRetentionDays: 14,
+  } satisfies CodeflyRegistryConfig);
 
 export const spokeStackConfig =
   projectConfig.getObject<SpokeStackConfig>("spoke") ??
@@ -595,24 +709,19 @@ export const identityCenterConfig =
         ],
       },
       {
-        name: "PlatformPowerUser",
+        name: "PlatformOperationsReadOnly",
         description:
-          "Power user access for platform operations without IAM administration.",
+          "Read-only platform visibility; mutations use separately approved deploy roles.",
         sessionDuration: "PT2H",
-        managedPolicyArns: ["arn:aws:iam::aws:policy/PowerUserAccess"],
+        managedPolicyArns: [
+          "arn:aws:iam::aws:policy/job-function/ViewOnlyAccess",
+        ],
       },
       {
         name: "DeveloperReadOnly",
         description: "Read-only developer access.",
         sessionDuration: "PT4H",
         managedPolicyArns: ["arn:aws:iam::aws:policy/ReadOnlyAccess"],
-      },
-      {
-        name: "BreakGlassAdministrator",
-        description:
-          "Emergency administrator access. Keep membership empty by default.",
-        sessionDuration: "PT1H",
-        managedPolicyArns: ["arn:aws:iam::aws:policy/AdministratorAccess"],
       },
     ],
     assignments: [
@@ -628,25 +737,13 @@ export const identityCenterConfig =
       },
       {
         groupName: "platform-admins",
-        permissionSetName: "PlatformPowerUser",
-        accountNames: ["platform-dev", "platform-staging", "platform-prod"],
+        permissionSetName: "PlatformOperationsReadOnly",
+        accountNames: ["platform-dev", "platform-prod"],
       },
       {
         groupName: "developers",
         permissionSetName: "DeveloperReadOnly",
         accountNames: ["platform-dev", "execution-dev"],
-      },
-      {
-        groupName: "breakglass",
-        permissionSetName: "BreakGlassAdministrator",
-        accountNames: [
-          "security-tooling",
-          "log-archive",
-          "network",
-          "shared-services",
-          "platform-prod",
-          "execution-prod",
-        ],
       },
     ],
   } satisfies IdentityCenterConfig);
@@ -730,14 +827,15 @@ export const backupConfig =
     vaultLockChangeableForDays: 3,
     createPlan: true,
     dailyScheduleExpression: "cron(0 5 ? * * *)",
+    backupIntervalMinutes: 1440,
+    restoreTestIntervalDays: 30,
     coldStorageAfterDays: 90,
     deleteAfterDays: 365,
     selectionTags: [{ key: "Backup", value: "required" }],
   } satisfies BackupConfig);
 
-export const databaseConfig = projectConfig.getObject<DatabaseConfig>(
-  "database",
-);
+export const databaseConfig =
+  projectConfig.getObject<DatabaseConfig>("database");
 
 export const wafConfig = projectConfig.getObject<WafConfig>("waf") ?? {
   name: "public-ingress",
@@ -809,8 +907,176 @@ export function named(name: string) {
   return `${organizationName}-${environment}-${name}`;
 }
 
+export function resolvePlatformBlueprintConfig(
+  rawBlueprint: unknown,
+  rawPreset: unknown,
+): LoadedPlatformBlueprint | undefined {
+  if (rawBlueprint !== undefined && rawPreset !== undefined) {
+    throw new Error(
+      "Configure either platformBlueprint or platformBlueprintPreset, not both.",
+    );
+  }
+  if (rawBlueprint !== undefined) return loadPlatformBlueprint(rawBlueprint);
+  if (rawPreset === undefined) return undefined;
+
+  const preset = strictConfigObject(
+    rawPreset,
+    "platformBlueprintPreset",
+    new Set(["name", "networkCidrs"]),
+  );
+  if (preset.name !== "warden-mind-v1") {
+    throw new Error("platformBlueprintPreset.name must be 'warden-mind-v1'.");
+  }
+  const rawNetworkCidrs = strictConfigObject(
+    preset.networkCidrs,
+    "platformBlueprintPreset.networkCidrs",
+    new Set<string>(wardenMindNetworkDomainIds),
+  );
+  const networkCidrs = Object.fromEntries(
+    wardenMindNetworkDomainIds.map((networkDomainId) => {
+      const cidr = rawNetworkCidrs[networkDomainId];
+      if (typeof cidr !== "string" || cidr.length === 0) {
+        throw new Error(
+          `platformBlueprintPreset.networkCidrs.${networkDomainId} must be a non-empty CIDR string.`,
+        );
+      }
+      return [networkDomainId, cidr];
+    }),
+  ) as Record<WardenMindNetworkDomainId, string>;
+  const blueprint = createWardenMindBlueprint({ networkCidrs });
+  assertBlueprint(blueprint);
+  return {
+    blueprint,
+    migrationReport: {
+      sourceVersion: currentBlueprintApiVersion,
+      targetVersion: currentBlueprintApiVersion,
+      migrated: false,
+      changes: [],
+    },
+  };
+}
+
+function strictConfigObject(
+  value: unknown,
+  path: string,
+  allowedKeys: ReadonlySet<string>,
+): Record<string, unknown> {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${path} must be an object.`);
+  }
+  const result = value as Record<string, unknown>;
+  for (const key of Object.keys(result)) {
+    if (!allowedKeys.has(key)) {
+      throw new Error(`${path} contains unknown field '${key}'.`);
+    }
+  }
+  return result;
+}
+
+function parseJsonConfig(value: string, path: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    throw new Error(`${path} must contain valid JSON.`);
+  }
+}
+
+function loadAwsBootstrapAccessPlan(path: string): unknown {
+  if (!/^contracts\/[a-z0-9][a-z0-9.-]*\.json$/.test(path)) {
+    throw new Error(
+      "awsBootstrapAccessPlanPath must name an exact JSON file under contracts/.",
+    );
+  }
+  try {
+    const stat = lstatSync(path);
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      throw new Error("not a regular file");
+    }
+    return parseJsonConfig(readFileSync(path, "utf8"), path);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("valid JSON")) {
+      throw error;
+    }
+    throw new Error(`Unable to read awsBootstrapAccessPlanPath '${path}'.`);
+  }
+}
+
 export function validateConfig() {
-  validateConfigValues(deploymentMode, networkConfig, organizationConfig);
+  compileAwsEksAccessGrants(eksConfig.accessGrants);
+  if (platformBlueprint) {
+    assertBlueprint(platformBlueprint);
+  }
+  if (
+    managedPostgresContractPath &&
+    !/^contracts\/[a-z0-9][a-z0-9.-]*\.json$/.test(managedPostgresContractPath)
+  ) {
+    throw new Error(
+      "managedPostgresContractPath must name an exact JSON file under contracts/.",
+    );
+  }
+  if (managedPostgresContractPath && !platformBlueprint) {
+    throw new Error(
+      "managedPostgresContractPath requires a versioned platformBlueprint.",
+    );
+  }
+  if (
+    managedPostgresContractPath &&
+    !new Set(["development", "staging", "production"]).has(
+      managedPostgresEnvironment ?? "",
+    )
+  ) {
+    throw new Error(
+      "managedPostgresContractPath requires managedPostgresEnvironment to be development, staging, or production.",
+    );
+  }
+  if (
+    managedPostgresContractPath &&
+    deploymentStageForEnvironment(environment) !== managedPostgresEnvironment
+  ) {
+    throw new Error(
+      "managedPostgresEnvironment must exactly match the development, staging, or production token in environment.",
+    );
+  }
+  if (
+    managedPostgresContractPath &&
+    !/^o-[a-z0-9]{10,32}$/.test(awsOrganizationId ?? "")
+  ) {
+    throw new Error(
+      "managedPostgresContractPath requires one exact awsOrganizationId for EKS Pod Identity trust.",
+    );
+  }
+  if (
+    managedPostgresContractPath &&
+    (awsAllowedAccountIds.length !== 1 ||
+      !/^\d{12}$/.test(awsAllowedAccountIds[0] ?? ""))
+  ) {
+    throw new Error(
+      "managedPostgresContractPath requires exactly one 12-digit aws:allowedAccountIds entry so canonical plans cannot target the wrong account.",
+    );
+  }
+  if (stackKind === "account-access") {
+    if (!awsBootstrapAccessPlan || !awsBootstrapAccessAccountName) {
+      throw new Error(
+        "account-access stacks require awsBootstrapAccessPlan and awsBootstrapAccessAccountName.",
+      );
+    }
+    const accessPlan = parseAwsBootstrapAccessPlan(awsBootstrapAccessPlan);
+    if (
+      !accessPlan.accounts.some(
+        (account) => account.accountName === awsBootstrapAccessAccountName,
+      )
+    ) {
+      throw new Error(
+        `awsBootstrapAccessAccountName '${awsBootstrapAccessAccountName}' is not declared in awsBootstrapAccessPlan.`,
+      );
+    }
+  }
+  validateConfigValues(
+    deploymentMode,
+    networkConfig,
+    organizationConfig,
+    platformBlueprint !== undefined,
+  );
   validateStackKindValues(
     stackKind,
     spokeStackConfig,
@@ -822,20 +1088,31 @@ export function validateConfig() {
     executionSandboxConfig,
     e2bByocAccessConfig,
     customerDataConfig,
+    platformBlueprint,
   );
   validateOperationalConfigValues(
     stackKind,
     logArchiveConfig,
     sharedServicesConfig,
   );
-  validateProductionPostureValues(
-    stackKind,
-    environment,
-    networkConfig,
-    eksConfig,
-    spokeStackConfig,
-    adminRoleArns,
-  );
+  if (platformBlueprint) {
+    validateBlueprintAwsCompilation(platformBlueprint);
+  } else {
+    validateProductionPostureValues(
+      stackKind,
+      environment,
+      networkConfig,
+      eksConfig,
+      spokeStackConfig,
+    );
+    validateAndCompileAwsNetwork(networkConfig, {
+      name: `${organizationName}-${environment}-network`,
+      environment,
+      requireInspectedEgress:
+        isProductionLikeEnvironment(environment) &&
+        (stackKind === "network-hub" || stackKind === "single-account"),
+    });
+  }
 
   if (stackKind === "backup") {
     validateBackupConfig(backupConfig);
@@ -850,6 +1127,10 @@ export function validateConfig() {
     if (databaseConfig) {
       validateDatabaseConfig(databaseConfig);
     }
+  }
+
+  if (stackKind === "platform" || stackKind === "single-account") {
+    validateCodeflyRegistryConfig(codeflyRegistryConfig);
   }
 
   if (stackKind === "ingress") {
@@ -880,10 +1161,160 @@ export function validateConfig() {
   }
 }
 
-export function validateDnsConfig(config: DnsConfig) {
+function validateBlueprintAwsCompilation(blueprint: PlatformBlueprint) {
   if (
-    !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?\.[a-z]{2,}$/i.test(config.rootDomain)
+    [
+      "network-hub",
+      "network-routing",
+      "platform",
+      "execution",
+      "single-account",
+    ].includes(stackKind)
   ) {
+    compileAwsNetworkBlueprint(blueprint, {
+      shareTransitGatewayWithOrganization:
+        networkConfig.egress.shareTransitGatewayWithOrganization ?? false,
+      createEksByZoneId: {},
+      spokeKindByZoneId: {},
+    });
+  }
+
+  if (["platform", "execution", "single-account"].includes(stackKind)) {
+    const workloadPlan = compileAwsWorkloads(
+      blueprint,
+      awsWorkloadProviderExtensionsFromConfig(eksConfig, e2bByocAccessConfig),
+    );
+    const relevantPlanes =
+      stackKind === "single-account"
+        ? workloadPlan.planes
+        : workloadPlan.planes.filter(
+            (plane) => plane.zoneId === spokeStackConfig.zoneId,
+          );
+    const relevantRelational = blueprint.dataBoundaries.filter(
+      (boundary) =>
+        boundary.services.includes("relational") &&
+        (stackKind === "single-account" ||
+          boundary.zoneId === spokeStackConfig.zoneId),
+    );
+    if (relevantPlanes.length === 0 && relevantRelational.length === 0) {
+      throw new Error(
+        `${stackKind} stack has no workload or relational data plane bound to its neutral spoke zone.`,
+      );
+    }
+    if (
+      relevantPlanes.some((plane) =>
+        plane.deploymentKind.startsWith("private-eks"),
+      ) &&
+      !hasClusterAdministrator(eksConfig.accessGrants)
+    ) {
+      throw new Error(
+        `${stackKind} stack compiles private EKS and must declare at least one secure-saas-infra:eks.accessGrants cluster-admin entry.`,
+      );
+    }
+    if (relevantRelational.length > 0) {
+      if (!databaseConfig) {
+        throw new Error(
+          `${stackKind} stack requires database configuration for its relational data boundaries.`,
+        );
+      }
+      if (!awsBootstrapAccessPlan || !awsBootstrapAccessAccountName) {
+        throw new Error(
+          `${stackKind} relational infrastructure requires awsBootstrapAccessPlan and awsBootstrapAccessAccountName so every IAM role is name- and boundary-constrained.`,
+        );
+      }
+      compileAwsApplyLaneIamConstraint(
+        awsBootstrapAccessPlan,
+        awsBootstrapAccessAccountName,
+        "database",
+      );
+      compileAwsDatabases(blueprint, {
+        engine: databaseConfig.engine,
+        engineVersion: databaseConfig.engineVersion,
+        instanceClass: databaseConfig.instanceClass,
+        instanceCount: databaseConfig.instanceCount,
+        backupRetentionDays: databaseConfig.backupRetentionDays,
+        continuousPointInTimeRecovery: true,
+        replicaRegion: databaseConfig.replicaRegion,
+      });
+    }
+  }
+
+  if (stackKind === "execution") {
+    const dataPlan = compileAwsDataBoundaries(blueprint, {
+      noncurrentVersionExpirationDays:
+        customerDataConfig.noncurrentVersionExpirationDays,
+      replicationRegion: customerDataConfig.replicationRegion,
+      replicationAccountId: customerDataConfig.replicationAccountId,
+    });
+    if (dataPlan.artifactStores.length === 0) {
+      throw new Error(
+        "execution stack blueprint must declare at least one artifact data boundary.",
+      );
+    }
+  }
+
+  if (stackKind === "backup") {
+    compileAwsBackups(blueprint, {
+      vaultLockEnabled: backupConfig.vaultLockEnabled,
+      backupIntervalMinutes: backupConfig.backupIntervalMinutes,
+      coldStorageAfterDays: backupConfig.coldStorageAfterDays,
+      deleteAfterDays: backupConfig.deleteAfterDays,
+      replicaRegion: backupConfig.replicaRegion,
+    });
+  }
+}
+
+export function validateCodeflyRegistryConfig(config: CodeflyRegistryConfig) {
+  if (
+    !Number.isInteger(config.retainImageCount) ||
+    config.retainImageCount < 10 ||
+    config.retainImageCount > 1000
+  ) {
+    throw new Error(
+      "codeflyRegistry.retainImageCount must be between 10 and 1000.",
+    );
+  }
+  if (
+    !Number.isInteger(config.untaggedRetentionDays) ||
+    config.untaggedRetentionDays < 1 ||
+    config.untaggedRetentionDays > 90
+  ) {
+    throw new Error(
+      "codeflyRegistry.untaggedRetentionDays must be between 1 and 90.",
+    );
+  }
+  if (!config.enabled) {
+    if (config.repositories.length > 0) {
+      throw new Error(
+        "codeflyRegistry.repositories must be empty when the registry is disabled.",
+      );
+    }
+    return;
+  }
+  if (config.repositories.length === 0) {
+    throw new Error(
+      "enabled codeflyRegistry requires at least one repository.",
+    );
+  }
+  if (new Set(config.repositories).size !== config.repositories.length) {
+    throw new Error("codeflyRegistry.repositories must be unique.");
+  }
+  for (const repository of config.repositories) {
+    if (
+      repository.length > 128 ||
+      !/^[a-z0-9]+(?:[._/-][a-z0-9]+)*$/.test(repository) ||
+      repository.includes("..") ||
+      repository.includes("//")
+    ) {
+      throw new Error(
+        `codeflyRegistry repository '${repository}' is not a safe exact name.`,
+      );
+    }
+  }
+}
+
+export function validateDnsConfig(config: DnsConfig) {
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?\.[a-z]{2,}$/i.test(config.rootDomain)) {
     throw new Error(
       `dns.rootDomain '${config.rootDomain}' is not a valid DNS apex.`,
     );
@@ -921,7 +1352,20 @@ export function validateArgocdConfig(config: ArgocdConfig) {
     );
   }
 
-  if (!/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$/i.test(config.argocdHostname)) {
+  if (
+    !/^arn:aws(?:-[a-z]+)?:iam::\d{12}:role\/[A-Za-z0-9+=,.@_/-]+$/.test(
+      config.clusterAccessRoleArn,
+    ) ||
+    config.clusterAccessRoleArn.includes("*")
+  ) {
+    throw new Error(
+      "argocd.clusterAccessRoleArn must be one exact IAM role ARN authorized by an EKS access entry.",
+    );
+  }
+
+  if (
+    !/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$/i.test(config.argocdHostname)
+  ) {
     throw new Error(
       `argocd.argocdHostname '${config.argocdHostname}' is not a valid hostname.`,
     );
@@ -933,10 +1377,49 @@ export function validateArgocdConfig(config: ArgocdConfig) {
     );
   }
 
-  if (!config.bootstrapDirectory) {
+  if (
+    !/^gitops\/bootstrap\/argocd(?:\/overlays\/(?:dev|staging|production))?$/.test(
+      config.bootstrapDirectory,
+    )
+  ) {
     throw new Error(
-      "argocd.bootstrapDirectory is required; point at the Argo CD bootstrap kustomize.",
+      "argocd.bootstrapDirectory must select the owned Argo CD bootstrap or one exact environment overlay.",
     );
+  }
+  let issuer: URL;
+  try {
+    issuer = new URL(config.oidcIssuer);
+  } catch {
+    throw new Error("argocd.oidcIssuer must be an exact HTTPS URL.");
+  }
+  if (
+    issuer.protocol !== "https:" ||
+    issuer.username ||
+    issuer.password ||
+    issuer.search ||
+    issuer.hash
+  ) {
+    throw new Error(
+      "argocd.oidcIssuer must be a credential-free exact HTTPS URL.",
+    );
+  }
+  if (
+    !config.oidcClientId ||
+    config.oidcClientId.length > 128 ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(config.oidcClientId)
+  ) {
+    throw new Error("argocd.oidcClientId must be an exact OIDC client ID.");
+  }
+  if (!/^\$[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(config.oidcClientSecretRef)) {
+    throw new Error(
+      "argocd.oidcClientSecretRef must be an Argo secret-key reference, never a secret value.",
+    );
+  }
+  if (
+    !/^[A-Za-z0-9][A-Za-z0-9:_-]*$/.test(config.oidcAdminGroup) ||
+    config.oidcAdminGroup.includes("*")
+  ) {
+    throw new Error("argocd.oidcAdminGroup must be one exact OIDC group.");
   }
 }
 
@@ -944,6 +1427,7 @@ export function validateConfigValues(
   mode: DeploymentMode,
   network: NetworkConfig,
   organization: OrganizationConfig,
+  blueprintAuthoritative = false,
 ) {
   const validModes: DeploymentMode[] = [
     "organization",
@@ -957,31 +1441,92 @@ export function validateConfigValues(
     );
   }
 
-  if (network.egress.azCount < 2 || network.egress.azCount > 4) {
-    throw new Error(
-      "network.egress.azCount must be between 2 and 4 for this baseline.",
-    );
-  }
-
-  const spokeNames = new Set<string>();
-  for (const spoke of network.spokes) {
-    if (spokeNames.has(spoke.name)) {
-      throw new Error(`Duplicate network spoke name '${spoke.name}'.`);
+  if (!blueprintAuthoritative) {
+    if (network.egress.azCount < 2 || network.egress.azCount > 4) {
+      throw new Error(
+        "network.egress.azCount must be between 2 and 4 for this baseline.",
+      );
     }
-    spokeNames.add(spoke.name);
+
+    const spokeNames = new Set<string>();
+    for (const spoke of network.spokes) {
+      if (spokeNames.has(spoke.name)) {
+        throw new Error(`Duplicate network spoke name '${spoke.name}'.`);
+      }
+      spokeNames.add(spoke.name);
+    }
+
+    validateAndCompileAwsNetwork(network, {
+      name: "configuration-network",
+      environment: "validation",
+      requireInspectedEgress: false,
+    });
   }
 
   if (["organization", "all"].includes(mode)) {
-    const ouNames = new Set(
-      organization.organizationalUnits.map((unit) => unit.name),
-    );
-    for (const account of organization.accounts) {
-      if (account.create === false) {
-        continue;
+    const ouNames = new Set<string>();
+    for (const unit of organization.organizationalUnits) {
+      if (ouNames.has(unit.name)) {
+        throw new Error(`Duplicate organization OU name '${unit.name}'.`);
       }
+      if (unit.parent && !ouNames.has(unit.parent)) {
+        throw new Error(
+          `Organization OU '${unit.name}' references unknown or later parent OU '${unit.parent}'.`,
+        );
+      }
+      ouNames.add(unit.name);
+    }
+
+    const accountNames = new Set<string>();
+    const accountEmails = new Set<string>();
+    for (const account of organization.accounts) {
+      if (accountNames.has(account.name)) {
+        throw new Error(
+          `Duplicate organization account name '${account.name}'.`,
+        );
+      }
+      if (accountEmails.has(account.email.toLowerCase())) {
+        throw new Error(
+          `Duplicate organization account email '${account.email}'.`,
+        );
+      }
+      accountNames.add(account.name);
+      accountEmails.add(account.email.toLowerCase());
       if (!ouNames.has(account.ou)) {
         throw new Error(
           `Organization account '${account.name}' references unknown OU '${account.ou}'.`,
+        );
+      }
+    }
+
+    for (const environment of ["dev", "staging", "prod"] as const) {
+      const platform = organization.accounts.find(
+        (account) => account.name === `platform-${environment}`,
+      );
+      const execution = organization.accounts.find(
+        (account) => account.name === `execution-${environment}`,
+      );
+      if (!platform && !execution) {
+        continue;
+      }
+      if (!platform || !execution) {
+        throw new Error(
+          `Organization environment '${environment}' requires paired platform and execution accounts.`,
+        );
+      }
+      if (platform.kind !== "workload" || execution.kind !== "execution") {
+        throw new Error(
+          `Organization environment '${environment}' has invalid platform or execution account kinds.`,
+        );
+      }
+      if (platform.ou !== execution.ou) {
+        throw new Error(
+          `Organization environment '${environment}' platform and execution accounts must share an environment OU.`,
+        );
+      }
+      if ((platform.create !== false) !== (execution.create !== false)) {
+        throw new Error(
+          `Organization environment '${environment}' platform and execution accounts must be enabled or disabled together.`,
         );
       }
     }
@@ -1070,12 +1615,33 @@ const productionEnvironmentNames = new Set([
   "execution-staging",
 ]);
 
-function isProductionLikeEnvironment(value: string) {
+export function isProductionLikeEnvironment(value: string) {
   const normalized = value.toLowerCase();
   return (
     productionEnvironmentNames.has(normalized) ||
-    /^|[-_](prod|production|staging)([-_]|$)/.test(normalized)
+    /(^|[-_])(prod|production|prd|staging|stage)([-_]|$)/.test(normalized)
   );
+}
+
+export function deploymentStageForEnvironment(
+  value: string,
+): ManagedPostgresEnvironment | undefined {
+  const tokens = value.toLowerCase().split(/[-_]/).filter(Boolean);
+  const matches = new Set<ManagedPostgresEnvironment>();
+  if (tokens.some((token) => ["prod", "production", "prd"].includes(token))) {
+    matches.add("production");
+  }
+  if (
+    tokens.some((token) =>
+      ["staging", "stage", "stg", "preprod"].includes(token),
+    )
+  ) {
+    matches.add("staging");
+  }
+  if (tokens.some((token) => ["dev", "development"].includes(token))) {
+    matches.add("development");
+  }
+  return matches.size === 1 ? [...matches][0] : undefined;
 }
 
 export function validateProductionPostureValues(
@@ -1084,7 +1650,6 @@ export function validateProductionPostureValues(
   network: NetworkConfig,
   eks: EksConfig,
   spoke: SpokeStackConfig,
-  adminRoleArns: string[],
 ) {
   const productionLike = isProductionLikeEnvironment(environment);
 
@@ -1102,10 +1667,10 @@ export function validateProductionPostureValues(
     (kind === "platform" || kind === "execution") &&
     spoke.createEks &&
     !eks.endpointPublicAccess &&
-    adminRoleArns.length === 0
+    !hasClusterAdministrator(eks.accessGrants)
   ) {
     throw new Error(
-      `${kind} stacks with private EKS endpoints must declare at least one secure-saas-infra:adminRoleArns entry. Without it the cluster cannot be administered after deploy.`,
+      `${kind} stacks with private EKS endpoints must declare at least one secure-saas-infra:eks.accessGrants cluster-admin entry. Without it the cluster cannot be administered after deploy.`,
     );
   }
 
@@ -1113,13 +1678,20 @@ export function validateProductionPostureValues(
     kind === "single-account" &&
     eks &&
     !eks.endpointPublicAccess &&
-    adminRoleArns.length === 0 &&
+    !hasClusterAdministrator(eks.accessGrants) &&
     network.spokes.some((entry) => entry.createEks)
   ) {
     throw new Error(
-      "single-account stacks with private EKS endpoints must declare at least one secure-saas-infra:adminRoleArns entry.",
+      "single-account stacks with private EKS endpoints must declare at least one secure-saas-infra:eks.accessGrants cluster-admin entry.",
     );
   }
+}
+
+function hasClusterAdministrator(grants: AwsEksAccessGrantConfig[]): boolean {
+  return compileAwsEksAccessGrants(grants).some(
+    (grant) =>
+      grant.accessPolicy === "cluster-admin" && grant.scope.type === "cluster",
+  );
 }
 
 export function stackKindFromDeploymentMode(mode: DeploymentMode): StackKind {
@@ -1152,9 +1724,11 @@ export function validateStackKindValues(
   executionSandbox: ExecutionSandboxConfig = executionSandboxConfig,
   e2bByocAccess: E2bByocAccessConfig = e2bByocAccessConfig,
   customerData: CustomerDataConfig = customerDataConfig,
+  blueprint?: PlatformBlueprint,
 ) {
   const validKinds: StackKind[] = [
     "management",
+    "account-access",
     "network-hub",
     "network-routing",
     "organization-audit",
@@ -1207,9 +1781,11 @@ export function validateStackKindValues(
     }
 
     if (kind === "execution") {
-      validateExecutionSandboxConfig(executionSandbox);
+      if (!blueprint) {
+        validateExecutionSandboxConfig(executionSandbox);
+        validateCustomerDataConfig(customerData);
+      }
       validateE2bByocAccessConfig(e2bByocAccess);
-      validateCustomerDataConfig(customerData);
     }
   }
 
@@ -1248,6 +1824,18 @@ export function validateStackKindValues(
     const permissionSetNames = new Set(
       identityCenter.permissionSets.map((permissionSet) => permissionSet.name),
     );
+
+    for (const permissionSet of identityCenter.permissionSets) {
+      if (
+        permissionSet.managedPolicyArns.some((policyArn) =>
+          isHighRiskAwsManagedPolicy(policyArn),
+        )
+      ) {
+        throw new Error(
+          `identity permission set '${permissionSet.name}' must not attach AdministratorAccess, PowerUserAccess, or IAMFullAccess; use a separately approved deploy role.`,
+        );
+      }
+    }
 
     for (const assignment of identityCenter.assignments) {
       if (!groupNames.has(assignment.groupName)) {
@@ -1522,6 +2110,14 @@ export function validateBackupConfig(config: BackupConfig) {
   }
 
   if (config.createPlan) {
+    if (config.backupIntervalMinutes < 1) {
+      throw new Error("backup.backupIntervalMinutes must be positive.");
+    }
+    if (config.restoreTestIntervalDays < 1) {
+      throw new Error(
+        "backup.restoreTestIntervalDays must be positive; backups without tested restores are prohibited.",
+      );
+    }
     if (config.deleteAfterDays < config.vaultLockMinRetentionDays) {
       throw new Error(
         "backup plan deleteAfterDays must be greater than or equal to vault lock min retention.",
@@ -1537,10 +2133,7 @@ export function validateBackupConfig(config: BackupConfig) {
 }
 
 export function validateDatabaseConfig(config: DatabaseConfig) {
-  const validEngines: DatabaseEngine[] = [
-    "aurora-postgresql",
-    "aurora-mysql",
-  ];
+  const validEngines: DatabaseEngine[] = ["aurora-postgresql", "aurora-mysql"];
   if (!validEngines.includes(config.engine)) {
     throw new Error(
       `database.engine must be one of: ${validEngines.join(", ")}.`,
@@ -1604,7 +2197,7 @@ export function validateIngressConfig(config: IngressConfig) {
 
   if (!config.internalNlbArn) {
     throw new Error(
-      "ingress.internalNlbArn is required. Wire this from the platform stack output.",
+      "ingress.internalNlbArn is required. Wire this from the observed EKS Auto Mode Istio gateway Service handoff.",
     );
   }
 

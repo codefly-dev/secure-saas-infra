@@ -1,0 +1,416 @@
+{
+  "apiVersion": "security.deus.dev/cloud-context/v1alpha1",
+  "kind": "CloudContextCatalog",
+  "name": "warden-mind-aws",
+  "environment": "development",
+  "contexts": [
+    {
+      "id": "aws-execution-development",
+      "environment": "development",
+      "provider": {
+        "kind": "aws",
+        "boundaryRef": "provider-boundary://aws/222222222222",
+        "location": "us-east-1"
+      },
+      "provisioning": {
+        "mode": "pre-provisioned",
+        "owner": "external-iac",
+        "physicalMutationFromCodefly": false
+      },
+      "posture": {
+        "privateNetworking": true,
+        "inspectedEgress": true,
+        "immutableAudit": true,
+        "credentialDelivery": "reference-only",
+        "directProviderCredentials": false
+      },
+      "capabilities": {
+        "runtimes": [
+          {
+            "id": "isolated-execution-runtime",
+            "workloadPlaneIds": ["execution-shared-plane"],
+            "orchestrator": "external-sandbox",
+            "executionTrust": "untrusted",
+            "runtimeIsolation": "dedicated-vm",
+            "credentialMode": "brokered",
+            "privateControlPlane": true,
+            "workloadIdentity": true,
+            "directHostAccess": false,
+            "reference": "stack-output://deus/secure-saas-infra/execution-dev/e2bByocVendorRoleArn"
+          }
+        ],
+        "networks": [
+          {
+            "id": "isolated-execution-network",
+            "networkDomainIds": ["execution-shared-net"],
+            "private": true,
+            "directInternetAccess": false,
+            "inspectedEgress": true,
+            "brokeredEgress": true,
+            "reference": "stack-output://deus/secure-saas-infra/execution-dev/spokeVpcId"
+          }
+        ],
+        "registries": [
+          {
+            "id": "execution-registry",
+            "immutableDigestsOnly": true,
+            "signatureVerification": true,
+            "provenanceVerification": true,
+            "reference": "provider-reference://aws/ecr/us-east-1/111111111111/platform"
+          }
+        ],
+        "dns": [
+          {
+            "id": "execution-private-dns",
+            "visibility": "private",
+            "managedRecordsOnly": true,
+            "reference": "stack-output://deus/secure-saas-infra/platform-dev/privateDnsZoneId"
+          }
+        ],
+        "identities": [
+          {
+            "id": "execution-brokered-identities",
+            "mode": "workload-identity",
+            "allowedIdentityIds": [
+              "mind-execution-service",
+              "tenant-a-workload",
+              "tenant-b-workload"
+            ],
+            "shortLived": true,
+            "administrator": false,
+            "maxSessionMinutes": 15,
+            "reference": "stack-output://deus/secure-saas-infra/execution-dev/workloadIdentityBindings"
+          }
+        ],
+        "observability": [
+          {
+            "id": "execution-observability",
+            "immutableAudit": true,
+            "auditRetentionDays": 365,
+            "auditRef": "stack-output://deus/secure-saas-infra/platform-dev/auditEvidence",
+            "logsRef": "stack-output://deus/secure-saas-infra/platform-dev/logsEndpoint",
+            "metricsRef": "stack-output://deus/secure-saas-infra/platform-dev/metricsEndpoint",
+            "tracesRef": "stack-output://deus/secure-saas-infra/platform-dev/tracesEndpoint"
+          }
+        ]
+      },
+      "resourceBindings": [],
+      "status": {
+        "phase": "planned",
+        "generation": 1,
+        "observedGeneration": 0,
+        "verifiedAt": null,
+        "evidenceRef": null
+      }
+    },
+    {
+      "id": "aws-platform-development",
+      "environment": "development",
+      "provider": {
+        "kind": "aws",
+        "boundaryRef": "provider-boundary://aws/111111111111",
+        "location": "us-east-1"
+      },
+      "provisioning": {
+        "mode": "pre-provisioned",
+        "owner": "external-iac",
+        "physicalMutationFromCodefly": false
+      },
+      "posture": {
+        "privateNetworking": true,
+        "inspectedEgress": true,
+        "immutableAudit": true,
+        "credentialDelivery": "reference-only",
+        "directProviderCredentials": false
+      },
+      "capabilities": {
+        "runtimes": [
+          {
+            "id": "platform-runtime",
+            "workloadPlaneIds": ["platform-applications"],
+            "orchestrator": "managed-kubernetes",
+            "executionTrust": "trusted",
+            "runtimeIsolation": "container",
+            "credentialMode": "workload-identity",
+            "privateControlPlane": true,
+            "workloadIdentity": true,
+            "directHostAccess": false,
+            "reference": "stack-output://deus/secure-saas-infra/platform-dev/eksClusters"
+          }
+        ],
+        "networks": [
+          {
+            "id": "platform-private-network",
+            "networkDomainIds": ["control-net"],
+            "private": true,
+            "directInternetAccess": false,
+            "inspectedEgress": true,
+            "brokeredEgress": true,
+            "reference": "stack-output://deus/secure-saas-infra/platform-dev/spokeVpcId"
+          }
+        ],
+        "registries": [
+          {
+            "id": "platform-registry",
+            "immutableDigestsOnly": true,
+            "signatureVerification": true,
+            "provenanceVerification": true,
+            "reference": "provider-reference://aws/ecr/us-east-1/111111111111/platform"
+          }
+        ],
+        "dns": [
+          {
+            "id": "platform-private-dns",
+            "visibility": "private",
+            "managedRecordsOnly": true,
+            "reference": "stack-output://deus/secure-saas-infra/platform-dev/privateDnsZoneId"
+          },
+          {
+            "id": "platform-public-dns",
+            "visibility": "public",
+            "managedRecordsOnly": true,
+            "reference": "stack-output://deus/secure-saas-infra/platform-dev/publicDnsZoneId"
+          }
+        ],
+        "identities": [
+          {
+            "id": "platform-workload-identities",
+            "mode": "workload-identity",
+            "allowedIdentityIds": [
+              "mind-core-service",
+              "mind-execution-service",
+              "mind-infra-migration",
+              "mind-infra-service",
+              "mind-users-migration",
+              "mind-users-service",
+              "warden-platform-service",
+              "warden-saas-migration",
+              "warden-saas-service"
+            ],
+            "shortLived": true,
+            "administrator": false,
+            "maxSessionMinutes": 15,
+            "reference": "stack-output://deus/secure-saas-infra/platform-dev/workloadIdentityBindings"
+          }
+        ],
+        "observability": [
+          {
+            "id": "platform-observability",
+            "immutableAudit": true,
+            "auditRetentionDays": 365,
+            "auditRef": "stack-output://deus/secure-saas-infra/platform-dev/auditEvidence",
+            "logsRef": "stack-output://deus/secure-saas-infra/platform-dev/logsEndpoint",
+            "metricsRef": "stack-output://deus/secure-saas-infra/platform-dev/metricsEndpoint",
+            "tracesRef": "stack-output://deus/secure-saas-infra/platform-dev/tracesEndpoint"
+          }
+        ]
+      },
+      "resourceBindings": [
+        {
+          "id": "mind-infra-postgres",
+          "kind": "ManagedPostgres",
+          "lifecycle": "pre-provisioned",
+          "applicationId": "mind",
+          "componentId": "infra",
+          "serviceRef": "mind-server/infra/postgres",
+          "dataBoundaryId": "mind-infra-state",
+          "providerResourceRef": "stack-output://deus/secure-saas-infra/platform-dev/databaseBindings/mind-infra-postgres/clusterResourceId",
+          "network": {
+            "runtimeBoundaryId": "mind-infra-runtime-db-access",
+            "migrationBoundaryId": "mind-infra-migration-db-access",
+            "separateBoundaries": true,
+            "allowNetworkCidr": false
+          },
+          "identities": {
+            "runtimeIdentityId": "mind-infra-service",
+            "migrationIdentityId": "mind-infra-migration",
+            "separate": true
+          },
+          "outputs": {
+            "endpointRef": "stack-output://deus/secure-saas-infra/platform-dev/databaseBindings/mind-infra-postgres/endpoint",
+            "port": 5432,
+            "databaseName": "mind_infra",
+            "caBundleRef": "provider-reference://aws/rds/us-east-1/ca-bundle",
+            "runtimeIdentityRef": "identity://mind-infra-service",
+            "migrationIdentityRef": "identity://mind-infra-migration",
+            "credentialValue": null
+          },
+          "status": {
+            "phase": "planned",
+            "generation": 1,
+            "observedGeneration": 0,
+            "verifiedAt": null,
+            "evidenceRef": null
+          }
+        },
+        {
+          "id": "mind-users-postgres",
+          "kind": "ManagedPostgres",
+          "lifecycle": "pre-provisioned",
+          "applicationId": "mind",
+          "componentId": "users",
+          "serviceRef": "mind-server/users/store",
+          "dataBoundaryId": "mind-users-state",
+          "providerResourceRef": "stack-output://deus/secure-saas-infra/platform-dev/databaseBindings/mind-users-postgres/clusterResourceId",
+          "network": {
+            "runtimeBoundaryId": "mind-users-runtime-db-access",
+            "migrationBoundaryId": "mind-users-migration-db-access",
+            "separateBoundaries": true,
+            "allowNetworkCidr": false
+          },
+          "identities": {
+            "runtimeIdentityId": "mind-users-service",
+            "migrationIdentityId": "mind-users-migration",
+            "separate": true
+          },
+          "outputs": {
+            "endpointRef": "stack-output://deus/secure-saas-infra/platform-dev/databaseBindings/mind-users-postgres/endpoint",
+            "port": 5432,
+            "databaseName": "mind_users",
+            "caBundleRef": "provider-reference://aws/rds/us-east-1/ca-bundle",
+            "runtimeIdentityRef": "identity://mind-users-service",
+            "migrationIdentityRef": "identity://mind-users-migration",
+            "credentialValue": null
+          },
+          "status": {
+            "phase": "planned",
+            "generation": 1,
+            "observedGeneration": 0,
+            "verifiedAt": null,
+            "evidenceRef": null
+          }
+        },
+        {
+          "id": "warden-saas-postgres",
+          "kind": "ManagedPostgres",
+          "lifecycle": "pre-provisioned",
+          "applicationId": "warden",
+          "componentId": "saas",
+          "serviceRef": "warden-platform/saas/store",
+          "dataBoundaryId": "warden-saas-state",
+          "providerResourceRef": "stack-output://deus/secure-saas-infra/platform-dev/databaseBindings/warden-saas-postgres/clusterResourceId",
+          "network": {
+            "runtimeBoundaryId": "warden-saas-runtime-db-access",
+            "migrationBoundaryId": "warden-saas-migration-db-access",
+            "separateBoundaries": true,
+            "allowNetworkCidr": false
+          },
+          "identities": {
+            "runtimeIdentityId": "warden-saas-service",
+            "migrationIdentityId": "warden-saas-migration",
+            "separate": true
+          },
+          "outputs": {
+            "endpointRef": "stack-output://deus/secure-saas-infra/platform-dev/databaseBindings/warden-saas-postgres/endpoint",
+            "port": 5432,
+            "databaseName": "warden_saas",
+            "caBundleRef": "provider-reference://aws/rds/us-east-1/ca-bundle",
+            "runtimeIdentityRef": "identity://warden-saas-service",
+            "migrationIdentityRef": "identity://warden-saas-migration",
+            "credentialValue": null
+          },
+          "status": {
+            "phase": "planned",
+            "generation": 1,
+            "observedGeneration": 0,
+            "verifiedAt": null,
+            "evidenceRef": null
+          }
+        }
+      ],
+      "status": {
+        "phase": "planned",
+        "generation": 1,
+        "observedGeneration": 0,
+        "verifiedAt": null,
+        "evidenceRef": null
+      }
+    }
+  ],
+  "placements": [
+    {
+      "applicationId": "mind",
+      "componentId": "execution",
+      "contextId": "aws-platform-development",
+      "runtimeCapabilityId": "platform-runtime",
+      "networkCapabilityId": "platform-private-network",
+      "registryCapabilityId": "platform-registry",
+      "identityCapabilityId": "platform-workload-identities",
+      "observabilityCapabilityId": "platform-observability",
+      "dnsCapabilityIds": ["platform-private-dns"],
+      "resourceBindingIds": [],
+      "delegatedRuntimes": [
+        {
+          "contextId": "aws-execution-development",
+          "runtimeCapabilityId": "isolated-execution-runtime",
+          "purpose": "customer-code-execution"
+        }
+      ]
+    },
+    {
+      "applicationId": "mind",
+      "componentId": "infra",
+      "contextId": "aws-platform-development",
+      "runtimeCapabilityId": "platform-runtime",
+      "networkCapabilityId": "platform-private-network",
+      "registryCapabilityId": "platform-registry",
+      "identityCapabilityId": "platform-workload-identities",
+      "observabilityCapabilityId": "platform-observability",
+      "dnsCapabilityIds": ["platform-private-dns"],
+      "resourceBindingIds": ["mind-infra-postgres"],
+      "delegatedRuntimes": []
+    },
+    {
+      "applicationId": "mind",
+      "componentId": "mind",
+      "contextId": "aws-platform-development",
+      "runtimeCapabilityId": "platform-runtime",
+      "networkCapabilityId": "platform-private-network",
+      "registryCapabilityId": "platform-registry",
+      "identityCapabilityId": "platform-workload-identities",
+      "observabilityCapabilityId": "platform-observability",
+      "dnsCapabilityIds": ["platform-private-dns", "platform-public-dns"],
+      "resourceBindingIds": [],
+      "delegatedRuntimes": []
+    },
+    {
+      "applicationId": "mind",
+      "componentId": "users",
+      "contextId": "aws-platform-development",
+      "runtimeCapabilityId": "platform-runtime",
+      "networkCapabilityId": "platform-private-network",
+      "registryCapabilityId": "platform-registry",
+      "identityCapabilityId": "platform-workload-identities",
+      "observabilityCapabilityId": "platform-observability",
+      "dnsCapabilityIds": ["platform-private-dns"],
+      "resourceBindingIds": ["mind-users-postgres"],
+      "delegatedRuntimes": []
+    },
+    {
+      "applicationId": "warden",
+      "componentId": "platform",
+      "contextId": "aws-platform-development",
+      "runtimeCapabilityId": "platform-runtime",
+      "networkCapabilityId": "platform-private-network",
+      "registryCapabilityId": "platform-registry",
+      "identityCapabilityId": "platform-workload-identities",
+      "observabilityCapabilityId": "platform-observability",
+      "dnsCapabilityIds": ["platform-private-dns", "platform-public-dns"],
+      "resourceBindingIds": [],
+      "delegatedRuntimes": []
+    },
+    {
+      "applicationId": "warden",
+      "componentId": "saas",
+      "contextId": "aws-platform-development",
+      "runtimeCapabilityId": "platform-runtime",
+      "networkCapabilityId": "platform-private-network",
+      "registryCapabilityId": "platform-registry",
+      "identityCapabilityId": "platform-workload-identities",
+      "observabilityCapabilityId": "platform-observability",
+      "dnsCapabilityIds": ["platform-private-dns", "platform-public-dns"],
+      "resourceBindingIds": ["warden-saas-postgres"],
+      "delegatedRuntimes": []
+    }
+  ]
+}

@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/management-seed-provisioner-retirement-receipt-v1.schema.json",
+  "title": "Management-seed provisioner retirement receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "generatedAt",
+    "candidateDigest",
+    "bundleDigest",
+    "executedAccessReceiptDigest",
+    "managementAccountId",
+    "awsPartition",
+    "region",
+    "callerArn",
+    "provisionerRoleArn",
+    "retirementAuthorityRoleArn",
+    "retirementBoundaryArn",
+    "startingState",
+    "finalState",
+    "orderedOperations",
+    "performedOperations",
+    "accessMutationPerformed",
+    "upstreamIdpAssignmentRetired",
+    "attestationDigest",
+    "receiptDigest"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "security.deus.dev/management-seed-provisioner-retirement-receipt/v1"
+    },
+    "kind": { "const": "ManagementSeedProvisionerRetirementReceipt" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "candidateDigest": { "$ref": "#/$defs/sha256" },
+    "bundleDigest": { "$ref": "#/$defs/sha256" },
+    "executedAccessReceiptDigest": { "$ref": "#/$defs/sha256" },
+    "managementAccountId": { "type": "string", "pattern": "^[0-9]{12}$" },
+    "awsPartition": { "const": "aws" },
+    "region": {
+      "type": "string",
+      "pattern": "^(?!cn-|us-gov-)[a-z]{2}-[a-z]+-[0-9]$"
+    },
+    "callerArn": {
+      "type": "string",
+      "pattern": "^arn:aws:sts::[0-9]{12}:assumed-role/ManagementSeedRetirement/[A-Za-z0-9+=,.@_-]+$"
+    },
+    "provisionerRoleArn": {
+      "type": "string",
+      "pattern": "^arn:aws:iam::[0-9]{12}:role/deus/bootstrap-source/ManagementSeedProvisioner$"
+    },
+    "retirementAuthorityRoleArn": {
+      "type": "string",
+      "pattern": "^arn:aws:iam::[0-9]{12}:role/deus/bootstrap-source/ManagementSeedRetirement$"
+    },
+    "retirementBoundaryArn": {
+      "type": "string",
+      "pattern": "^arn:aws:iam::[0-9]{12}:policy/deus/bootstrap/DeusManagementSeedProvisionerRetiredBoundary$"
+    },
+    "startingState": {
+      "enum": ["active", "bounded", "stripped", "retired"]
+    },
+    "finalState": { "const": "retired" },
+    "orderedOperations": {
+      "type": "array",
+      "prefixItems": [
+        { "const": "iam:PutRolePermissionsBoundary" },
+        { "const": "iam:DeleteRolePolicy" },
+        { "const": "iam:TagRole" }
+      ],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "performedOperations": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "iam:PutRolePermissionsBoundary",
+          "iam:DeleteRolePolicy",
+          "iam:TagRole"
+        ]
+      },
+      "maxItems": 3,
+      "uniqueItems": true
+    },
+    "accessMutationPerformed": { "type": "boolean" },
+    "upstreamIdpAssignmentRetired": { "const": false },
+    "attestationDigest": { "$ref": "#/$defs/sha256" },
+    "receiptDigest": { "$ref": "#/$defs/sha256" }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "startingState": { "const": "active" },
+        "performedOperations": {
+          "type": "array",
+          "prefixItems": [
+            { "const": "iam:PutRolePermissionsBoundary" },
+            { "const": "iam:DeleteRolePolicy" },
+            { "const": "iam:TagRole" }
+          ],
+          "items": false,
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "accessMutationPerformed": { "const": true }
+      }
+    },
+    {
+      "properties": {
+        "startingState": { "const": "bounded" },
+        "performedOperations": {
+          "type": "array",
+          "prefixItems": [
+            { "const": "iam:DeleteRolePolicy" },
+            { "const": "iam:TagRole" }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "accessMutationPerformed": { "const": true }
+      }
+    },
+    {
+      "properties": {
+        "startingState": { "const": "stripped" },
+        "performedOperations": {
+          "type": "array",
+          "prefixItems": [{ "const": "iam:TagRole" }],
+          "items": false,
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "accessMutationPerformed": { "const": true }
+      }
+    },
+    {
+      "properties": {
+        "startingState": { "const": "retired" },
+        "performedOperations": {
+          "type": "array",
+          "items": false,
+          "maxItems": 0
+        },
+        "accessMutationPerformed": { "const": false }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

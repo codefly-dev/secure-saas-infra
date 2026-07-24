@@ -69,10 +69,7 @@ test("dns stack creates root zone, per-env zones, NS delegation, query logging",
     "delegations should use 48h TTL",
   );
 
-  const queryLogs = resourcesOfType(
-    resources,
-    "aws:route53/queryLog:QueryLog",
-  );
+  const queryLogs = resourcesOfType(resources, "aws:route53/queryLog:QueryLog");
   assert.equal(queryLogs.length, 1);
 
   const logGroups = resourcesOfType(
@@ -103,10 +100,7 @@ test("dns stack skips root zone and query logging when disabled", async () => {
   // No root zone, just one env zone.
   assert.equal(zones.length, 1);
 
-  const queryLogs = resourcesOfType(
-    resources,
-    "aws:route53/queryLog:QueryLog",
-  );
+  const queryLogs = resourcesOfType(resources, "aws:route53/queryLog:QueryLog");
   assert.equal(queryLogs.length, 0);
 
   // Without root zone, no NS delegation records.

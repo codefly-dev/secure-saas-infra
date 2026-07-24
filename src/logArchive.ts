@@ -19,7 +19,10 @@ export function createLogArchive(config: LogArchiveConfig): LogArchiveResult {
   const trailName = config.organizationTrailName;
   const trailArn = pulumi
     .all([partition.partition, sourceAccountId])
-    .apply(([partitionName, accountId]) => `arn:${partitionName}:cloudtrail:${awsRegion}:${accountId}:trail/${trailName}`);
+    .apply(
+      ([partitionName, accountId]) =>
+        `arn:${partitionName}:cloudtrail:${awsRegion}:${accountId}:trail/${trailName}`,
+    );
 
   const key = new aws.kms.Key(named("log-archive-key"), {
     description: "KMS key for immutable audit log archive.",
@@ -27,32 +30,35 @@ export function createLogArchive(config: LogArchiveConfig): LogArchiveResult {
     deletionWindowInDays: 30,
     policy: pulumi
       .all([current.accountId, partition.partition, trailArn, sourceAccountId])
-      .apply(([accountId, partitionName, cloudTrailArn, trailSourceAccountId]) =>
-        JSON.stringify({
-          Version: "2012-10-17",
-          Statement: [
-            {
-              Sid: "EnableRootAccountAdministration",
-              Effect: "Allow",
-              Principal: { AWS: `arn:${partitionName}:iam::${accountId}:root` },
-              Action: "kms:*",
-              Resource: "*",
-            },
-            {
-              Sid: "AllowCloudTrailEncryption",
-              Effect: "Allow",
-              Principal: { Service: "cloudtrail.amazonaws.com" },
-              Action: ["kms:GenerateDataKey*", "kms:DescribeKey"],
-              Resource: "*",
-              Condition: {
-                StringEquals: {
-                  "aws:SourceArn": cloudTrailArn,
-                  "aws:SourceAccount": trailSourceAccountId,
+      .apply(
+        ([accountId, partitionName, cloudTrailArn, trailSourceAccountId]) =>
+          JSON.stringify({
+            Version: "2012-10-17",
+            Statement: [
+              {
+                Sid: "EnableRootAccountAdministration",
+                Effect: "Allow",
+                Principal: {
+                  AWS: `arn:${partitionName}:iam::${accountId}:root`,
+                },
+                Action: "kms:*",
+                Resource: "*",
+              },
+              {
+                Sid: "AllowCloudTrailEncryption",
+                Effect: "Allow",
+                Principal: { Service: "cloudtrail.amazonaws.com" },
+                Action: ["kms:GenerateDataKey*", "kms:DescribeKey"],
+                Resource: "*",
+                Condition: {
+                  StringEquals: {
+                    "aws:SourceArn": cloudTrailArn,
+                    "aws:SourceAccount": trailSourceAccountId,
+                  },
                 },
               },
-            },
-          ],
-        }),
+            ],
+          }),
       ),
     tags: tag("log-archive-key"),
   });
@@ -69,34 +75,43 @@ export function createLogArchive(config: LogArchiveConfig): LogArchiveResult {
     tags: tag("audit-logs", { DataClass: "audit" }),
   });
 
-  const publicAccessBlock = new aws.s3.BucketPublicAccessBlock(named("audit-logs-public-access-block"), {
-    bucket: bucket.id,
-    blockPublicAcls: true,
-    blockPublicPolicy: true,
-    ignorePublicAcls: true,
-    restrictPublicBuckets: true,
-  });
-
-  const versioning = new aws.s3.BucketVersioning(named("audit-logs-versioning"), {
-    bucket: bucket.id,
-    versioningConfiguration: {
-      status: "Enabled",
+  const publicAccessBlock = new aws.s3.BucketPublicAccessBlock(
+    named("audit-logs-public-access-block"),
+    {
+      bucket: bucket.id,
+      blockPublicAcls: true,
+      blockPublicPolicy: true,
+      ignorePublicAcls: true,
+      restrictPublicBuckets: true,
     },
-  });
+  );
 
-  const encryption = new aws.s3.BucketServerSideEncryptionConfiguration(named("audit-logs-encryption"), {
-    bucket: bucket.id,
-    rules: [
-      {
-        applyServerSideEncryptionByDefault: {
-          kmsMasterKeyId: key.arn,
-          sseAlgorithm: "aws:kms",
-        },
-        bucketKeyEnabled: true,
-        blockedEncryptionTypes: ["SSE-C"],
+  const versioning = new aws.s3.BucketVersioning(
+    named("audit-logs-versioning"),
+    {
+      bucket: bucket.id,
+      versioningConfiguration: {
+        status: "Enabled",
       },
-    ],
-  });
+    },
+  );
+
+  const encryption = new aws.s3.BucketServerSideEncryptionConfiguration(
+    named("audit-logs-encryption"),
+    {
+      bucket: bucket.id,
+      rules: [
+        {
+          applyServerSideEncryptionByDefault: {
+            kmsMasterKeyId: key.arn,
+            sseAlgorithm: "aws:kms",
+          },
+          bucketKeyEnabled: true,
+          blockedEncryptionTypes: ["SSE-C"],
+        },
+      ],
+    },
+  );
 
   new aws.s3.BucketObjectLockConfiguration(
     named("audit-logs-object-lock"),

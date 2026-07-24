@@ -1,0 +1,41 @@
+{
+  "apiVersion": "evidence.security.deus.dev/cloud-context-observation/v1alpha1",
+  "kind": "CloudContextObservationEvidence",
+  "evidenceId": "warden-cloud-context-observation-1",
+  "organizationId": "deus",
+  "platformTenantId": "warden-tenant",
+  "environment": "development",
+  "applicationId": "warden",
+  "componentId": "warden-saas",
+  "requestDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+  "catalogDesiredStateDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+  "placementDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+  "dependencyClosureDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+  "resolverRegistryDigest": "5555555555555555555555555555555555555555555555555555555555555555",
+  "admissionPolicyDigest": "6666666666666666666666666666666666666666666666666666666666666666",
+  "issuedAt": "2026-07-18T12:00:00.000Z",
+  "expiresAt": "2026-07-18T12:05:00.000Z",
+  "nonce": "0123456789abcdef0123456789abcdef",
+  "verifier": {
+    "id": "cloud-context-observer",
+    "version": "1.0.0",
+    "keyId": "cloud-context-observer-2026-07"
+  },
+  "observations": [
+    {
+      "dependencyKey": "platform/context/platform",
+      "dependencyKind": "context",
+      "contextId": "platform",
+      "dependencyId": "platform",
+      "generation": 1,
+      "subjectDigest": "7777777777777777777777777777777777777777777777777777777777777777",
+      "phase": "ready",
+      "previousObservationDigest": null,
+      "resolutions": []
+    }
+  ],
+  "signature": {
+    "algorithm": "Ed25519",
+    "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+  }
+}

@@ -1,0 +1,135 @@
+{
+  "apiVersion": "security.deus.dev/infrastructure-controller-protocol/v1alpha1",
+  "kind": "InfrastructureControllerProtocolContract",
+  "currentProtocolVersion": "2026-07-16",
+  "supportedProtocolVersions": ["2026-07-16"],
+  "reasonCodes": [
+    "INFRA_PROTOCOL_UNSUPPORTED_VERSION",
+    "INFRA_PROTOCOL_REQUIRED_FEATURE_UNAVAILABLE",
+    "INFRA_PROTOCOL_DEPRECATED_VERSION",
+    "INFRA_PROTOCOL_VERSION_SUNSET",
+    "INFRA_PROTOCOL_REQUEST_INVALID",
+    "INFRA_PROTOCOL_AUTHENTICATION_REQUIRED",
+    "INFRA_PROTOCOL_ORGANIZATION_DENIED",
+    "INFRA_PROTOCOL_TENANT_DENIED",
+    "INFRA_PROTOCOL_OPERATION_DENIED",
+    "INFRA_PROTOCOL_CLAIM_CONFLICT",
+    "INFRA_PROTOCOL_IDEMPOTENCY_CONFLICT",
+    "INFRA_PROTOCOL_PLAN_REQUIRED",
+    "INFRA_PROTOCOL_PLAN_STALE",
+    "INFRA_PROTOCOL_APPROVAL_REQUIRED",
+    "INFRA_PROTOCOL_DEADLINE_EXCEEDED",
+    "INFRA_PROTOCOL_OPERATION_NOT_FOUND",
+    "INFRA_PROTOCOL_CURSOR_INVALID",
+    "INFRA_PROTOCOL_CURSOR_EXPIRED",
+    "INFRA_PROTOCOL_CURSOR_SUBJECT_MISMATCH",
+    "INFRA_PROTOCOL_PROVIDER_UNAVAILABLE",
+    "INFRA_PROTOCOL_POLICY_DENIED",
+    "INFRA_PROTOCOL_INTERNAL"
+  ],
+  "examples": {
+    "versionRequest": {
+      "apiVersion": "security.deus.dev/infrastructure-controller-protocol/v1alpha1",
+      "kind": "InfrastructureControllerVersionRequest",
+      "requestId": "version-request-1",
+      "supportedProtocolVersions": ["2026-07-16"],
+      "requiredFeatures": ["operation-events", "resumable-watch"]
+    },
+    "versionResponse": {
+      "apiVersion": "security.deus.dev/infrastructure-controller-protocol/v1alpha1",
+      "kind": "InfrastructureControllerVersionResponse",
+      "requestId": "version-request-1",
+      "compatible": true,
+      "selectedProtocolVersion": "2026-07-16",
+      "serverProtocolVersions": ["2026-07-16"],
+      "availableFeatures": [
+        "operation-events",
+        "resumable-watch",
+        "stable-reason-codes"
+      ],
+      "reasonCodes": [],
+      "deprecation": null
+    },
+    "operationRequest": {
+      "apiVersion": "security.deus.dev/infrastructure-controller-protocol/v1alpha1",
+      "kind": "InfrastructureOperationRequest",
+      "protocolVersion": "2026-07-16",
+      "requestId": "operation-request-1",
+      "authorizationContextId": "authorization-context-1",
+      "target": {
+        "organizationId": "organization-a",
+        "tenantId": "tenant-a",
+        "contextId": "aws-development",
+        "claimId": "database-a",
+        "generation": 1,
+        "desiredStateDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "operation": "reconcile",
+      "planDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "approvalIds": ["approval-1"],
+      "idempotencyKey": "idempotency-1",
+      "deadlineEpochSeconds": 1800000120
+    },
+    "operationResponse": {
+      "apiVersion": "security.deus.dev/infrastructure-controller-protocol/v1alpha1",
+      "kind": "InfrastructureOperationResponse",
+      "protocolVersion": "2026-07-16",
+      "requestId": "operation-request-1",
+      "outcome": "accepted",
+      "operationId": "operation-1",
+      "reasonCodes": [],
+      "retryAfterSeconds": null
+    },
+    "watchRequest": {
+      "apiVersion": "security.deus.dev/infrastructure-controller-protocol/v1alpha1",
+      "kind": "InfrastructureOperationWatchRequest",
+      "protocolVersion": "2026-07-16",
+      "requestId": "watch-request-1",
+      "authorizationContextId": "authorization-context-1",
+      "organizationId": "organization-a",
+      "tenantId": "tenant-a",
+      "operationId": "operation-1",
+      "cursor": null,
+      "maxEvents": 50,
+      "deadlineEpochSeconds": 1800000120
+    },
+    "events": [
+      {
+        "apiVersion": "security.deus.dev/infrastructure-controller-protocol/v1alpha1",
+        "kind": "InfrastructureOperationEvent",
+        "protocolVersion": "2026-07-16",
+        "operationId": "operation-1",
+        "organizationId": "organization-a",
+        "tenantId": "tenant-a",
+        "eventId": "event-1",
+        "sequence": 1,
+        "phase": "accepted",
+        "terminal": false,
+        "generation": 1,
+        "desiredStateDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "occurredAt": "2026-07-16T12:00:00.000Z",
+        "reasonCodes": [],
+        "previousEventDigest": null,
+        "eventDigest": "ba989e37fa773f55212ab6ba346b0352561ea3f39643001bf8a35515fcb6cf38"
+      },
+      {
+        "apiVersion": "security.deus.dev/infrastructure-controller-protocol/v1alpha1",
+        "kind": "InfrastructureOperationEvent",
+        "protocolVersion": "2026-07-16",
+        "operationId": "operation-1",
+        "organizationId": "organization-a",
+        "tenantId": "tenant-a",
+        "eventId": "event-2",
+        "sequence": 2,
+        "phase": "planning",
+        "terminal": false,
+        "generation": 1,
+        "desiredStateDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "occurredAt": "2026-07-16T12:00:01.000Z",
+        "reasonCodes": [],
+        "previousEventDigest": "ba989e37fa773f55212ab6ba346b0352561ea3f39643001bf8a35515fcb6cf38",
+        "eventDigest": "5ca590006f1a3de541237644377dda25837d8dc783bfbf9c7df22037e0cab5ce"
+      }
+    ]
+  }
+}

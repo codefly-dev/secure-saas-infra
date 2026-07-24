@@ -1,0 +1,29 @@
+#!/bin/sh
+set -eu
+
+if [ -n "${NODE_OPTIONS-}${NODE_PATH-}${BUN_OPTIONS-}${DENO_DIR-}${AWS_ACCESS_KEY_ID-}${AWS_SECRET_ACCESS_KEY-}${AWS_SESSION_TOKEN-}${AWS_PROFILE-}${AWS_DEFAULT_PROFILE-}${AWS_CONFIG_FILE-}${AWS_SHARED_CREDENTIALS_FILE-}${AWS_WEB_IDENTITY_TOKEN_FILE-}${AWS_ROLE_ARN-}${AWS_CONTAINER_CREDENTIALS_RELATIVE_URI-}${AWS_CONTAINER_CREDENTIALS_FULL_URI-}${PULUMI_ACCESS_TOKEN-}${PULUMI_CONFIG_PASSPHRASE-}${PULUMI_CONFIG_PASSPHRASE_FILE-}${PULUMI_HOME-}${GITHUB_TOKEN-}${GH_TOKEN-}${NPM_TOKEN-}${NODE_AUTH_TOKEN-}${SSH_AUTH_SOCK-}${HTTP_PROXY-}${HTTPS_PROXY-}${ALL_PROXY-}${NO_PROXY-}${LD_PRELOAD-}${LD_AUDIT-}${BASH_ENV-}${ENV-}" ]; then
+  echo "prepare-bootstrap-plugins: credentials, preload, proxy, or executable indirection are forbidden" >&2
+  exit 64
+fi
+
+case "$0" in
+  /*) launcher=$0 ;;
+  *) launcher=$PWD/$0 ;;
+esac
+repository=$(CDPATH= cd -- "${launcher%/*}/.." && pwd -P)
+node_binary=$(command -v node || true)
+pulumi_binary=$(command -v pulumi || true)
+case "$node_binary:$pulumi_binary" in
+  /*:/*) ;;
+  *) echo "prepare-bootstrap-plugins: exact Node and Pulumi executables are required" >&2; exit 78 ;;
+esac
+if [ "$($node_binary --version)" != v24.18.0 ] || [ "$($pulumi_binary version)" != v3.253.0 ]; then
+  echo "prepare-bootstrap-plugins: Node 24.18.0 and Pulumi 3.253.0 are required" >&2
+  exit 78
+fi
+isolated_home=$(/usr/bin/mktemp -d /tmp/deus-provider-install.XXXXXX)
+cleanup() { /bin/rm -rf "$isolated_home"; }
+trap cleanup EXIT HUP INT TERM
+/usr/bin/env -i HOME="$isolated_home" LANG=C PATH=/usr/bin:/bin \
+  "$node_binary" "$repository/scripts/prepare-bootstrap-plugins.mjs" \
+  --pulumi "$pulumi_binary"

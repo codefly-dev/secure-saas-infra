@@ -2,11 +2,11 @@
   "name": "secure-saas-infra-policy",
   "version": "0.1.0",
   "private": true,
-  "main": "index.ts",
+  "main": "../dist-management-seed-policy/managementSeedMain.js",
   "dependencies": {
-    "@pulumi/policy": "^1.20.0"
+    "@pulumi/policy": "1.20.0"
   },
   "devDependencies": {
-    "typescript": "^5.9.0"
+    "typescript": "5.9.3"
   }
 }

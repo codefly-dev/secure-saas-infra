@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/bootstrap-runtime-provenance-v1.schema.json",
+  "title": "Bootstrap Runtime Provenance v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "platform",
+    "architecture",
+    "artifacts",
+    "installed",
+    "systemRuntime"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "security.deus.dev/bootstrap-runtime-provenance/v1"
+    },
+    "platform": { "const": "linux" },
+    "architecture": { "enum": ["amd64", "arm64"] },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["go", "node", "pulumi", "awsCli"],
+      "properties": {
+        "go": { "$ref": "#/$defs/pinnedArtifact" },
+        "node": { "$ref": "#/$defs/pinnedArtifact" },
+        "pulumi": { "$ref": "#/$defs/pinnedArtifact" },
+        "awsCli": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "file",
+            "sha256",
+            "verification",
+            "signingKeyFingerprint"
+          ],
+          "properties": {
+            "file": {
+              "type": "string",
+              "pattern": "^awscli-exe-linux-(?:x86_64|aarch64)-2\\.36\\.2\\.zip$"
+            },
+            "sha256": { "$ref": "#/$defs/sha256" },
+            "verification": { "const": "aws-cli-team-pgp" },
+            "signingKeyFingerprint": {
+              "const": "FB5DB77FD5C118B80511ADA8A6310ACC4672475C"
+            }
+          }
+        }
+      }
+    },
+    "installed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "goSha256",
+        "nodeSha256",
+        "pulumiTreeDigest",
+        "awsCliTreeDigest"
+      ],
+      "properties": {
+        "goSha256": { "$ref": "#/$defs/sha256" },
+        "nodeSha256": { "$ref": "#/$defs/sha256" },
+        "pulumiTreeDigest": { "$ref": "#/$defs/sha256" },
+        "awsCliTreeDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "systemRuntime": {
+      "$ref": "system-runtime-closure-v1.schema.json"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "pinnedArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "sha256", "verification"],
+      "properties": {
+        "file": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "verification": {
+          "const": "authenticated-host-kit-pinned-sha256"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "architecture": { "const": "amd64" } },
+        "required": ["architecture"]
+      },
+      "then": {
+        "properties": {
+          "artifacts": {
+            "type": "object",
+            "properties": {
+              "go": {
+                "type": "object",
+                "properties": {
+                  "file": { "const": "go1.26.5.linux-amd64.tar.gz" },
+                  "sha256": {
+                    "const": "5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053"
+                  }
+                }
+              },
+              "node": {
+                "type": "object",
+                "properties": {
+                  "file": { "const": "node-v24.18.0-linux-x64.tar.xz" },
+                  "sha256": {
+                    "const": "55aa7153f9d88f28d765fcdad5ae6945b5c0f98a36881703817e4c450fa76742"
+                  }
+                }
+              },
+              "pulumi": {
+                "type": "object",
+                "properties": {
+                  "file": { "const": "pulumi-v3.253.0-linux-x64.tar.gz" },
+                  "sha256": {
+                    "const": "33161e521280e6c77395a46344dba5ff9c118a90df254801e662087143b4d1ac"
+                  }
+                }
+              },
+              "awsCli": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "const": "awscli-exe-linux-x86_64-2.36.2.zip"
+                  }
+                }
+              }
+            }
+          },
+          "systemRuntime": {
+            "type": "object",
+            "properties": {
+              "architecture": { "const": "amd64" }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "artifacts": {
+            "type": "object",
+            "properties": {
+              "go": {
+                "type": "object",
+                "properties": {
+                  "file": { "const": "go1.26.5.linux-arm64.tar.gz" },
+                  "sha256": {
+                    "const": "fe4789e92b1f33358680864bbe8704289e7bb5fc207d80623c308935bd696d49"
+                  }
+                }
+              },
+              "node": {
+                "type": "object",
+                "properties": {
+                  "file": { "const": "node-v24.18.0-linux-arm64.tar.xz" },
+                  "sha256": {
+                    "const": "58c9520501f6ae2b52d5b210444e24b9d0c029a58c5011b797bc1fe7105886f6"
+                  }
+                }
+              },
+              "pulumi": {
+                "type": "object",
+                "properties": {
+                  "file": { "const": "pulumi-v3.253.0-linux-arm64.tar.gz" },
+                  "sha256": {
+                    "const": "7d7074d67a76139226c163b2365f14fbd45d8e2251362a2e10dc4602b3b577ea"
+                  }
+                }
+              },
+              "awsCli": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "const": "awscli-exe-linux-aarch64-2.36.2.zip"
+                  }
+                }
+              }
+            }
+          },
+          "systemRuntime": {
+            "type": "object",
+            "properties": {
+              "architecture": { "const": "arm64" }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

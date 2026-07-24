@@ -24,16 +24,20 @@ export function createE2bByocAccess(config: E2bByocAccessConfig) {
         },
       ],
     }),
-    description: "Reviewed E2B BYOC vendor access role for execution sandbox provisioning.",
+    description:
+      "Reviewed E2B BYOC vendor access role for execution sandbox provisioning.",
     maxSessionDuration: config.maxSessionDurationSeconds ?? 3600,
     tags: tag("e2b-byoc-vendor-access", { AccessClass: "vendor-byoc" }),
   });
 
   config.managedPolicyArns.forEach((policyArn, index) => {
-    new aws.iam.RolePolicyAttachment(named(`e2b-byoc-vendor-access-policy-${index + 1}`), {
-      role: role.name,
-      policyArn,
-    });
+    new aws.iam.RolePolicyAttachment(
+      named(`e2b-byoc-vendor-access-policy-${index + 1}`),
+      {
+        role: role.name,
+        policyArn,
+      },
+    );
   });
 
   if (config.inlinePolicy) {

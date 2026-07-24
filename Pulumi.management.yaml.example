@@ -1,15 +1,26 @@
 config:
   aws:region: us-east-1
+  # Onboarding replaces this with the exact management account. The seed
+  # program refuses to execute without a single-account provider allow-list.
+  aws:allowedAccountIds:
+    - "111111111111"
   secure-saas-infra:stackKind: management
   secure-saas-infra:deploymentMode: organization
   secure-saas-infra:organizationName: deus
   secure-saas-infra:environment: management
+  # First apply only the Organization. Change to full and re-qualify only
+  # after the live us-east-1 Organizations account quota admits nine accounts.
+  secure-saas-infra:seedWave: organization-only
   secure-saas-infra:organization:
     createOrganization: true
-    defaultAccountRoleName: OrganizationAccountAccessRole
+    # AWS Organizations account vending creates this transient administrative
+    # role. No controller or current execution wave may assume it; retire it
+    # after scoped member-account access is independently installed.
+    defaultAccountRoleName: DeusOrganizationBootstrap
     enableRamSharing: true
-    enableSecurityDelegatedAdmin: true
-    securityDelegatedAdminAccountName: security-tooling
+    # Delegated administrators are a post-seed action after exact account IDs
+    # exist and a separate scoped maintenance role has been reviewed.
+    enableSecurityDelegatedAdmin: false
     serviceAccessPrincipals:
       - cloudtrail.amazonaws.com
       - config.amazonaws.com
@@ -19,57 +30,65 @@ config:
       - inspector2.amazonaws.com
     enabledPolicyTypes:
       - SERVICE_CONTROL_POLICY
+      - S3_POLICY
     organizationalUnits:
       - name: Security
       - name: Infrastructure
       - name: Workloads
-      - name: Execution
+      - name: NonProd
+        parent: Workloads
+      - name: PreProd
+        parent: Workloads
+      - name: Prod
+        parent: Workloads
       - name: Suspended
     accounts:
       # Replace these emails before deploying. AWS account emails must be globally unique.
       - name: security-tooling
-        email: aws+security-tooling@example.com
+        email: aws+security-tooling@aws.example.com
         ou: Security
         kind: security
       - name: log-archive
-        email: aws+log-archive@example.com
+        email: aws+log-archive@aws.example.com
         ou: Security
         kind: log-archive
       - name: network
-        email: aws+network@example.com
+        email: aws+network@aws.example.com
         ou: Infrastructure
         kind: network
       - name: shared-services
-        email: aws+shared-services@example.com
+        email: aws+shared-services@aws.example.com
         ou: Infrastructure
         kind: shared-services
       - name: platform-dev
-        email: aws+platform-dev@example.com
-        ou: Workloads
-        kind: workload
-      - name: platform-staging
-        email: aws+platform-staging@example.com
-        ou: Workloads
-        kind: workload
-      - name: platform-prod
-        email: aws+platform-prod@example.com
-        ou: Workloads
+        email: aws+platform-dev@aws.example.com
+        ou: NonProd
         kind: workload
       - name: execution-dev
-        email: aws+execution-dev@example.com
-        ou: Execution
+        email: aws+execution-dev@aws.example.com
+        ou: NonProd
         kind: execution
+      # Preprod is modeled now but creates no accounts or workloads until enabled.
+      - name: platform-staging
+        email: aws+platform-staging@aws.example.com
+        ou: PreProd
+        kind: workload
+        create: false
       - name: execution-staging
-        email: aws+execution-staging@example.com
-        ou: Execution
+        email: aws+execution-staging@aws.example.com
+        ou: PreProd
         kind: execution
+        create: false
+      - name: platform-prod
+        email: aws+platform-prod@aws.example.com
+        ou: Prod
+        kind: workload
       - name: execution-prod
-        email: aws+execution-prod@example.com
-        ou: Execution
+        email: aws+execution-prod@aws.example.com
+        ou: Prod
         kind: execution
     guardrailScpsEnabled: true
     guardrailTargetOuNames:
       - Security
       - Infrastructure
       - Workloads
-      - Execution

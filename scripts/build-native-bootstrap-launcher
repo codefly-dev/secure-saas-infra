@@ -1,0 +1,147 @@
+#!/bin/sh
+set -eu
+
+if [ -n "${AWS_ACCESS_KEY_ID-}${AWS_SECRET_ACCESS_KEY-}${AWS_SESSION_TOKEN-}${AWS_PROFILE-}${PULUMI_ACCESS_TOKEN-}${PULUMI_CONFIG_PASSPHRASE-}${NODE_OPTIONS-}${LD_PRELOAD-}${LD_AUDIT-}${DYLD_INSERT_LIBRARIES-}" ]; then
+  echo "build-native-bootstrap-launcher: credentials and loader indirection are forbidden" >&2
+  exit 64
+fi
+
+case "$0" in
+  /*) launcher=$0 ;;
+  *) launcher=$PWD/$0 ;;
+esac
+repository=$(CDPATH= cd -- "${launcher%/*}/.." && pwd -P)
+cd "$repository"
+artifact_directory="$repository/artifacts"
+output="$artifact_directory/deus-aws-bootstrap"
+temporary="$output.$$.one"
+comparison="$output.$$.two"
+cache_one="$output.$$.cache-one"
+cache_two="$output.$$.cache-two"
+cleanup() { /bin/rm -rf "$temporary" "$comparison" "$cache_one" "$cache_two"; }
+trap cleanup EXIT HUP INT TERM
+if [ -L "$artifact_directory" ] || { [ -e "$artifact_directory" ] && [ ! -d "$artifact_directory" ]; }; then
+  echo "build-native-bootstrap-launcher: artifacts must be a direct directory" >&2
+  exit 64
+fi
+/bin/mkdir -p "$artifact_directory"
+if [ -L "$output" ] || { [ -e "$output" ] && [ ! -f "$output" ]; }; then
+  echo "build-native-bootstrap-launcher: output must be a direct regular file" >&2
+  exit 64
+fi
+
+if [ "${DEUS_PRODUCTION_QUALIFICATION-}" = 1 ]; then
+  go_binary=/usr/local/lib/deus-bootstrap/toolchains/go/bin/go
+elif [ -n "${DEUS_TRUSTED_GO-}" ]; then
+  go_binary=$DEUS_TRUSTED_GO
+else
+  go_binary=
+fi
+if [ -z "$go_binary" ]; then
+  go_binary=$(command -v go || true)
+fi
+case "$go_binary" in
+  /*) ;;
+  *)
+    echo "build-native-bootstrap-launcher: DEUS_TRUSTED_GO must resolve to an absolute Go binary" >&2
+    exit 64
+    ;;
+esac
+if [ ! -f "$go_binary" ] || [ -L "$go_binary" ]; then
+  echo "build-native-bootstrap-launcher: trusted Go must be a direct regular file" >&2
+  exit 64
+fi
+if [ "${DEUS_PRODUCTION_QUALIFICATION-}" = 1 ]; then
+  current=/
+  old_ifs=$IFS
+  IFS=/
+  set -- ${go_binary#/}
+  IFS=$old_ifs
+  for part in "$@"; do
+	current=${current%/}/$part
+	metadata=$(/usr/bin/stat -c '%u:%a' "$current")
+	case "$metadata" in
+	  0:*[2367][2367]|0:*[2367][0145]|0:*[0145][2367])
+		echo "build-native-bootstrap-launcher: trusted Go chain is writable outside root: $current" >&2
+		exit 64
+		;;
+	  0:*) ;;
+	  *)
+		echo "build-native-bootstrap-launcher: trusted Go chain is not root-owned: $current" >&2
+		exit 64
+		;;
+	esac
+  done
+fi
+go_directory=${go_binary%/*}
+go_version=$(/usr/bin/env -i HOME=/nonexistent PATH="$go_directory:/usr/bin:/bin" \
+  GOTOOLCHAIN=local GOENV=off "$go_binary" version)
+case "$go_version" in
+  "go version go1.26.5 "*) ;;
+  *)
+    echo "build-native-bootstrap-launcher: trusted Go must be exactly 1.26.5" >&2
+    exit 64
+    ;;
+esac
+
+case "$(/usr/bin/uname -s)" in
+  Linux)
+    stage1_sha=$(/usr/bin/sha256sum "$repository/scripts/credentialed-bootstrap-stage1.mjs" | /usr/bin/awk '{print $1}')
+    trust_sha=$(/usr/bin/sha256sum "$repository/security/bootstrap-qualification-trust.json" | /usr/bin/awk '{print $1}')
+    ;;
+  Darwin)
+    stage1_sha=$(/usr/bin/shasum -a 256 "$repository/scripts/credentialed-bootstrap-stage1.mjs" | /usr/bin/awk '{print $1}')
+    trust_sha=$(/usr/bin/shasum -a 256 "$repository/security/bootstrap-qualification-trust.json" | /usr/bin/awk '{print $1}')
+    ;;
+  *)
+    echo "build-native-bootstrap-launcher: only Linux and macOS are supported" >&2
+    exit 1
+    ;;
+esac
+linker_flags="-s -w -buildid= -X main.expectedStage1SHA256=$stage1_sha -X main.expectedTrustSHA256=$trust_sha"
+
+build_candidate() {
+  candidate=$1
+	cache=$2
+	/bin/mkdir -p "$cache/home" "$cache/gocache" "$cache/tmp"
+  case "$(/usr/bin/uname -s)" in
+    Linux)
+	  /usr/bin/env -i HOME="$cache/home" TMPDIR="$cache/tmp" GOTMPDIR="$cache/tmp" \
+		GOCACHE="$cache/gocache" GOENV=off GOFLAGS= GOTOOLCHAIN=local CGO_ENABLED=0 \
+		GOWORK=off \
+		PATH="$go_directory:/usr/bin:/bin" "$go_binary" build -trimpath -buildvcs=false \
+		-ldflags="$linker_flags" -o "$candidate" ./cmd/deus-aws-bootstrap
+      if ! /usr/bin/file "$candidate" | /bin/grep -q 'statically linked'; then
+        echo "build-native-bootstrap-launcher: Linux launcher is not static" >&2
+        exit 1
+      fi
+      ;;
+    Darwin)
+	  /usr/bin/env -i HOME="$cache/home" TMPDIR="$cache/tmp" GOTMPDIR="$cache/tmp" \
+		GOCACHE="$cache/gocache" GOENV=off GOFLAGS= GOTOOLCHAIN=local CGO_ENABLED=0 \
+		GOWORK=off \
+		PATH="$go_directory:/usr/bin:/bin" "$go_binary" build -trimpath -buildvcs=false \
+		-ldflags="$linker_flags" -o "$candidate" ./cmd/deus-aws-bootstrap
+      /usr/bin/codesign --force --sign - --identifier dev.deus.aws-bootstrap \
+        --options runtime --timestamp=none "$candidate"
+      /usr/bin/codesign --verify --strict "$candidate"
+      /usr/bin/codesign -d --verbose=4 "$candidate" 2>&1 | /usr/bin/grep -q 'flags=.*runtime'
+      ;;
+  esac
+  /bin/chmod 0555 "$candidate"
+}
+
+build_candidate "$temporary" "$cache_one"
+build_candidate "$comparison" "$cache_two"
+if ! /usr/bin/cmp -s "$temporary" "$comparison"; then
+  echo "build-native-bootstrap-launcher: repeated build was not byte-reproducible" >&2
+  exit 1
+fi
+/bin/rm -f "$output"
+/bin/mv "$temporary" "$output"
+cleanup
+trap - EXIT HUP INT TERM
+echo "Built hardened credential launcher at artifacts/deus-aws-bootstrap"
+if [ "$(/usr/bin/uname -s)" = Darwin ]; then
+  echo "Darwin output is validation-only; sealing and credential execution require Linux."
+fi

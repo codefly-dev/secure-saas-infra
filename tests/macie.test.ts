@@ -33,8 +33,8 @@ test("macie stack enables sensitive data discovery and weekly classification job
   assert.equal(jobs.length, 1);
   assert.equal(jobs[0].inputs.jobType, "SCHEDULED");
   assert.equal(jobs[0].inputs.scheduleFrequency.weeklySchedule, "MONDAY");
-  assert.deepEqual(jobs[0].inputs.s3JobDefinition.bucketDefinitions[0].buckets, [
-    "deus-customer-artifacts",
-    "deus-vault-backups",
-  ]);
+  assert.deepEqual(
+    jobs[0].inputs.s3JobDefinition.bucketDefinitions[0].buckets,
+    ["deus-customer-artifacts", "deus-vault-backups"],
+  );
 });

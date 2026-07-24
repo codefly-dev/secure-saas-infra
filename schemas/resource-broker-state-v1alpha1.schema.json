@@ -1,0 +1,341 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/resource-broker-state-v1alpha1.schema.json",
+  "title": "Cloud-neutral durable resource broker state",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "revision",
+    "claims",
+    "idempotencyRecords",
+    "redeemedCapabilityIds"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "security.deus.dev/resource-broker-state/v1alpha1"
+    },
+    "revision": { "type": "integer", "minimum": 0 },
+    "claims": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/claimState" }
+    },
+    "idempotencyRecords": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/idempotencyRecord" }
+    },
+    "redeemedCapabilityIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/name" }
+    }
+  },
+  "$defs": {
+    "claimState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "apiVersion",
+        "kind",
+        "claimId",
+        "tenantId",
+        "generation",
+        "resourceKind",
+        "resourceApiVersion",
+        "desiredStateDigest",
+        "desiredStateRef",
+        "requiredProviderCapabilities",
+        "lifecycle",
+        "phase",
+        "observedGeneration",
+        "outputs"
+      ],
+      "properties": {
+        "apiVersion": {
+          "const": "security.deus.dev/resource-broker/v1alpha1"
+        },
+        "kind": { "const": "ResourceClaim" },
+        "claimId": { "$ref": "#/$defs/name" },
+        "tenantId": { "$ref": "#/$defs/name" },
+        "generation": { "type": "integer", "minimum": 1 },
+        "resourceKind": { "$ref": "#/$defs/resourceKind" },
+        "resourceApiVersion": { "$ref": "#/$defs/apiVersion" },
+        "desiredStateDigest": { "$ref": "#/$defs/digest" },
+        "desiredStateRef": {
+          "type": "string",
+          "pattern": "^broker://[^@]+$",
+          "maxLength": 512
+        },
+        "requiredProviderCapabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/name" }
+        },
+        "lifecycle": { "$ref": "#/$defs/lifecycle" },
+        "phase": {
+          "enum": [
+            "pending",
+            "reconciling",
+            "available",
+            "failed",
+            "drifted",
+            "cancelling",
+            "cancelled",
+            "deleting",
+            "deleted"
+          ]
+        },
+        "observedGeneration": { "type": "integer", "minimum": 0 },
+        "providerResourceRef": {
+          "type": "string",
+          "pattern": "^provider://[^@]+$",
+          "maxLength": 512
+        },
+        "outputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/output" }
+        },
+        "lease": { "$ref": "#/$defs/lease" },
+        "failure": { "$ref": "#/$defs/failure" },
+        "drift": { "$ref": "#/$defs/drift" },
+        "deletion": { "$ref": "#/$defs/deletion" },
+        "cancellation": { "$ref": "#/$defs/cancellation" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "phase": { "enum": ["reconciling", "cancelling"] }
+            },
+            "required": ["phase"]
+          },
+          "then": {
+            "required": ["lease"],
+            "properties": {
+              "lease": { "$ref": "#/$defs/lease" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "phase": { "const": "available" } },
+            "required": ["phase"]
+          },
+          "then": {
+            "required": ["providerResourceRef"],
+            "properties": {
+              "providerResourceRef": {
+                "type": "string",
+                "pattern": "^provider://[^@]+$",
+                "maxLength": 512
+              },
+              "outputs": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "$ref": "#/$defs/output" }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "phase": { "const": "deleted" } },
+            "required": ["phase"]
+          },
+          "then": {
+            "properties": {
+              "outputs": {
+                "type": "array",
+                "maxItems": 0,
+                "items": { "$ref": "#/$defs/output" }
+              }
+            },
+            "not": { "required": ["providerResourceRef"] }
+          }
+        }
+      ]
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deletionProtection",
+        "destructionApprovalRequired",
+        "finalizationEvidenceRequired",
+        "maxReconcileAttempts"
+      ],
+      "properties": {
+        "deletionProtection": { "const": true },
+        "destructionApprovalRequired": { "const": true },
+        "finalizationEvidenceRequired": { "const": true },
+        "maxReconcileAttempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "value"],
+      "properties": {
+        "name": {
+          "allOf": [
+            { "$ref": "#/$defs/name" },
+            {
+              "not": {
+                "type": "string",
+                "pattern": "^(?:password|secret|token|credential|private-key)$"
+              }
+            }
+          ]
+        },
+        "kind": { "enum": ["reference", "value"] },
+        "value": {
+          "oneOf": [
+            { "type": "string", "maxLength": 512 },
+            { "type": "number" },
+            { "type": "boolean" }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "const": "reference" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "string",
+                "pattern": "^(?:broker|provider|identity|evidence)://[^@]+$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "lease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "providerId",
+        "generation",
+        "fenceToken",
+        "attempt",
+        "acquiredAt",
+        "expiresAt"
+      ],
+      "properties": {
+        "providerId": { "$ref": "#/$defs/name" },
+        "generation": { "type": "integer", "minimum": 1 },
+        "fenceToken": { "$ref": "#/$defs/digest" },
+        "attempt": { "type": "integer", "minimum": 1 },
+        "acquiredAt": { "$ref": "#/$defs/timestamp" },
+        "expiresAt": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable", "attempt", "occurredAt"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,63}$" },
+        "message": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "retryable": { "type": "boolean" },
+        "attempt": { "type": "integer", "minimum": 1 },
+        "occurredAt": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "drift": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observedStateDigest", "detectedAt"],
+      "properties": {
+        "observedStateDigest": { "$ref": "#/$defs/digest" },
+        "detectedAt": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "deletion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestedAt",
+        "requestedBy",
+        "approvalEvidenceRef",
+        "finalizationEvidenceRef"
+      ],
+      "properties": {
+        "requestedAt": { "$ref": "#/$defs/timestamp" },
+        "requestedBy": { "$ref": "#/$defs/name" },
+        "approvalEvidenceRef": {
+          "type": "string",
+          "pattern": "^evidence://[^@]+$"
+        },
+        "finalizationEvidenceRef": {
+          "type": "string",
+          "pattern": "^(?:evidence|snapshot)://[^@]+$"
+        }
+      }
+    },
+    "cancellation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requestedAt", "requestedBy"],
+      "properties": {
+        "requestedAt": { "$ref": "#/$defs/timestamp" },
+        "requestedBy": { "$ref": "#/$defs/name" },
+        "cleanupEvidenceRef": {
+          "type": "string",
+          "pattern": "^evidence://[^@]+$"
+        }
+      }
+    },
+    "idempotencyRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenantId",
+        "operation",
+        "claimId",
+        "key",
+        "payloadDigest",
+        "capabilityId",
+        "committedRevision"
+      ],
+      "properties": {
+        "tenantId": { "$ref": "#/$defs/name" },
+        "operation": {
+          "enum": ["claim.apply", "claim.cancel", "claim.delete"]
+        },
+        "claimId": { "$ref": "#/$defs/name" },
+        "key": { "$ref": "#/$defs/name" },
+        "payloadDigest": { "$ref": "#/$defs/digest" },
+        "capabilityId": { "$ref": "#/$defs/name" },
+        "committedRevision": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$",
+      "maxLength": 128
+    },
+    "resourceKind": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9]{0,126}$"
+    },
+    "apiVersion": {
+      "type": "string",
+      "pattern": "^[a-z0-9.-]+/[a-z0-9.-]+/v[0-9]+(?:alpha|beta)?[0-9]*$"
+    },
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    }
+  }
+}

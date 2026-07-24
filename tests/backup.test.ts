@@ -18,6 +18,8 @@ test("backup stack creates locked vaults, multi-region KMS, and a cross-region c
     vaultLockChangeableForDays: 3,
     createPlan: true,
     dailyScheduleExpression: "cron(0 5 ? * * *)",
+    backupIntervalMinutes: 1440,
+    restoreTestIntervalDays: 30,
     coldStorageAfterDays: 90,
     deleteAfterDays: 365,
     selectionTags: [{ key: "Backup", value: "required" }],
@@ -29,7 +31,10 @@ test("backup stack creates locked vaults, multi-region KMS, and a cross-region c
   assert.equal(primaryKey.inputs.multiRegion, true);
   assert.equal(primaryKey.inputs.enableKeyRotation, true);
 
-  const replicaKeys = resourcesOfType(resources, "aws:kms/replicaKey:ReplicaKey");
+  const replicaKeys = resourcesOfType(
+    resources,
+    "aws:kms/replicaKey:ReplicaKey",
+  );
   assert.equal(replicaKeys.length, 1);
 
   const vaults = resourcesOfType(resources, "aws:backup/vault:Vault");
@@ -58,4 +63,25 @@ test("backup stack creates locked vaults, multi-region KMS, and a cross-region c
   );
   assert.equal(selections.length, 1);
   assert.equal(selections[0].inputs.selectionTags[0].key, "Backup");
+
+  const restorePlans = resourcesOfType(
+    resources,
+    "aws:backup/restoreTestingPlan:RestoreTestingPlan",
+  );
+  assert.equal(restorePlans.length, 1);
+  assert.equal(
+    restorePlans[0].inputs.recoveryPointSelection.algorithm,
+    "LATEST_WITHIN_WINDOW",
+  );
+  assert.equal(restorePlans[0].inputs.scheduleExpression, "cron(0 6 1 * ? *)");
+  const restoreSelections = resourcesOfType(
+    resources,
+    "aws:backup/restoreTestingSelection:RestoreTestingSelection",
+  );
+  assert.equal(restoreSelections.length, 1);
+  assert.equal(restoreSelections[0].inputs.protectedResourceType, "Aurora");
+  assert.equal(
+    restoreSelections[0].inputs.protectedResourceConditions.stringEquals[0].key,
+    "aws:ResourceTag/Backup",
+  );
 });

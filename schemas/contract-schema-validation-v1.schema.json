@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/contract-schema-validation-v1.schema.json",
+  "title": "Strict contract schema validation evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "generatedAt",
+    "validator",
+    "publishedSchemas",
+    "validatedContracts"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "evidence.security.deus.dev/contract-schema-validation/v1"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "validator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "strict", "allErrors", "formats"],
+      "properties": {
+        "engine": { "const": "ajv-2020" },
+        "strict": { "const": true },
+        "allErrors": { "const": true },
+        "formats": { "const": true }
+      }
+    },
+    "publishedSchemas": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/publishedSchema" }
+    },
+    "validatedContracts": {
+      "type": "array",
+      "minItems": 0,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/validatedContract" }
+    }
+  },
+  "$defs": {
+    "publishedSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "schemaId", "sha256", "owner", "validationMode"],
+      "properties": {
+        "path": { "$ref": "#/$defs/schemaPath" },
+        "schemaId": { "$ref": "#/$defs/httpsUri" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "owner": { "$ref": "#/$defs/owner" },
+        "validationMode": {
+          "enum": ["checked-contract", "schema-only"]
+        }
+      }
+    },
+    "validatedContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract",
+        "contractSha256",
+        "schema",
+        "schemaId",
+        "schemaSha256",
+        "apiVersion",
+        "owner"
+      ],
+      "properties": {
+        "contract": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.-]*\\.json$"
+        },
+        "contractSha256": { "$ref": "#/$defs/sha256" },
+        "schema": { "$ref": "#/$defs/schemaPath" },
+        "schemaId": { "$ref": "#/$defs/httpsUri" },
+        "schemaSha256": { "$ref": "#/$defs/sha256" },
+        "apiVersion": {
+          "type": ["string", "null"],
+          "maxLength": 256
+        },
+        "owner": { "$ref": "#/$defs/owner" }
+      }
+    },
+    "schemaPath": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9.-]*\\.schema\\.json$"
+    },
+    "httpsUri": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://[^?#]+$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "owner": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9.-]*/[a-z0-9][a-z0-9.-]*$",
+      "maxLength": 128
+    }
+  }
+}

@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { installPulumiMocks, flushPulumiMocks, resourcesOfType } from "./helpers/pulumiMocks";
+import {
+  installPulumiMocks,
+  flushPulumiMocks,
+  resourcesOfType,
+} from "./helpers/pulumiMocks";
 
 test("log archive creates immutable encrypted audit storage", async () => {
   const { resources } = await installPulumiMocks();
@@ -22,8 +26,14 @@ test("log archive creates immutable encrypted audit storage", async () => {
   await flushPulumiMocks();
 
   const bucket = resourcesOfType(resources, "aws:s3/bucket:Bucket")[0];
-  const publicAccessBlock = resourcesOfType(resources, "aws:s3/bucketPublicAccessBlock:BucketPublicAccessBlock")[0];
-  const versioning = resourcesOfType(resources, "aws:s3/bucketVersioning:BucketVersioning")[0];
+  const publicAccessBlock = resourcesOfType(
+    resources,
+    "aws:s3/bucketPublicAccessBlock:BucketPublicAccessBlock",
+  )[0];
+  const versioning = resourcesOfType(
+    resources,
+    "aws:s3/bucketVersioning:BucketVersioning",
+  )[0];
   const objectLock = resourcesOfType(
     resources,
     "aws:s3/bucketObjectLockConfiguration:BucketObjectLockConfiguration",
@@ -33,7 +43,10 @@ test("log archive creates immutable encrypted audit storage", async () => {
     "aws:s3/bucketServerSideEncryptionConfiguration:BucketServerSideEncryptionConfiguration",
   )[0];
   const kmsKey = resourcesOfType(resources, "aws:kms/key:Key")[0];
-  const policy = resourcesOfType(resources, "aws:s3/bucketPolicy:BucketPolicy")[0];
+  const policy = resourcesOfType(
+    resources,
+    "aws:s3/bucketPolicy:BucketPolicy",
+  )[0];
   const trail = resourcesOfType(resources, "aws:cloudtrail/trail:Trail")[0];
 
   assert.equal(bucket.inputs.objectLockEnabled, true);
@@ -45,13 +58,17 @@ test("log archive creates immutable encrypted audit storage", async () => {
   assert.equal(versioning.inputs.versioningConfiguration.status, "Enabled");
   assert.equal(objectLock.inputs.rule.defaultRetention.mode, "COMPLIANCE");
   assert.equal(objectLock.inputs.rule.defaultRetention.days, 2555);
-  assert.equal(encryption.inputs.rules[0].applyServerSideEncryptionByDefault.sseAlgorithm, "aws:kms");
+  assert.equal(
+    encryption.inputs.rules[0].applyServerSideEncryptionByDefault.sseAlgorithm,
+    "aws:kms",
+  );
   assert.equal(encryption.inputs.rules[0].blockedEncryptionTypes[0], "SSE-C");
   assert.equal(kmsKey.inputs.enableKeyRotation, true);
 
   const parsedKmsPolicy = JSON.parse(kmsKey.inputs.policy);
   const cloudTrailKmsStatement = parsedKmsPolicy.Statement.find(
-    (statement: { Sid: string }) => statement.Sid === "AllowCloudTrailEncryption",
+    (statement: { Sid: string }) =>
+      statement.Sid === "AllowCloudTrailEncryption",
   );
   assert.equal(
     cloudTrailKmsStatement.Condition.StringEquals["aws:SourceAccount"],

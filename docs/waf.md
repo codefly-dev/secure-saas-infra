@@ -48,5 +48,5 @@ Web ACLs must be there). For ALB / API Gateway, keep `REGIONAL`.
 
 Shield Standard is on for free in every AWS account. Shield Advanced is
 recommended for the public ingress endpoint when you have a contractual SLA
-that depends on availability under attack. Shield Advanced is *not* deployed
+that depends on availability under attack. Shield Advanced is _not_ deployed
 by this stack — it requires a subscription decision.

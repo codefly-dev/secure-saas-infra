@@ -33,9 +33,7 @@ test("cost-controls stack creates per-tenant budgets and a cost anomaly subscrip
   );
   assert.ok(
     budgets.every((budget) =>
-      String(budget.inputs.costFilters[0].values[0]).includes(
-        "user:TenantId$",
-      ),
+      String(budget.inputs.costFilters[0].values[0]).includes("user:TenantId$"),
     ),
   );
 

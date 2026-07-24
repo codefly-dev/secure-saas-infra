@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { flushPulumiMocks, installPulumiMocks, resourcesOfType } from "./helpers/pulumiMocks";
+import {
+  flushPulumiMocks,
+  installPulumiMocks,
+  resourcesOfType,
+} from "./helpers/pulumiMocks";
 
 test("E2B BYOC access role requires vendor role principal and external id", async () => {
   const { resources } = await installPulumiMocks();
@@ -8,12 +12,18 @@ test("E2B BYOC access role requires vendor role principal and external id", asyn
 
   createE2bByocAccess({
     createVendorRole: true,
-    vendorPrincipalArns: ["arn:aws:iam::123456789012:role/e2b-byoc-control-plane"],
+    vendorPrincipalArns: [
+      "arn:aws:iam::123456789012:role/e2b-byoc-control-plane",
+    ],
     externalId: "example-external-id-123456",
-    managedPolicyArns: ["arn:aws:iam::111111111111:policy/e2b-byoc-least-privilege"],
+    managedPolicyArns: [
+      "arn:aws:iam::111111111111:policy/e2b-byoc-least-privilege",
+    ],
     inlinePolicy: {
       Version: "2012-10-17",
-      Statement: [{ Effect: "Allow", Action: "sts:GetCallerIdentity", Resource: "*" }],
+      Statement: [
+        { Effect: "Allow", Action: "sts:GetCallerIdentity", Resource: "*" },
+      ],
     },
     maxSessionDurationSeconds: 3600,
   });
@@ -33,11 +43,23 @@ test("E2B BYOC access role requires vendor role principal and external id", asyn
     "example-external-id-123456",
   );
 
-  const managedPolicyAttachments = resourcesOfType(resources, "aws:iam/rolePolicyAttachment:RolePolicyAttachment");
+  const managedPolicyAttachments = resourcesOfType(
+    resources,
+    "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+  );
   assert.equal(managedPolicyAttachments.length, 1);
-  assert.equal(managedPolicyAttachments[0].inputs.policyArn, "arn:aws:iam::111111111111:policy/e2b-byoc-least-privilege");
+  assert.equal(
+    managedPolicyAttachments[0].inputs.policyArn,
+    "arn:aws:iam::111111111111:policy/e2b-byoc-least-privilege",
+  );
 
-  const inlinePolicies = resourcesOfType(resources, "aws:iam/rolePolicy:RolePolicy");
+  const inlinePolicies = resourcesOfType(
+    resources,
+    "aws:iam/rolePolicy:RolePolicy",
+  );
   assert.equal(inlinePolicies.length, 1);
-  assert.equal(JSON.parse(inlinePolicies[0].inputs.policy).Statement[0].Action, "sts:GetCallerIdentity");
+  assert.equal(
+    JSON.parse(inlinePolicies[0].inputs.policy).Statement[0].Action,
+    "sts:GetCallerIdentity",
+  );
 });

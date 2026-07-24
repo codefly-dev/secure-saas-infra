@@ -2,14 +2,91 @@ environment:
   - secure-saas-infra/staging
 config:
   aws:region: us-east-1
+  aws:allowedAccountIds:
+    - <set-platform-staging-account-id-after-organization-creation>
   secure-saas-infra:stackKind: platform
   secure-saas-infra:deploymentMode: disabled
   secure-saas-infra:organizationName: deus
+  secure-saas-infra:awsOrganizationId: o-1234567890
+  secure-saas-infra:awsBootstrapAccessPlanPath: contracts/aws-bootstrap-access-v1alpha1.json
+  secure-saas-infra:awsBootstrapAccessAccountName: platform-staging
   secure-saas-infra:environment: platform-staging
+  secure-saas-infra:managedPostgresEnvironment: staging
+  secure-saas-infra:eks:
+    version: "1.33"
+    endpointPublicAccess: false
+    autoModeNodePools:
+      - system
+      - general-purpose
+    networkPolicyMode: strict
+    accessGrants:
+      - id: platform-admin
+        principal:
+          kind: identity-center-permission-set
+          category: workforce
+          permissionSetName: PlatformPowerUser
+        accessPolicy: cluster-admin
+        scope:
+          type: cluster
+      - id: argocd-bootstrap
+        principal:
+          kind: iam-role
+          category: workforce
+          roleArn: arn:aws:iam::<set-platform-staging-account-id-after-organization-creation>:role/InfrastructureApplyNonProd-Workload
+        accessPolicy: cluster-admin
+        scope:
+          type: cluster
+  secure-saas-infra:platformBlueprintPreset:
+    name: warden-mind-v1
+    networkCidrs:
+      egress-net: 10.0.0.0/16
+      control-net: 10.11.0.0/16
+      execution-shared-net: 10.21.0.0/16
+      data-shared-net: 10.31.0.0/16
+  secure-saas-infra:managedPostgresContractPath: contracts/managed-postgres-v1alpha2.json
+  secure-saas-infra:codeflyRegistry:
+    enabled: true
+    retainImageCount: 100
+    untaggedRetentionDays: 14
+    repositories:
+      - mind/execution/execution-scheduler
+      - mind/infra/postgres
+      - mind/mind/mind
+      - mind/users/api
+      - mind/users/cache
+      - mind/users/frontend
+      - mind/users/object-storage
+      - mind/users/store
+      - mind/users/vault
+      - warden/platform/eventlog
+      - warden/platform/warden
+      - warden/saas/accounts
+      - warden/saas/auth-sidecar
+      - warden/saas/cache
+      - warden/saas/frontend
+      - warden/saas/object-storage
+      - warden/saas/store
+      - warden/saas/vault
   secure-saas-infra:spoke:
     name: platform-staging
+    zoneId: control
+    networkDomainId: control-net
     kind: platform
     cidr: 10.11.0.0/16
     azCount: 3
     createEks: true
     networkStackRef: your-pulumi-org/secure-saas-infra/network
+  secure-saas-infra:database:
+    name: control-plane
+    engine: aurora-postgresql
+    engineVersion: "16.4"
+    engineMajorVersion: "16"
+    databaseName: deus
+    masterUsername: deus_admin
+    port: 5432
+    instanceClass: db.r6g.large
+    instanceCount: 2
+    backupRetentionDays: 35
+    deletionProtection: true
+    createProxy: true
+    replicaRegion: us-west-2

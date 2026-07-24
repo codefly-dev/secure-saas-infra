@@ -45,6 +45,11 @@ const requiredFiles = [
   "Pulumi.backup-staging.yaml.example",
   "Pulumi.backup-prod.yaml.example",
   "scripts/bootstrap.mjs",
+  "scripts/bootstrap-doctor.mjs",
+  "scripts/validate-gitops.mjs",
+  "scripts/audit-dependencies.mjs",
+  "scripts/generate-sbom.mjs",
+  "security/dependency-exceptions.json",
   "docs/onboarding.md",
   "docs/bootstrap.md",
   "docs/github-security.md",
@@ -108,12 +113,16 @@ function checkPackageScripts() {
     "test",
     "validate",
     "policy:build",
-    "validate:gitops",
+    "platform:validate:gitops",
     "onboard",
     "verify:onboarding",
     "preflight",
     "preflight:strict",
     "bootstrap",
+    "bootstrap:doctor",
+    "security:audit",
+    "sbom",
+    "verify:all",
   ]) {
     if (!packageJson.scripts?.[scriptName]) {
       failures.push(`package.json is missing script '${scriptName}'`);
@@ -190,6 +199,7 @@ function checkStrictPlaceholders() {
         "Pulumi.log-archive.yaml",
         "gitops/bootstrap/argocd/base/platform-cluster-baseline.application.yaml",
         "gitops/bootstrap/argocd/base/execution-cluster-baseline.application.yaml",
+        "gitops/base/kyverno/verify-signed-provenance.yaml",
       ]
     : [
         ".github/CODEOWNERS",

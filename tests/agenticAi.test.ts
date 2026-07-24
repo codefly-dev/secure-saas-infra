@@ -1,10 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import {
-  AgenticAiConfig,
-  validateAgenticAiConfig,
-} from "../src/config";
+import { AgenticAiConfig, validateAgenticAiConfig } from "../src/config";
 
 const baseline: AgenticAiConfig = {
   modelGatewayHostnames: ["api.openai.com", "api.anthropic.com"],
@@ -23,8 +20,7 @@ test("validateAgenticAiConfig accepts the baseline", () => {
 
 test("validateAgenticAiConfig rejects unsafe agent control plane configuration", () => {
   assert.throws(
-    () =>
-      validateAgenticAiConfig({ ...baseline, brokerEgressNamespaces: [] }),
+    () => validateAgenticAiConfig({ ...baseline, brokerEgressNamespaces: [] }),
     /brokerEgressNamespaces/,
   );
 
@@ -44,8 +40,7 @@ test("validateAgenticAiConfig rejects unsafe agent control plane configuration",
   );
 
   assert.throws(
-    () =>
-      validateAgenticAiConfig({ ...baseline, perTenantTokenBudget: 0 }),
+    () => validateAgenticAiConfig({ ...baseline, perTenantTokenBudget: 0 }),
     /perTenantTokenBudget/,
   );
 
@@ -78,7 +73,10 @@ test("agent broker GitOps manifests gate the namespace and require audit metadat
   );
 
   assert.match(namespace, /pod-security.kubernetes.io\/enforce: restricted/);
-  assert.match(networkPolicy, /policyTypes:\s*\n\s*-\s*Ingress\s*\n\s*-\s*Egress/);
+  assert.match(
+    networkPolicy,
+    /policyTypes:\s*\n\s*-\s*Ingress\s*\n\s*-\s*Egress/,
+  );
   assert.match(allowEgress, /agent-egress/);
   assert.match(kyverno, /security.deus.dev\/tenant-id/);
   assert.match(kyverno, /security.deus.dev\/principal-id/);

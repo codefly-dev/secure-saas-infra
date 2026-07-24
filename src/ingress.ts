@@ -83,6 +83,15 @@ export function createPublicIngress(config: IngressConfig): IngressResult {
     edgeOptions,
   );
 
+  new aws.s3.BucketVersioning(
+    named("ingress-cf-logs-versioning"),
+    {
+      bucket: logBucket.id,
+      versioningConfiguration: { status: "Enabled" },
+    },
+    edgeOptions,
+  );
+
   new aws.s3.BucketOwnershipControls(
     named("ingress-cf-logs-ownership"),
     {
@@ -305,11 +314,22 @@ export function createPublicIngress(config: IngressConfig): IngressResult {
         responseHeadersPolicyId: responseHeadersPolicy.id,
       },
       orderedCacheBehaviors: config.modelGatewayPathPrefixes.map(
-        (prefix, index): aws.types.input.cloudfront.DistributionOrderedCacheBehavior => ({
+        (
+          prefix,
+          index,
+        ): aws.types.input.cloudfront.DistributionOrderedCacheBehavior => ({
           pathPattern: prefix.endsWith("*") ? prefix : `${prefix}*`,
           targetOriginId: "internal-nlb",
           viewerProtocolPolicy: "https-only",
-          allowedMethods: ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"],
+          allowedMethods: [
+            "GET",
+            "HEAD",
+            "OPTIONS",
+            "PUT",
+            "POST",
+            "PATCH",
+            "DELETE",
+          ],
           cachedMethods: ["GET", "HEAD"],
           compress: true,
           cachePolicyId: "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",

@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security.deus.dev/schemas/local-gate-evidence-v1.schema.json",
+  "title": "Locally qualified IaC gate evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "generatedAt",
+    "source",
+    "execution",
+    "adversarialReview",
+    "gates",
+    "pass",
+    "reportDigest"
+  ],
+  "properties": {
+    "apiVersion": { "const": "evidence.security.deus.dev/local-gates/v1" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "platform",
+        "architecture",
+        "productionQualification",
+        "toolchain"
+      ],
+      "properties": {
+        "platform": { "enum": ["darwin", "linux"] },
+        "architecture": { "enum": ["arm64", "x64"] },
+        "productionQualification": { "type": "boolean" },
+        "toolchain": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["node", "npm", "go", "pulumi"],
+          "properties": {
+            "node": { "const": "v24.18.0" },
+            "npm": { "const": "11.16.0" },
+            "go": { "const": "go1.26.5" },
+            "pulumi": { "const": "v3.253.0" }
+          }
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "dirty", "treeDigest"],
+      "properties": {
+        "revision": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "dirty": { "const": false },
+        "treeDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "adversarialReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "approvedForLocalQualification"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "approvedForLocalQualification": { "const": true }
+      }
+    },
+    "gates": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "command", "status", "outputDigest"],
+        "properties": {
+          "id": {
+            "enum": [
+              "g0-static-contracts",
+              "g0-clean-install",
+              "g1-unit",
+              "g4-dependencies",
+              "g6-sbom"
+            ]
+          },
+          "command": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "status": { "const": "pass" },
+          "outputDigest": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    },
+    "pass": { "const": true },
+    "reportDigest": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "path": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$"
+    }
+  }
+}

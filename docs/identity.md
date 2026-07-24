@@ -8,7 +8,10 @@ Human AWS access is managed through IAM Identity Center, not IAM users. The `ide
 - Assign groups, not individual users, to AWS accounts.
 - Keep `BreakGlassAdministrator` membership empty by default and review it separately from normal engineering access.
 - Prefer short sessions for privileged access. The template uses one hour for break-glass, two hours for platform operations, and four hours for read-only access.
-- Add IAM Identity Center-generated role ARNs to the EKS `adminRoleArns` only for the groups that should administer Kubernetes clusters.
+- Refer to IAM Identity Center permission-set names in `eks.accessGrants`; the
+  workload-account stack resolves the generated role's random suffix and
+  creates scoped EKS Access Entries. Do not copy `AWSReservedSSO_*` ARNs by
+  hand.
 
 The stack follows AWS IAM guidance to use federation and temporary credentials for people, and IAM Identity Center permission sets for centralized multi-account access.
 

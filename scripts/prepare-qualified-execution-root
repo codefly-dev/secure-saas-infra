@@ -1,0 +1,91 @@
+#!/bin/sh
+set -eu
+
+target=/usr/local/lib/deus-bootstrap/execution
+if [ -n "${AWS_ACCESS_KEY_ID-}${AWS_SECRET_ACCESS_KEY-}${AWS_SESSION_TOKEN-}${AWS_PROFILE-}${AWS_DEFAULT_PROFILE-}${AWS_CONFIG_FILE-}${AWS_SHARED_CREDENTIALS_FILE-}${AWS_WEB_IDENTITY_TOKEN_FILE-}${AWS_ROLE_ARN-}${AWS_CONTAINER_CREDENTIALS_RELATIVE_URI-}${AWS_CONTAINER_CREDENTIALS_FULL_URI-}${PULUMI_ACCESS_TOKEN-}${PULUMI_CONFIG_PASSPHRASE-}${PULUMI_CONFIG_PASSPHRASE_FILE-}${GITHUB_TOKEN-}${GH_TOKEN-}${NPM_TOKEN-}${NODE_AUTH_TOKEN-}${SSH_AUTH_SOCK-}${NODE_OPTIONS-}${NODE_PATH-}${LD_PRELOAD-}${LD_AUDIT-}${DYLD_INSERT_LIBRARIES-}${GIT_CONFIG-}${GIT_CONFIG_GLOBAL-}${GIT_CONFIG_SYSTEM-}${GIT_SSH-}${GIT_SSH_COMMAND-}${HTTP_PROXY-}${HTTPS_PROXY-}${ALL_PROXY-}${NO_PROXY-}${BASH_ENV-}${ENV-}" ]; then
+  echo "prepare-qualified-execution-root: credentials or executable indirection are forbidden" >&2
+  exit 64
+fi
+
+case "$0" in
+  /*) launcher=$0 ;;
+  *) launcher=$PWD/$0 ;;
+esac
+repository=$(CDPATH= cd -- "${launcher%/*}/.." && pwd -P)
+
+if [ ! -d "$target" ] || [ -L "$target" ] || [ -n "$(/bin/ls -A "$target")" ]; then
+  echo "prepare-qualified-execution-root: run native prepare-execution first; the fixed target must be an empty direct directory" >&2
+  exit 78
+fi
+if [ ! -f "$repository/onboarding.local.json" ] || [ ! -f "$repository/Pulumi.management.yaml" ]; then
+  echo "prepare-qualified-execution-root: onboarding.local.json and Pulumi.management.yaml are required" >&2
+  exit 78
+fi
+
+git_command=/usr/bin/git
+npm_command=/usr/local/lib/deus-bootstrap/qualification-bin/npm
+node_command=/usr/local/lib/deus-bootstrap/bin/node
+if [ ! -x "$git_command" ] || [ ! -x "$npm_command" ] || [ ! -x "$node_command" ]; then
+  echo "prepare-qualified-execution-root: fixed qualification Git/npm are unavailable" >&2
+  exit 78
+fi
+git_safe() {
+  /usr/bin/env -i HOME=/nonexistent LANG=C PATH=/usr/bin:/bin \
+    GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null GIT_CONFIG_NOSYSTEM=1 \
+    "$git_command" \
+    -c core.fsmonitor=false \
+    -c core.hooksPath=/dev/null \
+    -c credential.helper= \
+    "$@"
+}
+
+if [ -n "$(git_safe -C "$repository" status --porcelain --untracked-files=all)" ]; then
+  echo "prepare-qualified-execution-root: source repository must be clean and committed" >&2
+  exit 78
+fi
+revision=$(git_safe -C "$repository" rev-parse HEAD)
+if [ "${#revision}" -ne 40 ]; then
+  echo "prepare-qualified-execution-root: source revision is invalid" >&2
+  exit 78
+fi
+case "$revision" in
+  *[!0-9a-f]*|'')
+    echo "prepare-qualified-execution-root: source revision is invalid" >&2
+    exit 78
+    ;;
+esac
+
+git_safe clone --no-local --no-hardlinks --no-checkout "$repository" "$target"
+git_safe -C "$target" checkout --detach "$revision"
+git_safe -C "$target" remote remove origin
+/usr/bin/install -m 0600 "$repository/onboarding.local.json" "$target/onboarding.local.json"
+/usr/bin/install -m 0600 "$repository/Pulumi.management.yaml" "$target/Pulumi.management.yaml"
+/bin/mkdir -p "$target/artifacts/pulumi-plans" "$target/artifacts/runtime-output"
+
+qualification_home=$(/usr/bin/mktemp -d /tmp/deus-seed-preparation-home.XXXXXX)
+cleanup() { /bin/rm -rf "$qualification_home"; }
+trap cleanup EXIT HUP INT TERM
+qualification_path=/usr/local/lib/deus-bootstrap/bin:/usr/local/lib/deus-bootstrap/qualification-bin:/usr/bin:/bin
+qualification_pulumi_home=$target/artifacts/bootstrap-pulumi-home
+run_npm() {
+  /usr/bin/env -i HOME="$qualification_home" LANG=C \
+    NPM_CONFIG_GLOBALCONFIG=/dev/null NPM_CONFIG_USERCONFIG=/dev/null \
+    PATH="$qualification_path" PULUMI_HOME="$qualification_pulumi_home" \
+    "$npm_command" --prefix "$target" "$@"
+}
+
+run_npm ci --ignore-scripts
+/usr/bin/env -i HOME="$qualification_home" LANG=C PATH="$qualification_path" \
+  PULUMI_HOME="$qualification_pulumi_home" \
+  "$node_command" "$target/scripts/prepare-bootstrap-plugins.mjs"
+run_npm run bootstrap:access-bundle -- \
+    --config onboarding.local.json \
+    --output artifacts/management-seed-access-bundle.json \
+    --template-output artifacts/management-seed-access.template.json
+run_npm run bootstrap:verify-access-bundle -- \
+    --config onboarding.local.json \
+    --bundle artifacts/management-seed-access-bundle.json \
+    --template artifacts/management-seed-access.template.json
+
+echo "Prepared clean revision $revision at $target"
+echo "Next: run credential-free qualification there, sign/finalize independently, then run native seal-execution."

@@ -4,18 +4,31 @@ The baseline now separates account vending from workload deployment.
 
 ## Account Model
 
-The management account owns AWS Organizations. It vends these member accounts:
+The management account owns AWS Organizations. The initial active topology
+vends these member accounts:
 
 - `security-tooling`
 - `log-archive`
 - `network`
 - `shared-services`
 - `platform-dev`
-- `platform-staging`
 - `platform-prod`
 - `execution-dev`
-- `execution-staging`
 - `execution-prod`
+
+The `platform-staging` and `execution-staging` definitions remain in the
+management configuration with `create: false`. They are validated as a pair in
+the `PreProd` OU but are not admitted by the first qualified management seed.
+The eight active members plus the management account require capacity for nine
+accounts. AWS documents a default of ten but warns that new accounts and
+Organizations can receive less. Therefore the first wave creates only the
+Organization; a separately qualified full wave observes the effective quota in
+`us-east-1` and fails before Pulumi unless capacity is at least nine. Enabling
+both staging members would require eleven total accounts and remains rejected.
+
+Environment accounts live under nested `Workloads/NonProd`,
+`Workloads/PreProd`, and `Workloads/Prod` OUs. Platform and execution remain
+separate AWS accounts inside each environment boundary.
 
 The management account itself is not created by Pulumi. It is the account from which the organization stack runs.
 
@@ -23,7 +36,11 @@ The management account itself is not created by Pulumi. It is the account from w
 
 Use these example files as Pulumi stack templates:
 
-- `Pulumi.management.yaml.example`: creates OUs, accounts, RAM organization sharing, baseline SCPs, and security delegated administrator registration.
+- `Pulumi.management.yaml.example`: creates the exact greenfield OUs and
+  account baseline, RAM organization sharing, six standalone trusted-service
+  access resources, one consolidated baseline SCP, one Suspended deny-all SCP,
+  and the native S3 Block Public Access policy. Delegated administrators are
+  deliberately deferred.
 - `Pulumi.log-archive.yaml.example`: creates immutable audit log S3 storage with Object Lock, KMS encryption, lifecycle, and CloudTrail bucket policy.
 - `Pulumi.organization-audit.yaml.example`: runs in the management account to create the organization CloudTrail writing to the log archive bucket.
 - `Pulumi.identity.yaml.example`: creates IAM Identity Center groups, permission sets, and group-to-account assignments.
@@ -55,19 +72,27 @@ The platform and execution stack examples import these environments so common se
 
 ## Deployment Order
 
-1. Run the `github-governance` stack with a GitHub admin token.
-2. Run the management stack from the AWS management account. For a greenfield setup, leave `createOrganization: true`; for an existing AWS Organization, set it to `false`.
-3. Wait for all member accounts to reach `ACTIVE`.
-4. Enable IAM Identity Center for the organization, then run the `identity` stack from the management account.
-5. Run `github-oidc` in each account where GitHub Actions needs preview or deploy access.
-6. Run the `log-archive` stack in the log archive account.
-7. Run `organization-audit` from the management account after editing its `logArchiveStackRef`.
-8. Run `security-tooling` in the security tooling account.
-9. Run `shared-services` in the shared services account.
-10. Run the network hub stack in the `network` account.
-11. Run each `platform-*` and `execution-*` stack in its matching workload account.
-12. Run the `network-routing` stack back in the `network` account to accept, associate, and route the cross-account attachments.
-13. Use the `dev` stack only when you need a single-account baseline for fast iteration.
+The only currently admitted AWS mutation is the reviewed
+`seedWave: organization-only` management apply. It creates the Organization and
+nothing else. This seed is greenfield-only and requires
+`createOrganization: true`; existing Organizations require a separately
+designed discovery/import adapter.
+
+The next safe sequence is intentionally split:
+
+1. Preview and apply the independently qualified `organization-only` plan.
+2. Re-qualify `seedWave: full` and run its read-only preview. The candidate-,
+   account-, and configuration-bound capacity/state attestation is frozen in
+   the plan manifest and repeated before and after Pulumi.
+3. Implement and qualify the member-access installation that replaces and
+   immediately retires every broad `DeusOrganizationBootstrap` account-vending
+   role.
+4. Only then enable full account vending apply and later account-foundation,
+   identity, audit, network, workload, database, backup, and edge waves.
+
+GitHub governance and all later stacks are modeled backlog, not current
+bootstrap commands. They require their own authority, provider binding,
+reviewed plan, and runtime evidence.
 
 ## Guardrails
 
@@ -75,23 +100,36 @@ The management stack creates conservative SCPs for member OUs:
 
 - deny member accounts from leaving the organization;
 - deny disabling core audit and detection services;
-- deny loosening S3 account public access block settings;
+- enforce all four S3 Block Public Access settings with the native
+  Organizations `S3_POLICY` type;
 - deny IAM user creation, IAM access key creation, and IAM login profile changes;
 - deny disabling KMS key rotation or scheduling deletion of customer-managed keys;
 - deny disabling EBS default encryption;
 - deny mutating organization CloudTrail trails (`DeleteTrail`, `StopLogging`,
   `UpdateTrail`, `PutEventSelectors`, `PutInsightSelectors`).
 
-SCPs are attached to `Security`, `Infrastructure`, `Workloads`, and `Execution` OUs by default.
+SCPs are attached to `Security`, `Infrastructure`, and the parent `Workloads`
+OU by default. The workload controls are inherited by its `NonProd`, `PreProd`,
+and `Prod` children.
 
 ## Required Manual Inputs
 
-Before deploying `Pulumi.management.yaml.example`, replace every `aws+...@example.com` value with a globally unique AWS account email address.
+Before deploying `Pulumi.management.yaml.example`, replace every active
+`aws+...@aws.example.com` value with a globally unique AWS account email address.
+Leave both staging definitions disabled. Their placeholder addresses may be
+replaced now, but this seed rejects `create: true`; the active nine-account
+capacity contract does not admit eleven accounts.
 
 Before deploying `Pulumi.identity.yaml.example`, enable IAM Identity Center in the management account and decide whether groups will be created by Pulumi or synchronized from an external IdP.
 
-Before deploying `Pulumi.github-governance.yaml.example`, replace GitHub owner values, replace `.github/CODEOWNERS` owners with a real team, and export `GITHUB_TOKEN` with repository administration access.
+Before enabling protected promotion, create the
+`codefly-dev/platform-security` GitHub team, grant it repository access, and
+verify GitHub recognizes it as the CODEOWNER. Repository-rule mutation is
+outside the active management seed.
 
 Before deploying `Pulumi.github-oidc.yaml.example`, replace GitHub owner/repo values and use account-local deployment policy ARNs.
 
-Before deploying workload stacks, replace empty `adminRoleArns` with the IAM Identity Center or break-glass admin roles that should receive EKS Access Entries.
+Before deploying workload stacks, assign the named IAM Identity Center
+permission sets to each workload account. `eks.accessGrants` resolves those
+generated roles and creates EKS Access Entries; resolution fails unless exactly
+one role exists.

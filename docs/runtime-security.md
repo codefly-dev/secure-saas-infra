@@ -42,7 +42,7 @@ ConfigMap):
 
 - Kyverno (`gitops/base/kyverno`) enforces Pod Security `restricted`,
   RuntimeClass requirements, image signatures, and audit metadata at admission.
-  Falco watches *runtime* — a pod that passes admission but then misbehaves.
+  Falco watches _runtime_ — a pod that passes admission but then misbehaves.
 - VPC Flow Logs and Network Firewall ALERT logs cover network egress; Falco
   covers in-host syscalls.
 - GuardDuty Runtime Monitoring stays enabled. The two systems complement each
