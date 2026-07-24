@@ -354,6 +354,12 @@ test("source CI and evidence-only promotion enforce the two-stage review topolog
   assert.match(promotion, /pull_request\.head\.sha \|\| github\.sha/);
   assert.match(promotion, /DEUS_REVIEW_BASE_REVISION/);
   assert.match(promotion, /verify-review-promotion\.mjs/);
+  assert.match(promotion, /run: npm ci --ignore-scripts/);
+  assert.ok(
+    promotion.indexOf("run: npm ci --ignore-scripts") <
+      promotion.indexOf("run: node scripts/verify-review-promotion.mjs"),
+    "promotion dependencies must be installed before the verifier runs",
+  );
   assert.match(workflow, /artifacts\/secure-saas-infra\.spdx\.json/);
   assert.match(
     packageJson.scripts["validate:source"],

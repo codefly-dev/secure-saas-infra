@@ -47,6 +47,11 @@ func TestFrozenPlanReviewIsMandatoryAndFullyRevalidated(t *testing.T) {
 	if err := os.Mkdir(directory, 0o750); err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := os.Chmod(directory, 0o700); err != nil && !os.IsNotExist(err) {
+			t.Errorf("restore frozen plan review directory permissions: %v", err)
+		}
+	})
 	for name, contents := range map[string][]byte{
 		"manifest.json":        manifest,
 		"management.plan.json": plan,

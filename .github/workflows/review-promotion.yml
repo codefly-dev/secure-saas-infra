@@ -47,6 +47,8 @@ jobs:
           test "$(npm --version)" = "11.16.0"
           test "$(pulumi version)" = "v3.253.0"
           test "$(go version | awk '{print $3}')" = "go1.26.5"
+      - name: Install exact locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
       - name: Require an approved evidence-only child of the reviewed source
         env:
           DEUS_REVIEW_BASE_REVISION: ${{ github.event.pull_request.base.sha || github.event.before }}
