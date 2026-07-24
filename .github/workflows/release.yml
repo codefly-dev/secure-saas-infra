@@ -42,7 +42,7 @@ jobs:
           test "$(/usr/bin/git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")" = "$RELEASE_REVISION"
           /usr/bin/git merge-base --is-ancestor "$RELEASE_REVISION" refs/remotes/origin/main
       - name: Setup exact Node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24.18.0"
       - name: Setup exact Pulumi CLI
@@ -87,7 +87,7 @@ jobs:
           test "$(/usr/bin/git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")" = "$RELEASE_REVISION"
           /usr/bin/git merge-base --is-ancestor "$RELEASE_REVISION" refs/remotes/origin/main
       - name: Setup Node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24.18.0"
           cache: npm
@@ -186,7 +186,7 @@ jobs:
           test "$(/usr/bin/git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")" = "$RELEASE_REVISION"
           /usr/bin/git merge-base --is-ancestor "$RELEASE_REVISION" refs/remotes/origin/main
       - name: Setup authenticated Node runtime without package installation
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24.18.0"
       - name: Setup authenticated Go compiler
