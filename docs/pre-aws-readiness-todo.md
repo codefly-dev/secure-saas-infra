@@ -128,6 +128,12 @@ gate: SSD deletion cannot exclude snapshots, swap, backups, or prior capture.
 Do this only when ready to move from the free preparation phase toward a real
 release.
 
+- [ ] **Deferred by the operator on 2026-07-25.** Keep the organization on
+      GitHub Free and do not purchase Team, Enterprise Cloud, Code Security, or
+      Secret Protection now. Non-authorizing review and engineering may
+      continue, but stages 4 through 8 remain formal release/AWS blockers until
+      this paid-control decision is deliberately resumed or the governance
+      requirement is replaced by a separately reviewed equivalent.
 - [ ] Upgrade the GitHub organization to at least Team before relying on a
       private-repository branch or tag protection claim.
 - [ ] Protect `main`: require pull requests, CODEOWNERS review, `infra-ci`,
