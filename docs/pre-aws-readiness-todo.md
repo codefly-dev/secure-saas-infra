@@ -19,7 +19,8 @@ sequence.
 At the start of this checklist edit:
 
 - [x] The two earlier CI defects were fixed in signed commits and pushed.
-- [x] The latest `infra-ci` run for `5dbf193` passed.
+- [x] Signed commit `4647d31` is GitHub-verified and its complete `infra-ci`
+      workflow passed.
 - [x] Linux source CI has passed on the admitted workflow, including its
       `amd64` and `arm64` lanes.
 - [x] Pulumi Cloud Individual is selected at
@@ -68,9 +69,25 @@ reviews. Darwin also cannot provide the final native Linux host evidence.
       are recoverable without the primary development computer.
 - [x] Perform a private-browser Pulumi login drill. Record the date and result
       outside this repository; never store recovery secrets here.
-- [ ] Export the empty Pulumi management stack to encrypted storage using the
-      [Pulumi recovery procedure](pulumi-cloud-recovery.md), verify its
-      checksum, and retain two copies in separate failure domains.
+- [ ] Complete the independent Pulumi/recovery-media handoff:
+  - [x] Create temporary FileVault-protected staging at
+        `~/Downloads/secure-saas-recovery-staging`; restrict every directory to
+        `0700` and every file to `0600`.
+  - [x] Move the Google backup-code file into private staging without reading
+        it.
+  - [x] Export the empty Pulumi management stack into staging using the
+        [Pulumi recovery procedure](pulumi-cloud-recovery.md) and verify its
+        SHA-256 sidecar.
+  - [x] Generate a complete relative-path SHA-256 staging manifest so future
+        copies can be verified without opening credential files.
+  - [ ] Acquire two encrypted USB-C/USB-A recovery drives.
+  - [ ] Copy the complete staging directory to recovery USB 1 and verify the
+        staging manifest plus the Pulumi state sidecar on that drive.
+  - [ ] Copy the complete staging directory to recovery USB 2 and repeat both
+        verifications.
+  - [ ] Store the two verified drives in separate physical locations.
+  - [ ] With explicit approval, remove the temporary local staging copy only
+        after both independent copies pass.
 
 Stop if any recovery path depends only on this development computer.
 
@@ -82,7 +99,9 @@ without it.
 - [ ] Obtain a separate credential-free computer for signing. Do not use this
       development Mac, the future AWS execution host, or a VM controlled by
       either host.
-- [ ] Prepare two encrypted removable-media copies for the private-key backup.
+- [ ] Prepare two encrypted signing-only removable-media copies for the
+      private-key backup. These are a different pair from the recovery drives
+      in stage 1 and must never connect to this development Mac.
 - [ ] Generate one dedicated Ed25519 qualification keypair on the signing
       computer. Do not reuse a Git, SSH, login, or application key.
 - [ ] Keep `qualification-private.pem` encrypted on the offline media and keep
