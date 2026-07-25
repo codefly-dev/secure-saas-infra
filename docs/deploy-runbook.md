@@ -61,9 +61,11 @@ region, account emails, and Pulumi organization. `managementAccessRegion` must e
 management stack's `aws:region`; the access stack name is fixed to
 `deus-management-seed-access`.
 
-Log in to the selected Pulumi backend and initialize only the management stack.
-This is backend preparation only. Do not assume an AWS role and do not invoke a
-provider preview. Copy `Pulumi.management.yaml.example` to its ignored
+Log in to the selected Pulumi backend and initialize only the management stack
+as fixed by the
+[Pulumi Cloud recovery procedure](pulumi-cloud-recovery.md). This is backend
+preparation only. Do not assume an AWS role and do not invoke a provider
+preview. Copy `Pulumi.management.yaml.example` to its ignored
 non-example name and replace every placeholder. The stack must bind the exact
 management account and may not import an ESC environment or configure AWS
 provider indirection. Member-stack preparation remains intentionally blocked.

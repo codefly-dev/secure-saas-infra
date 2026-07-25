@@ -1,0 +1,18 @@
+{
+  "apiVersion": "security.deus.dev/pulumi-cloud-backend/v1",
+  "kind": "PulumiCloudBackend",
+  "backendUrl": "https://api.pulumi.com",
+  "consoleUrl": "https://app.pulumi.com",
+  "organization": "toussaint-antoine-gmail-com",
+  "project": "secure-saas-infra",
+  "allowedStacks": ["management"],
+  "secretsProvider": "pulumi-cloud",
+  "initializationScope": "empty-backend-state-only",
+  "recovery": {
+    "runbook": "docs/pulumi-cloud-recovery.md",
+    "maximumRecoveryPointAge": "PT1H",
+    "normalExportMode": "service-encrypted",
+    "plaintextSecretsPermitted": false,
+    "repositoryLocalBackupPermitted": false
+  }
+}

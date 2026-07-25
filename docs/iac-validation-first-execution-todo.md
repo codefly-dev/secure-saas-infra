@@ -275,9 +275,12 @@ Local operator steps still required before AWS:
       signature. Native acceptance must prove the online phase cannot read the
       bundle, its detached descendants are gone before review, and the review
       phase has a read-only checkout and private network.
-- [ ] Select the Pulumi organization/backend and recovery procedure.
-      The current seed admits Pulumi Cloud only; self-managed backends remain
-      blocked until backend selection and authentication are candidate-bound.
+- [x] Select the Pulumi organization/backend and recovery procedure.
+      Pulumi Cloud organization `toussaint-antoine-gmail-com`, project
+      `secure-saas-infra`, and the empty `management` stack are initialized and
+      bound by `security/pulumi-cloud-backend.json` plus
+      `docs/pulumi-cloud-recovery.md`. Self-managed backends remain blocked
+      until backend selection and authentication are candidate-bound.
 - [ ] Run seed onboarding with the real management account ID, globally unique
       account emails, fixed distinct empty pre-bounded management preview/apply
       target roles, their two immutable managed boundaries, the two exact
@@ -1311,15 +1314,19 @@ versioning, identity, evidence, and cross-repository conformance pattern.
 
 ### AWS-001 — Rootless dev preview
 
-- Status: `BLOCKED by real operator inputs, Pulumi installation, clean commit,
-backend initialization, and AWS session`
+- Status: `BLOCKED by real AWS/operator inputs, an independently reviewed
+release, and AWS session`
 - Severity: `P0`
 - Required gate: G6
 
 Prerequisites:
 
-- [ ] Install and pin Pulumi CLI compatible with the repository SDK.
-- [ ] Select Pulumi organization/backend and document state recovery.
+- [x] Install and pin Pulumi CLI compatible with the repository SDK. Local and
+      CI qualification use Pulumi CLI `3.253.0` with SDK `3.253.0`.
+- [x] Select Pulumi organization/backend and document state recovery. The
+      selected empty Pulumi Cloud management stack and recovery contract are
+      recorded in `security/pulumi-cloud-backend.json` and
+      `docs/pulumi-cloud-recovery.md`.
 - [ ] Supply real management/workload account IDs and globally unique account
       emails through secret-safe operator input.
 - [ ] Configure short-lived, narrowly scoped bootstrap/preview roles; no root

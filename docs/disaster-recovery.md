@@ -52,16 +52,23 @@ and Vault Raft volumes.
 
 ## Pulumi state
 
-The Pulumi state backend is _not_ in the same account or region as the
-production workloads. Recommended setup:
+The selected management-seed backend is Pulumi Cloud, in
+`toussaint-antoine-gmail-com/secure-saas-infra/management`, with Pulumi
+Cloud service encryption. Its exact normal export, identity recovery,
+same-backend restore, deleted-stack recovery, migration boundary, and drill are
+defined in [pulumi-cloud-recovery.md](pulumi-cloud-recovery.md).
+
+The Pulumi state backend must remain outside the account and region of the
+production workloads. Supported designs are:
 
 - Use Pulumi Cloud (managed); or
 - Self-host the S3 backend in a dedicated account with versioning, MFA delete,
   Object Lock, and cross-region replication into the log-archive account.
 
 Pulumi state in a workload account is a single point of failure during account
-compromise: do not deploy the workload stacks with a backend co-located in the
-workload account.
+compromise. Do not deploy workload stacks with a backend co-located in the
+workload account. The current seed admits Pulumi Cloud only; the S3 design
+requires a separately qualified backend migration.
 
 ## Vault
 

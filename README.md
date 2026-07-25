@@ -136,8 +136,10 @@ policy, saved-plan, evidence, and account checks.
    `Pulumi.management.yaml.example` to the ignored
    `Pulumi.management.yaml` and fill the exact seed configuration.
 2. Log in to the selected Pulumi backend and initialize only the management
-   stack. Stack
-   initialization is preparation only; it must not run an AWS provider action.
+   stack. Stack initialization is preparation only; it must not run an AWS
+   provider action. The selected backend, encrypted export procedure, and
+   restore boundary are fixed in the
+   [Pulumi Cloud recovery runbook](docs/pulumi-cloud-recovery.md).
 3. Run `npm run bootstrap:doctor` offline. Provision the Ed25519
    qualification key on a different OS identity/host, HSM/KMS-backed signer,
    or protected signing service, then commit only its public trust root.

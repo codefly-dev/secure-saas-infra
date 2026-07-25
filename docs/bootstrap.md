@@ -38,7 +38,10 @@ The onboarding file also makes the ownership and bootstrap identity explicit:
   qualification until its discovery/import adapter exists.
 - `pulumiBackend`: currently only `pulumi-cloud`, with
   `pulumiBackendUrl=https://api.pulumi.com`. Self-managed backend selection is
-  rejected until a signed credentialed backend channel is implemented.
+  rejected until a signed credentialed backend channel is implemented. The
+  exact selected organization, only admitted stack, state export, and recovery
+  procedure are defined in
+  [pulumi-cloud-recovery.md](pulumi-cloud-recovery.md).
 - `managementPreviewRoleArn`: the exact human-only preview target role. The
   independent access foundation pre-creates it empty with its immutable
   preview boundary; the governed installer adds only

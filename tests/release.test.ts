@@ -494,3 +494,33 @@ test("management-seed release and dependency inventories exclude the platform la
     ),
   );
 });
+
+test("Pulumi Cloud recovery is exact, encrypted, and repository-external", () => {
+  const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
+  const decision = JSON.parse(
+    readFileSync("security/pulumi-cloud-backend.json", "utf8"),
+  );
+  const backup = readFileSync("scripts/backup-pulumi-cloud-state.mjs", "utf8");
+  const runbook = readFileSync("docs/pulumi-cloud-recovery.md", "utf8");
+
+  assert.equal(decision.backendUrl, "https://api.pulumi.com");
+  assert.equal(decision.organization, "toussaint-antoine-gmail-com");
+  assert.equal(decision.project, "secure-saas-infra");
+  assert.deepEqual(decision.allowedStacks, ["management"]);
+  assert.equal(decision.secretsProvider, "pulumi-cloud");
+  assert.equal(decision.recovery.maximumRecoveryPointAge, "PT1H");
+  assert.equal(decision.recovery.plaintextSecretsPermitted, false);
+  assert.equal(decision.recovery.repositoryLocalBackupPermitted, false);
+  assert.equal(
+    packageJson.scripts["pulumi:backup"],
+    "node scripts/backup-pulumi-cloud-state.mjs",
+  );
+  assert.match(backup, /process\.umask\(0o077\)/);
+  assert.match(backup, /Pulumi recovery exports must be stored outside/);
+  assert.match(backup, /flag:\s*"wx",\s*mode:\s*0o600/s);
+  assert.match(backup, /createHash\("sha256"\)/);
+  assert.doesNotMatch(backup, /show-secrets/);
+  assert.match(runbook, /service-encrypted deployment/);
+  assert.match(runbook, /Do not use `--force`/);
+  assert.match(runbook, /Import mutates Pulumi state/);
+});

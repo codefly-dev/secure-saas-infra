@@ -49,9 +49,9 @@ Remaining qualification and real-environment prerequisites:
   remains independently controlled;
 - build and verify native `amd64` and `arm64` host kits, then prove the
   installed systemd/Landlock/sudo/runtime lifecycle on native Linux;
-- choose the Pulumi Cloud organization and recovery procedure, initialize only
-  the management stack, and provide the real management account ID plus
-  globally unique account emails;
+- retain the selected Pulumi Cloud organization, recovery procedure, and
+  already initialized empty management stack; provide the real management
+  account ID plus globally unique account emails;
 - establish the separately audited SAML provider/four source roles, two empty
   pre-bounded target roles, and three immutable managed boundaries; execute the
   exact two-inline-policy access change set; and retire the provisioner; and
