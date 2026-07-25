@@ -70,6 +70,10 @@ reviews. Darwin also cannot provide the final native Linux host evidence.
 - [x] Perform a private-browser Pulumi login drill. Record the date and result
       outside this repository; never store recovery secrets here.
 - [ ] Complete the independent Pulumi/recovery-media handoff:
+  - [ ] **Deferred by the operator on 2026-07-25 until the USB hardware is
+        available.** Stage 2 planning may proceed, but this stage remains open
+        and no pre-account GO decision may pass until both USB copies are
+        verified.
   - [x] Create temporary FileVault-protected staging at
         `~/Downloads/secure-saas-recovery-staging`; restrict every directory to
         `0700` and every file to `0600`.
