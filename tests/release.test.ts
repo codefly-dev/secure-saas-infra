@@ -521,6 +521,14 @@ test("Pulumi Cloud recovery is exact, encrypted, and repository-external", () =>
   assert.match(backup, /createHash\("sha256"\)/);
   assert.doesNotMatch(backup, /show-secrets/);
   assert.match(runbook, /service-encrypted deployment/);
+  assert.match(
+    runbook,
+    /Individual Edition does not provide Pulumi Cloud's self-service/,
+  );
   assert.match(runbook, /Do not use `--force`/);
   assert.match(runbook, /Import mutates Pulumi state/);
+  assert.doesNotMatch(
+    runbook,
+    /Use Pulumi Cloud's deleted-stack recovery from the console/,
+  );
 });

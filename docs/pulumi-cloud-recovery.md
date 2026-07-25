@@ -86,11 +86,22 @@ provider.
 
 ### The stack was accidentally deleted
 
-Do not create a replacement stack with the same name and do not run an AWS
-refresh. Use Pulumi Cloud's deleted-stack recovery from the console. After
-restoration, verify the exact identity and stack URL, export the recovered
-state, compare its update/version evidence with the retained checksum set, and
-run only the repository's governed read-only checks.
+The Individual Edition does not provide Pulumi Cloud's self-service
+[deleted-stack restoration](https://www.pulumi.com/docs/deployments/projects-and-stacks/#restoring-a-stack).
+That console feature is limited to higher paid editions, so it is not part of
+this free recovery design.
+
+Stop all writers and do not run an AWS refresh. Verify the last external
+export, its checksum, stack identity, resource inventory, and retained update
+evidence. With explicit recovery approval, initialize the exact same
+organization/project/stack name using the Pulumi Cloud secrets provider and
+import only that reviewed export. Do not use `--force`. If the normal import
+fails, preserve the error and contact Pulumi support; do not improvise a
+refresh or provider update.
+
+After import, verify the exact identity and stack URL, export the recovered
+state, compare it with the reviewed recovery input, and run only the
+repository's governed read-only checks.
 
 ### The live state is corrupt but the stack exists
 
