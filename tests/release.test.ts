@@ -521,6 +521,10 @@ test("Pulumi Cloud recovery is exact, encrypted, and repository-external", () =>
   assert.match(backup, /createHash\("sha256"\)/);
   assert.doesNotMatch(backup, /show-secrets/);
   assert.match(runbook, /service-encrypted deployment/);
+  assert.match(runbook, /Google-backed account/);
+  assert.match(runbook, /registered Pulumi passkey/);
+  assert.match(runbook, /Google 2-Step Verification/);
+  assert.doesNotMatch(runbook, /Pulumi MFA recovery key/);
   assert.match(
     runbook,
     /Individual Edition does not provide Pulumi Cloud's self-service/,

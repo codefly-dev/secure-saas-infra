@@ -20,22 +20,34 @@ AWS provider action. No later-wave stack may be initialized.
 
 ## Human account recovery
 
+The selected account is federated through Google and has a Pulumi passkey
+registered in the owner's password manager. Pulumi-hosted TOTP MFA and its
+recovery key are documented for email/password accounts; they are not the
+recovery mechanism for this Google-backed account. Pulumi's `hasMFA` user
+attribute can therefore remain `false` and does not describe the Google
+account's MFA posture. See the
+[Pulumi account authentication documentation](https://www.pulumi.com/docs/pulumi-cloud/accounts/).
+
 Before the first AWS preview, the owner must:
 
-1. Enable MFA on the Pulumi account.
-2. Store the Pulumi MFA recovery key in a durable password manager or offline
-   recovery vault that is independent of Pulumi, GitHub, and AWS.
-3. Protect the identity-provider account used to log in to Pulumi with its own
-   MFA and recovery method.
-4. Record a recovery contact and perform a login recovery drill without
-   disabling MFA.
+1. Protect the Google identity used to log in to Pulumi with Google 2-Step
+   Verification and at least two independent authentication methods.
+2. Store Google backup codes and confirm its recovery email or phone through a
+   route that does not depend on Pulumi, GitHub, AWS, or the primary device.
+3. Retain the Pulumi passkey in the protected password manager and retain that
+   password manager's own recovery material independently of the primary
+   device.
+4. Record a recovery contact and perform a fresh private-browser login drill
+   through both the Pulumi passkey and Google without disabling either
+   authentication path.
 
-Never commit a Pulumi access token, recovery key, stack export, or stack
-configuration. The local interactive login is sufficient during bootstrap.
-Do not create a CI token until a reviewed deployment workflow exists. On the
-free Pulumi tier, any later automation token must be a short-lived personal
-token; moving to an organization-owned automation identity is a paid-control
-decision.
+Never commit a Pulumi access token, passkey, identity-provider recovery
+material, stack export, or stack configuration. A CLI personal token is not a
+human account recovery method. The local interactive login is sufficient
+during bootstrap. Do not create a CI token until a reviewed deployment
+workflow exists. On the free Pulumi tier, any later automation token must be a
+short-lived personal token; moving to an organization-owned automation
+identity is a paid-control decision.
 
 ## Normal state export
 
@@ -71,8 +83,10 @@ and retained Pulumi update evidence provide provenance.
 
 ### Account login is unavailable
 
-Recover the Pulumi login through the protected identity provider or the stored
-Pulumi MFA recovery key. Re-run `pulumi login`, then require:
+Recover the Pulumi login through the registered Pulumi passkey or the protected
+Google identity and its stored recovery methods. Do not treat an existing CLI
+personal token as proof that human account recovery works. Re-run `pulumi
+login`, then require:
 
 ```sh
 pulumi whoami --json --verbose
@@ -146,8 +160,8 @@ Before the first AWS preview and quarterly thereafter:
 2. Verify file permissions and the SHA-256 sidecar.
 3. Confirm a second authorized recovery operator can retrieve the copy and
    identify the exact stack without viewing plaintext secrets.
-4. Confirm MFA and identity-provider recovery material is available without
-   exposing it.
+4. Confirm the Pulumi passkey, Google 2-Step Verification recovery material,
+   and password-manager recovery material are available without exposing them.
 5. Record the export timestamp, checksum, operator, storage copy locations,
    and outcome outside the repository.
 
