@@ -343,6 +343,7 @@ test("source CI and evidence-only promotion enforce the two-stage review topolog
     scripts: Record<string, string>;
   };
   const gateRunner = readFileSync("scripts/run-local-gates.mjs", "utf8");
+  const secretScanner = readFileSync("scripts/scan-source-secrets", "utf8");
 
   assert.match(workflow, /run: npm run validate:source/);
   assert.doesNotMatch(workflow, /run: npm run verify:all/);
@@ -365,8 +366,25 @@ test("source CI and evidence-only promotion enforce the two-stage review topolog
     packageJson.scripts["validate:source"],
     /npm ci --ignore-scripts/,
   );
+  assert.match(packageJson.scripts["validate:source"], /security:secrets/);
+  assert.match(packageJson.scripts["validate:source"], /security:go-vuln/);
   assert.match(packageJson.scripts["validate:source"], /validate:local/);
   assert.match(packageJson.scripts["validate:source"], /security:audit/);
+  assert.equal(
+    packageJson.scripts["security:secrets"],
+    "./scripts/scan-source-secrets",
+  );
+  assert.equal(
+    packageJson.scripts["security:go-vuln"],
+    "go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...",
+  );
+  assert.match(secretScanner, /version=8\.30\.1/);
+  assert.match(secretScanner, /git ls-files -co --exclude-standard -z/);
+  assert.match(secretScanner, /"\$temporary\/gitleaks" dir/);
+  assert.match(secretScanner, /"\$temporary\/gitleaks" git/);
+  assert.match(secretScanner, /--log-opts=--all/);
+  assert.match(secretScanner, /--redact=100/);
+  assert.match(secretScanner, /expected_sha256=/);
   assert.match(packageJson.scripts["verify:all"], /gates:local/);
   assert.match(packageJson.scripts["verify:all"], /evidence:release/);
   assert.doesNotMatch(packageJson.scripts["verify:all"], /cluster|gitops/i);
