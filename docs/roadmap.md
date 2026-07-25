@@ -129,7 +129,18 @@ layer; see [iac-platform-boundary.md](iac-platform-boundary.md).
 - Deploy or integrate Vault in a dedicated account.
 - Configure Kubernetes auth per cluster.
 - Connect IAM Identity Center to the real external IdP and SCIM source.
-- Enforce GitHub branch rules, CODEOWNERS, required checks, protected environments, secret scanning, and code scanning. The repo now includes CODEOWNERS, Dependabot config, a PR security checklist, a pinned CI workflow, and a `github-governance` Pulumi stack for repository rulesets, Actions restrictions, Dependabot security updates, vulnerability alerts, and protected environments; remaining work is replacing org placeholders and exporting evidence.
+- Enforce GitHub branch rules, CODEOWNERS, required checks, protected
+  environments, secret scanning, and code scanning. The repo now includes
+  CODEOWNERS, Dependabot config, a PR security checklist, a pinned CI workflow,
+  and a `github-governance` Pulumi stack for repository rulesets, Actions
+  restrictions, Dependabot security updates, vulnerability alerts, and
+  protected environments. A private organization repository cannot use branch
+  protection or rulesets on GitHub Free; GitHub Team is the minimum branch/tag
+  control, while required environment reviewers for a private repository
+  require Enterprise and private-repository code/secret scanning uses separate
+  paid security products. Remaining work is approving that paid-control
+  boundary, replacing org placeholders, configuring the live controls, and
+  exporting evidence.
 - Use dynamic credentials for databases, object storage brokers, and execution services.
 - Rotate all static bootstrap credentials.
 - Add break-glass access with alerting.

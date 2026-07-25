@@ -244,10 +244,11 @@ function createLegacyBranchProtection(
   config: GithubGovernanceConfig,
   resourceOptions: ResourceOptions,
 ) {
-  // Repository rulesets require GitHub Pro/Team for private repos. On Free
-  // plans we fall back to legacy branch protection. The control surface is
-  // ~85% of what the ruleset gives us; the loss is the push-side file rules
-  // and the typed bypass actor framework.
+  // This is an explicit compatibility mode for plans and installations that
+  // support legacy branch protection but not the selected ruleset controls.
+  // It is not a GitHub Free workaround for private organization repositories:
+  // those repositories support neither control. The loss relative to rulesets
+  // is the push-side file rules and typed bypass-actor framework.
   return new github.BranchProtection(
     named("github-branch-protection"),
     {

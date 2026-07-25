@@ -281,11 +281,12 @@ export interface GithubGovernanceConfig {
   manageOrganizationSettings: boolean;
   organizationBillingEmail?: string;
   bypassActors: GithubRulesetBypassActor[];
-  // Repository rulesets require GitHub Pro/Team for private repos. Set this to
-  // true on Free plans to fall back to legacy branch protection, which covers
-  // the bulk of the same controls (signed commits, required reviews,
-  // CODEOWNERS, status checks, linear history, no force push). Loses the push
-  // ruleset and bypassActors flexibility.
+  // Use legacy branch protection only when the repository's plan supports it
+  // but repository rulesets are unavailable or intentionally not selected.
+  // GitHub Free organization plans support neither control for private
+  // repositories. Legacy protection covers signed commits, required reviews,
+  // CODEOWNERS, status checks, linear history, and force-push denial, but loses
+  // the push ruleset and typed bypass-actor framework.
   useLegacyBranchProtection: boolean;
 }
 

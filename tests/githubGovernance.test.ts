@@ -139,7 +139,7 @@ test("github governance stack creates repository controls for customer-code infr
   );
 });
 
-test("github governance falls back to legacy branch protection on free GitHub plans", async () => {
+test("github governance can select supported legacy branch protection instead of rulesets", async () => {
   const { resources } = await installPulumiMocks();
   const { createGithubGovernance } = await import("../src/githubGovernance");
 

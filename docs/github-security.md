@@ -3,6 +3,31 @@
 Use GitHub like a private code-hosting platform for customer-code infrastructure:
 repository settings are part of the production control plane.
 
+## Private-repository plan boundary
+
+Do not make this repository public merely to unlock security controls.
+GitHub Free organization plans provide neither repository rulesets nor legacy
+branch protection for a private repository. GitHub Team is the minimum plan for
+private-repository branch/tag rules, required pull-request reviews, and
+CODEOWNERS enforcement.
+
+The `production` environment name alone is not an approval boundary. On a
+private repository, GitHub Team can provide deployment branch/tag restrictions
+and environment secrets, but GitHub-hosted required environment reviewers
+require GitHub Enterprise Cloud. GitHub Code Security and GitHub Secret
+Protection are separate paid products for private organization repositories.
+Until those products are deliberately purchased, retain the repository's
+credential-free source scanner, dependency audit, pinned Actions policy, and
+evidence-only review promotion, but do not claim they are GitHub code scanning,
+secret scanning, or an environment-reviewer control.
+
+Immutable releases, Dependabot alerts/security updates, selected Actions,
+SHA-pinning requirements, and read-only default workflow permissions are
+available independently and must be enabled before the paid-plan decision.
+Organization-wide 2FA enforcement, the CODEOWNERS team and its repository
+access, and every paid feature must be verified from live GitHub settings
+rather than inferred from checked-in configuration.
+
 ## Required Repository Rules
 
 The active AWS management seed does not mutate GitHub. Configure these rules
