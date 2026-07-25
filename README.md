@@ -236,6 +236,10 @@ See
 for the active IaC implementation queue, strict validation ladder,
 adversarial-review blockers, and exact AWS go/no-go gates.
 See
+[docs/pre-aws-readiness-todo.md](docs/pre-aws-readiness-todo.md)
+for the short dependency-ordered operator checklist to complete before creating
+the AWS management account.
+See
 [docs/infrastructure-controller-protocol.md](docs/infrastructure-controller-protocol.md)
 for the implemented public/internal controller trust boundary and protocol
 verification rules.

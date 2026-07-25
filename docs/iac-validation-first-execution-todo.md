@@ -18,6 +18,7 @@ substituted.
 
 Related documents:
 
+- [Ordered pre-AWS readiness checklist](pre-aws-readiness-todo.md)
 - [Cloud-neutral platform backlog](cloud-neutral-backlog.md)
 - [Rootless AWS infrastructure execution roadmap](rootless-aws-codefly-execution-roadmap.md)
 
