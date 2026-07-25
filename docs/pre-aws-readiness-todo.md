@@ -100,6 +100,11 @@ Stop if any recovery path depends only on this development computer.
 This stage is free and may be deferred, but stages 4 onward cannot complete
 without it.
 
+- [ ] **Deferred by the operator on 2026-07-25 because no separate physical
+      signing computer is currently available.** Do not substitute this
+      development Mac or a VM it controls. Resume only with a separate
+      credential-free computer or a separately reviewed non-exportable signing
+      service.
 - [ ] Obtain a separate credential-free computer for signing. Do not use this
       development Mac, the future AWS execution host, or a VM controlled by
       either host.
