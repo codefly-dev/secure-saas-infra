@@ -234,12 +234,16 @@ jobs:
     outputs:
       digest: ${{ steps.hash.outputs.digest }}
     steps:
-      - name: Download both isolated host kits
+      - name: Download isolated AMD64 host kit
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: deus-bootstrap-host-kit-${{ github.ref_name }}-*
+          name: deus-bootstrap-host-kit-${{ github.ref_name }}-amd64
           path: artifacts/host-kit-download
-          merge-multiple: true
+      - name: Download isolated ARM64 host kit
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: deus-bootstrap-host-kit-${{ github.ref_name }}-arm64
+          path: artifacts/host-kit-download
       - name: Generate exact two-architecture subjects
         id: hash
         env:
@@ -260,7 +264,7 @@ jobs:
       contents: read
       actions: read
       id-token: write
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
     with:
       base64-subjects: ${{ needs.build.outputs.digest }}
       upload-assets: false
@@ -272,7 +276,7 @@ jobs:
       contents: read
       actions: read
       id-token: write
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
     with:
       base64-subjects: ${{ needs.host-kit-subjects.outputs.digest }}
       upload-assets: false
@@ -300,16 +304,52 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.provenance.outputs.provenance-name }}
-      - name: Download isolated host kit
+      - name: Download isolated AMD64 host kit
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: deus-bootstrap-host-kit-${{ github.ref_name }}-*
+          name: deus-bootstrap-host-kit-${{ github.ref_name }}-amd64
           path: artifacts/host-kit-download
-          merge-multiple: true
+      - name: Download isolated ARM64 host kit
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: deus-bootstrap-host-kit-${{ github.ref_name }}-arm64
+          path: artifacts/host-kit-download
       - name: Download host-kit provenance
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.host-kit-provenance.outputs.provenance-name }}
+      - name: Revalidate exact host-kit subjects immediately before release
+        env:
+          EXPECTED_HOST_KIT_SUBJECTS: ${{ needs.host-kit-subjects.outputs.digest }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][A-Za-z0-9.-]+)?$ ]]
+          [[ "$RELEASE_REVISION" =~ ^[a-f0-9]{40}$ ]]
+          test -f "artifacts/host-kit-download/deus-bootstrap-host-kit-${RELEASE_TAG}-amd64.tar.gz"
+          test -f "artifacts/host-kit-download/deus-bootstrap-host-kit-${RELEASE_TAG}-arm64.tar.gz"
+          test "$(find artifacts/host-kit-download -maxdepth 1 -type f | wc -l)" = 2
+          actual_subjects=$(cd artifacts/host-kit-download && sha256sum \
+            "deus-bootstrap-host-kit-${RELEASE_TAG}-amd64.tar.gz" \
+            "deus-bootstrap-host-kit-${RELEASE_TAG}-arm64.tar.gz" | base64 -w0)
+          test "$actual_subjects" = "$EXPECTED_HOST_KIT_SUBJECTS"
+          verifier="$RUNNER_TEMP/deus-host-kit-verifier"
+          trap 'rm -f "$verifier"' EXIT
+          tar -xOzf \
+            "artifacts/host-kit-download/deus-bootstrap-host-kit-${RELEASE_TAG}-amd64.tar.gz" \
+            deus-aws-bootstrap > "$verifier"
+          chmod 0500 "$verifier"
+          "$verifier" verify-host-kit-archive \
+            --archive "artifacts/host-kit-download/deus-bootstrap-host-kit-${RELEASE_TAG}-amd64.tar.gz" \
+            --tag "$RELEASE_TAG" \
+            --revision "$RELEASE_REVISION" \
+            --architecture amd64
+          "$verifier" verify-host-kit-archive \
+            --archive "artifacts/host-kit-download/deus-bootstrap-host-kit-${RELEASE_TAG}-arm64.tar.gz" \
+            --tag "$RELEASE_TAG" \
+            --revision "$RELEASE_REVISION" \
+            --architecture arm64
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

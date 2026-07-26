@@ -4,8 +4,8 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 const EXPECTED_POLICY_CANONICAL_SHA256 = Object.freeze({
-  preview: "40a7dfa77d1ef7ed4e9b99ad34a1f9a8daca30abc0b3979428c430f77f2f81fe",
-  apply: "f834c4de591cbabdcd668d1e8d452ca569acc74583b2fe23d00fb996ebeb67c4",
+  preview: "8d1784178520e340bafa05c937d640eb8b9dad501b473a1c8407eeb7a296c885",
+  apply: "b0cc82011089e3c00050290bad213abe08c5766c8719b7288eaacbe6335bbe6d",
 });
 
 const EXPECTED_PREVIEW_ACTIONS = Object.freeze([
@@ -52,6 +52,21 @@ const EXPECTED_APPLY_ACTIONS = Object.freeze([
   "organizations:CreateOrganization",
   "organizations:EnablePolicyType",
 ]);
+const MANAGEMENT_ACCOUNT_PLACEHOLDER = "__DEUS_MANAGEMENT_ACCOUNT_ID__";
+const EXPECTED_BOOTSTRAP_ROLE_RESOURCES = Object.freeze([
+  `arn:aws:iam::${MANAGEMENT_ACCOUNT_PLACEHOLDER}:role/OrganizationSeedPreview`,
+  `arn:aws:iam::${MANAGEMENT_ACCOUNT_PLACEHOLDER}:role/OrganizationSeedApply`,
+  `arn:aws:iam::${MANAGEMENT_ACCOUNT_PLACEHOLDER}:role/deus/bootstrap-source/ManagementSeedPreview`,
+  `arn:aws:iam::${MANAGEMENT_ACCOUNT_PLACEHOLDER}:role/deus/bootstrap-source/ManagementSeedApply`,
+  `arn:aws:iam::${MANAGEMENT_ACCOUNT_PLACEHOLDER}:role/deus/bootstrap-source/ManagementSeedProvisioner`,
+  `arn:aws:iam::${MANAGEMENT_ACCOUNT_PLACEHOLDER}:role/deus/bootstrap-source/ManagementSeedRetirement`,
+]);
+const EXPECTED_BOOTSTRAP_BOUNDARY_RESOURCES = Object.freeze([
+  `arn:aws:iam::${MANAGEMENT_ACCOUNT_PLACEHOLDER}:policy/deus/bootstrap/DeusOrganizationSeedPreviewBoundary`,
+  `arn:aws:iam::${MANAGEMENT_ACCOUNT_PLACEHOLDER}:policy/deus/bootstrap/DeusOrganizationSeedApplyBoundary`,
+  `arn:aws:iam::${MANAGEMENT_ACCOUNT_PLACEHOLDER}:policy/deus/bootstrap/DeusManagementSeedProvisionerRetiredBoundary`,
+]);
+const EXPECTED_BOOTSTRAP_SAML_PROVIDER_RESOURCE = `arn:aws:iam::${MANAGEMENT_ACCOUNT_PLACEHOLDER}:saml-provider/DeusBootstrap`;
 
 const preview = load("security/aws-management-seed-preview-policy.json");
 const apply = load("security/aws-management-seed-apply-policy.json");
@@ -66,12 +81,6 @@ for (const [name, policy] of [
   ["preview", preview],
   ["apply", apply],
 ]) {
-  if (
-    createHash("sha256").update(canonicalJson(policy)).digest("hex") !==
-    EXPECTED_POLICY_CANONICAL_SHA256[name]
-  ) {
-    fail(`${name} policy statement structure drifted from its exact review`);
-  }
   if (policy.Version !== "2012-10-17" || !Array.isArray(policy.Statement)) {
     fail(`${name} policy is not an IAM policy document`);
   }
@@ -103,6 +112,13 @@ for (const [name, policy] of [
     }
   }
   assertAbsoluteActionCap(name, policy, allowedActions(policy));
+  assertExactIamReadScope(name, policy);
+  if (
+    createHash("sha256").update(canonicalJson(policy)).digest("hex") !==
+    EXPECTED_POLICY_CANONICAL_SHA256[name]
+  ) {
+    fail(`${name} policy statement structure drifted from its exact review`);
+  }
 }
 
 for (const action of previewAllows) {
@@ -198,7 +214,7 @@ function assertAbsoluteActionCap(name, policy, allowed) {
   const sid = `DenyUnreviewed${name === "preview" ? "Preview" : "Apply"}Actions`;
   const caps = policy.Statement.filter((statement) => statement.Sid === sid);
   if (caps.length !== 1) fail(`${name} policy must contain one absolute cap`);
-  const actual = array(caps[0].NotAction).sort();
+  const actual = [...array(caps[0].NotAction)].sort();
   const expected = [...allowed].sort();
   if (
     new Set(actual).size !== actual.length ||
@@ -228,6 +244,66 @@ function assertExactActionSet(label, actual, expected) {
   }
 }
 
+function assertExactIamReadScope(name, policy) {
+  const expected = [
+    [
+      "ReadExactBootstrapRoles",
+      [
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListRolePolicies",
+      ],
+      EXPECTED_BOOTSTRAP_ROLE_RESOURCES,
+    ],
+    [
+      "ReadExactBootstrapBoundaries",
+      ["iam:GetPolicy", "iam:GetPolicyVersion", "iam:ListPolicyVersions"],
+      EXPECTED_BOOTSTRAP_BOUNDARY_RESOURCES,
+    ],
+    [
+      "ReadExactBootstrapSamlProvider",
+      ["iam:GetSAMLProvider"],
+      [EXPECTED_BOOTSTRAP_SAML_PROVIDER_RESOURCE],
+    ],
+  ];
+  for (const [sid, actions, resources] of expected) {
+    const statements = policy.Statement.filter(
+      (statement) => statement.Sid === sid,
+    );
+    if (statements.length !== 1) {
+      fail(`${name} policy must contain exactly one '${sid}' statement`);
+    }
+    const statement = statements[0];
+    if (
+      statement.Effect !== "Allow" ||
+      statement.Condition !== undefined ||
+      statement.NotAction !== undefined ||
+      statement.NotResource !== undefined ||
+      JSON.stringify([...array(statement.Action)].sort()) !==
+        JSON.stringify([...actions].sort()) ||
+      JSON.stringify([...array(statement.Resource)].sort()) !==
+        JSON.stringify([...resources].sort())
+    ) {
+      fail(`${name} policy '${sid}' IAM read scope drifted`);
+    }
+  }
+  for (const statement of policy.Statement) {
+    const iamReadActions = array(statement.Action ?? []).filter((action) =>
+      /^iam:(?:Get|List)/.test(action),
+    );
+    if (
+      statement.Effect === "Allow" &&
+      iamReadActions.length > 0 &&
+      statement.Resource === "*"
+    ) {
+      fail(
+        `${name} policy allow statement '${statement.Sid}' grants account-wide IAM access`,
+      );
+    }
+  }
+}
+
 function canonicalJson(value) {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
   if (value !== null && typeof value === "object") {
@@ -248,10 +324,10 @@ function assertInverseDeny(actions, operator, key, expected) {
   const statement = apply.Statement.find(
     (entry) =>
       entry.Effect === "Deny" &&
-      JSON.stringify(array(entry.Action).sort()) ===
+      JSON.stringify([...array(entry.Action)].sort()) ===
         JSON.stringify(wantedActions),
   );
-  const actual = array(statement?.Condition?.[operator]?.[key]).sort();
+  const actual = [...array(statement?.Condition?.[operator]?.[key])].sort();
   const wanted = [...expected].sort();
   if (JSON.stringify(actual) !== JSON.stringify(wanted)) {
     fail(

@@ -2,19 +2,11 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "ReadManagementSeedState",
+      "Sid": "ReadGlobalManagementSeedState",
       "Effect": "Allow",
       "Action": [
         "ec2:DescribeRegions",
         "guardduty:ListOrganizationAdminAccounts",
-        "iam:GetPolicy",
-        "iam:GetPolicyVersion",
-        "iam:GetRole",
-        "iam:GetRolePolicy",
-        "iam:GetSAMLProvider",
-        "iam:ListAttachedRolePolicies",
-        "iam:ListPolicyVersions",
-        "iam:ListRolePolicies",
         "inspector2:ListDelegatedAdminAccounts",
         "organizations:DescribeAccount",
         "organizations:DescribeCreateAccountStatus",
@@ -43,6 +35,44 @@
         "sts:GetCallerIdentity"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "ReadExactBootstrapRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListRolePolicies"
+      ],
+      "Resource": [
+        "arn:aws:iam::__DEUS_MANAGEMENT_ACCOUNT_ID__:role/OrganizationSeedPreview",
+        "arn:aws:iam::__DEUS_MANAGEMENT_ACCOUNT_ID__:role/OrganizationSeedApply",
+        "arn:aws:iam::__DEUS_MANAGEMENT_ACCOUNT_ID__:role/deus/bootstrap-source/ManagementSeedPreview",
+        "arn:aws:iam::__DEUS_MANAGEMENT_ACCOUNT_ID__:role/deus/bootstrap-source/ManagementSeedApply",
+        "arn:aws:iam::__DEUS_MANAGEMENT_ACCOUNT_ID__:role/deus/bootstrap-source/ManagementSeedProvisioner",
+        "arn:aws:iam::__DEUS_MANAGEMENT_ACCOUNT_ID__:role/deus/bootstrap-source/ManagementSeedRetirement"
+      ]
+    },
+    {
+      "Sid": "ReadExactBootstrapBoundaries",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetPolicy",
+        "iam:GetPolicyVersion",
+        "iam:ListPolicyVersions"
+      ],
+      "Resource": [
+        "arn:aws:iam::__DEUS_MANAGEMENT_ACCOUNT_ID__:policy/deus/bootstrap/DeusOrganizationSeedPreviewBoundary",
+        "arn:aws:iam::__DEUS_MANAGEMENT_ACCOUNT_ID__:policy/deus/bootstrap/DeusOrganizationSeedApplyBoundary",
+        "arn:aws:iam::__DEUS_MANAGEMENT_ACCOUNT_ID__:policy/deus/bootstrap/DeusManagementSeedProvisionerRetiredBoundary"
+      ]
+    },
+    {
+      "Sid": "ReadExactBootstrapSamlProvider",
+      "Effect": "Allow",
+      "Action": "iam:GetSAMLProvider",
+      "Resource": "arn:aws:iam::__DEUS_MANAGEMENT_ACCOUNT_ID__:saml-provider/DeusBootstrap"
     },
     {
       "Sid": "CreateOrganizationOnly",

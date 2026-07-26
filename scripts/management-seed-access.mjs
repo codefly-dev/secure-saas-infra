@@ -159,10 +159,12 @@ export function createManagementSeedAccessBundle(root, onboarding) {
   const previewPolicy = readPolicy(
     repositoryRoot,
     "security/aws-management-seed-preview-policy.json",
+    onboarding.managementAccountId,
   );
   const applyPolicy = readPolicy(
     repositoryRoot,
     "security/aws-management-seed-apply-policy.json",
+    onboarding.managementAccountId,
   );
   const accountPrincipal = `arn:${partition}:iam::${onboarding.managementAccountId}:root`;
   const previewBoundary = managedPolicyResource(
@@ -365,7 +367,7 @@ function partitionAcceptsRegion(partition, region) {
   );
 }
 
-function readPolicy(root, relativePath) {
+function readPolicy(root, relativePath, managementAccountId) {
   const file = safeFile(root, relativePath);
   const source = readFileSync(file);
   let document;
@@ -384,9 +386,30 @@ function readPolicy(root, relativePath) {
   }
   return {
     path: relativePath,
-    document,
+    document: bindManagementAccountId(document, managementAccountId),
     sha256: sha256(source),
   };
+}
+
+function bindManagementAccountId(value, managementAccountId) {
+  const placeholder = "__DEUS_MANAGEMENT_ACCOUNT_ID__";
+  if (typeof value === "string") {
+    return value.replaceAll(placeholder, managementAccountId);
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) =>
+      bindManagementAccountId(entry, managementAccountId),
+    );
+  }
+  if (isRecord(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [
+        key,
+        bindManagementAccountId(entry, managementAccountId),
+      ]),
+    );
+  }
+  return value;
 }
 
 function managedPolicyResource(name, description, policyDocument) {

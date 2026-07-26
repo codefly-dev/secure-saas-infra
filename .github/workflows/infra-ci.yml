@@ -11,8 +11,16 @@ permissions:
 
 jobs:
   test:
-    name: source qualification
-    runs-on: ubuntu-24.04
+    name: source qualification (${{ matrix.architecture }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: amd64
+            runner: ubuntu-24.04
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -48,7 +56,7 @@ jobs:
       - name: Upload dependency SBOM and contract validation
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: secure-saas-infra-sbom
+          name: secure-saas-infra-sbom-${{ matrix.architecture }}
           path: |
             artifacts/secure-saas-infra.spdx.json
             artifacts/contract-schema-validation.json
@@ -103,4 +111,6 @@ jobs:
           test "$(uname -m)" = "$EXPECTED_MACHINE"
           env -i HOME="$RUNNER_TEMP/provider-smoke-home" LANG=C PATH=/usr/bin:/bin \
             "$node_path" scripts/prepare-bootstrap-plugins.mjs --pulumi "$pulumi_path"
-          test -x artifacts/bootstrap-pulumi-home/plugins/resource-aws-v7.27.0/pulumi-resource-aws
+          provider=artifacts/bootstrap-pulumi-home/plugins/resource-aws-v7.27.0/pulumi-resource-aws
+          test -x "$provider"
+          test "$(env -i HOME="$RUNNER_TEMP/provider-smoke-home" LANG=C "$provider" --version)" = "7.27.0"

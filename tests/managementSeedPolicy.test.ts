@@ -433,10 +433,47 @@ test("IAM policy gate rejects condition, resource, and statement-shape weakening
         { cwd: root, encoding: "utf8" },
       );
       assert.notEqual(result.status, 0, label);
-      assert.match(result.stderr, /statement structure drifted/);
+      assert.match(
+        result.stderr,
+        /statement structure drifted|exceeds the IAM managed-policy size limit/,
+      );
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  }
+});
+
+test("IAM policy gate rejects account-wide IAM read scope", () => {
+  const root = mkdtempSync(join(tmpdir(), "seed-policy-iam-scope-hostile-"));
+  const security = join(root, "security");
+  mkdirSync(security);
+  for (const policyFile of [
+    "aws-management-seed-preview-policy.json",
+    "aws-management-seed-apply-policy.json",
+  ]) {
+    const policy = JSON.parse(
+      readFileSync(join(process.cwd(), "security", policyFile), "utf8"),
+    );
+    if (policyFile === "aws-management-seed-apply-policy.json") {
+      policy.Statement.find(
+        (statement: any) => statement.Sid === "ReadExactBootstrapRoles",
+      ).Resource = "*";
+    }
+    writeFileSync(
+      join(security, policyFile),
+      `${JSON.stringify(policy, null, 2)}\n`,
+    );
+  }
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [resolve("scripts/validate-management-seed-policies.mjs")],
+      { cwd: root, encoding: "utf8" },
+    );
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /IAM read scope drifted/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
 

@@ -932,6 +932,29 @@ test("management-seed access renderer is deterministic, offline, bounded, and co
       );
       assert.deepEqual(role.Policies, []);
       assert.deepEqual(inline.PolicyDocument, boundary.PolicyDocument);
+      const boundaryDocument = JSON.stringify(boundary.PolicyDocument);
+      assert.doesNotMatch(boundaryDocument, /__DEUS_MANAGEMENT_ACCOUNT_ID__/);
+      assert.match(boundaryDocument, /arn:aws:iam::999988887777:/);
+      const iamAllows = boundary.PolicyDocument.Statement.filter(
+        (statement: any) =>
+          statement.Effect === "Allow" &&
+          (Array.isArray(statement.Action)
+            ? statement.Action
+            : [statement.Action]
+          ).some((action: string) => /^iam:(?:Get|List)/.test(action)),
+      );
+      assert.equal(iamAllows.length, 3);
+      for (const statement of iamAllows) {
+        assert.notEqual(statement.Resource, "*");
+        const resources = Array.isArray(statement.Resource)
+          ? statement.Resource
+          : [statement.Resource];
+        assert.ok(
+          resources.every((resource: string) =>
+            resource.startsWith("arn:aws:iam::999988887777:"),
+          ),
+        );
+      }
       const allowed = boundary.PolicyDocument.Statement.filter(
         (statement: any) => statement.Effect === "Allow",
       )

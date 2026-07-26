@@ -110,7 +110,7 @@ test("static gate syntax-checks every governed JavaScript and shell program", ()
   );
 });
 
-test("release workflow uses the SLSA Level 3 generator with a tagged ref", () => {
+test("release workflow uses the SLSA Level 3 generator with an immutable ref", () => {
   const body = readFileSync(".github/workflows/release.yml", "utf8");
   const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
     scripts: Record<string, string>;
@@ -128,7 +128,7 @@ test("release workflow uses the SLSA Level 3 generator with a tagged ref", () =>
 
   assert.match(
     body,
-    /uses: slsa-framework\/slsa-github-generator\/.+@v\d+\.\d+\.\d+/,
+    /uses: slsa-framework\/slsa-github-generator\/.+@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a/,
   );
   assert.match(body, /id-token: write/);
   assert.match(body, /provenance-name:/);
@@ -160,6 +160,33 @@ test("release workflow uses the SLSA Level 3 generator with a tagged ref", () =>
   assert.match(body, /merge-base --is-ancestor/);
   assert.match(body, /pulumi-resource-aws[\s\S]+--version/);
   assert.match(body, /verify-host-kit-archive/);
+  assert.doesNotMatch(body, /pattern: deus-bootstrap-host-kit/);
+  assert.doesNotMatch(body, /merge-multiple: true/);
+  for (const architecture of ["amd64", "arm64"]) {
+    assert.match(
+      body,
+      new RegExp(
+        `name: deus-bootstrap-host-kit-\\$\\{\\{ github\\.ref_name \\}\\}-${architecture}`,
+      ),
+    );
+  }
+  assert.match(
+    body,
+    /EXPECTED_HOST_KIT_SUBJECTS: \$\{\{ needs\.host-kit-subjects\.outputs\.digest \}\}/,
+  );
+  assert.match(
+    body,
+    /actual_subjects=\$\(cd artifacts\/host-kit-download && sha256sum/,
+  );
+  assert.match(
+    body,
+    /test "\$actual_subjects" = "\$EXPECTED_HOST_KIT_SUBJECTS"/,
+  );
+  assert.match(body, /tar -xOzf[\s\S]+deus-aws-bootstrap > "\$verifier"/);
+  assert.match(
+    body,
+    /"\$verifier" verify-host-kit-archive[\s\S]+--architecture amd64[\s\S]+"\$verifier" verify-host-kit-archive[\s\S]+--architecture arm64/,
+  );
   assert.match(body, /tar --sort=name --mtime='@0'/);
   assert.match(body, /gzip -n/);
   for (const workflowPath of [
@@ -230,11 +257,10 @@ test("release workflow uses the SLSA Level 3 generator with a tagged ref", () =>
       if (!match) continue;
       if (
         match[1] ===
-        "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0"
+        "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a"
       ) {
         slsaGeneratorReferences += 1;
         assert.equal(workflowPath, ".github/workflows/release.yml");
-        continue;
       }
       assert.match(
         match[1],
@@ -347,6 +373,23 @@ test("source CI and evidence-only promotion enforce the two-stage review topolog
 
   assert.match(workflow, /run: npm run validate:source/);
   assert.doesNotMatch(workflow, /run: npm run verify:all/);
+  assert.match(
+    workflow,
+    /name: source qualification \(\$\{\{ matrix\.architecture \}\}\)/,
+  );
+  assert.match(workflow, /runner: ubuntu-24\.04-arm/);
+  assert.match(
+    workflow,
+    /name: secure-saas-infra-sbom-\$\{\{ matrix\.architecture \}\}/,
+  );
+  assert.match(
+    workflow,
+    /provider=artifacts\/bootstrap-pulumi-home\/plugins\/resource-aws-v7\.27\.0\/pulumi-resource-aws/,
+  );
+  assert.match(
+    workflow,
+    /env -i HOME="\$RUNNER_TEMP\/provider-smoke-home" LANG=C "\$provider" --version/,
+  );
   assert.match(promotion, /run: npm run validate:source/);
   assert.doesNotMatch(promotion, /run: npm run verify:all/);
   assert.doesNotMatch(promotion, /artifacts\/local-gate-evidence\.json/);
