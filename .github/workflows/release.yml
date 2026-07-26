@@ -264,7 +264,8 @@ jobs:
       contents: read
       actions: read
       id-token: write
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
+    # The SLSA verifier requires the generator identity to use an exact vX.Y.Z tag.
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
     with:
       base64-subjects: ${{ needs.build.outputs.digest }}
       upload-assets: false
@@ -276,7 +277,8 @@ jobs:
       contents: read
       actions: read
       id-token: write
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
+    # The SLSA verifier requires the generator identity to use an exact vX.Y.Z tag.
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
     with:
       base64-subjects: ${{ needs.host-kit-subjects.outputs.digest }}
       upload-assets: false

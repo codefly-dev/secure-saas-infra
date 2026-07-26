@@ -110,7 +110,7 @@ test("static gate syntax-checks every governed JavaScript and shell program", ()
   );
 });
 
-test("release workflow uses the SLSA Level 3 generator with an immutable ref", () => {
+test("release workflow uses the exact SLSA Level 3 tag exception", () => {
   const body = readFileSync(".github/workflows/release.yml", "utf8");
   const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
     scripts: Record<string, string>;
@@ -128,7 +128,7 @@ test("release workflow uses the SLSA Level 3 generator with an immutable ref", (
 
   assert.match(
     body,
-    /uses: slsa-framework\/slsa-github-generator\/.+@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a/,
+    /uses: slsa-framework\/slsa-github-generator\/.+@v2\.1\.0/,
   );
   assert.match(body, /id-token: write/);
   assert.match(body, /provenance-name:/);
@@ -257,10 +257,11 @@ test("release workflow uses the SLSA Level 3 generator with an immutable ref", (
       if (!match) continue;
       if (
         match[1] ===
-        "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a"
+        "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0"
       ) {
         slsaGeneratorReferences += 1;
         assert.equal(workflowPath, ".github/workflows/release.yml");
+        continue;
       }
       assert.match(
         match[1],
