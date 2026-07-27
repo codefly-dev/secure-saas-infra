@@ -8,7 +8,7 @@ import {
 
 test("database module creates encrypted Aurora cluster with private posture, IAM auth, and an RDS Proxy", async () => {
   const { resources } = await installPulumiMocks();
-  const { createDatabaseCluster } = await import("../src/database");
+  const { createDatabaseCluster } = await import("../src/database.js");
 
   createDatabaseCluster({
     config: {

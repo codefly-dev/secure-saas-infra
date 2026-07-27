@@ -8,7 +8,7 @@ import {
 
 test("cost-controls stack creates per-tenant budgets and a cost anomaly subscription", async () => {
   const { resources } = await installPulumiMocks();
-  const { createCostControls } = await import("../src/costControls");
+  const { createCostControls } = await import("../src/costControls.js");
 
   createCostControls({
     notificationEmails: ["finops@deus.example"],

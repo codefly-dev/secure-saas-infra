@@ -4,7 +4,7 @@ import { installPulumiMocks, flushPulumiMocks, resourcesOfType } from "./helpers
 
 test("log archive creates immutable encrypted audit storage", async () => {
   const { resources } = await installPulumiMocks();
-  const { createLogArchive } = await import("../src/logArchive");
+  const { createLogArchive } = await import("../src/logArchive.js");
 
   createLogArchive({
     objectLockRetentionDays: 2555,
@@ -92,7 +92,7 @@ test("log archive creates immutable encrypted audit storage", async () => {
 
 test("organization audit stack creates the management-account organization trail", async () => {
   const { resources } = await installPulumiMocks();
-  const { createOrganizationAudit } = await import("../src/organizationAudit");
+  const { createOrganizationAudit } = await import("../src/organizationAudit.js");
 
   createOrganizationAudit({
     logArchiveStackRef: "org/secure-saas-infra/log-archive",

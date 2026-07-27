@@ -8,7 +8,7 @@ import {
 
 test("public WAF web ACL has rate limiting, managed rule sets, bot control, and a model-gateway sub-rate limit", async () => {
   const { resources } = await installPulumiMocks();
-  const { createPublicWebAcl } = await import("../src/waf");
+  const { createPublicWebAcl } = await import("../src/waf.js");
 
   createPublicWebAcl({
     name: "public-ingress",

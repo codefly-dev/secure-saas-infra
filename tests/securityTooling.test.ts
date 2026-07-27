@@ -4,7 +4,7 @@ import { installPulumiMocks, flushPulumiMocks, resourcesOfType } from "./helpers
 
 test("security tooling enables organization-wide detection and aggregation", async () => {
   const { resources } = await installPulumiMocks();
-  const { createSecurityTooling } = await import("../src/securityTooling");
+  const { createSecurityTooling } = await import("../src/securityTooling.js");
 
   createSecurityTooling({
     enableGuardDutyOrganization: true,

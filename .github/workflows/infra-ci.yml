@@ -24,6 +24,18 @@ jobs:
         with:
           node-version: "22"
           cache: npm
+      - name: Install kustomize
+        env:
+          KUSTOMIZE_VERSION: v5.8.1
+          KUSTOMIZE_SHA256: 029a7f0f4e1932c52a0476cf02a0fd855c0bb85694b82c338fc648dcb53a819d
+        run: |
+          mkdir -p "${RUNNER_TEMP}/bin"
+          curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+            --output "${RUNNER_TEMP}/kustomize.tar.gz" \
+            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
+          echo "${KUSTOMIZE_SHA256}  ${RUNNER_TEMP}/kustomize.tar.gz" | sha256sum --check
+          tar -xzf "${RUNNER_TEMP}/kustomize.tar.gz" -C "${RUNNER_TEMP}/bin" kustomize
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
       - name: Install
         run: npm ci
       - name: Test

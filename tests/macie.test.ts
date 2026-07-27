@@ -8,7 +8,7 @@ import {
 
 test("macie stack enables sensitive data discovery and weekly classification jobs", async () => {
   const { resources } = await installPulumiMocks();
-  const { createMacieBaseline } = await import("../src/macie");
+  const { createMacieBaseline } = await import("../src/macie.js");
 
   createMacieBaseline({
     classificationJobs: [

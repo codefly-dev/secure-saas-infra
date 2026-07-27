@@ -43,7 +43,7 @@ test("validateDnsConfig rejects malformed apex, bad slugs, duplicates", () => {
 
 test("dns stack creates root zone, per-env zones, NS delegation, query logging", async () => {
   const { resources } = await installPulumiMocks();
-  const { createDns } = await import("../src/dns");
+  const { createDns } = await import("../src/dns.js");
 
   createDns(baseline);
 
@@ -88,7 +88,7 @@ test("dns stack creates root zone, per-env zones, NS delegation, query logging",
 
 test("dns stack skips root zone and query logging when disabled", async () => {
   const { resources } = await installPulumiMocks();
-  const { createDns } = await import("../src/dns");
+  const { createDns } = await import("../src/dns.js");
 
   createDns({
     ...baseline,

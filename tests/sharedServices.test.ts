@@ -4,7 +4,7 @@ import { installPulumiMocks, flushPulumiMocks, resourcesOfType } from "./helpers
 
 test("shared services bootstraps Vault KMS, backup storage, and Tailscale secrets", async () => {
   const { resources } = await installPulumiMocks();
-  const { createSharedServices } = await import("../src/sharedServices");
+  const { createSharedServices } = await import("../src/sharedServices.js");
 
   createSharedServices({
     createVaultAutoUnsealKey: true,

@@ -4,7 +4,7 @@ import { flushPulumiMocks, installPulumiMocks, resourcesOfType } from "./helpers
 
 test("E2B BYOC access role requires vendor role principal and external id", async () => {
   const { resources } = await installPulumiMocks();
-  const { createE2bByocAccess } = await import("../src/e2bByoc");
+  const { createE2bByocAccess } = await import("../src/e2bByoc.js");
 
   createE2bByocAccess({
     createVendorRole: true,

@@ -4,8 +4,8 @@ import { installPulumiMocks, flushPulumiMocks, resourcesOfType } from "./helpers
 
 test("EKS Auto Mode clusters are private, encrypted, logged, and use required IAM policies", async () => {
   const { resources } = await installPulumiMocks();
-  const { createCentralizedEgressNetwork } = await import("../src/network");
-  const { createEksCluster } = await import("../src/eks");
+  const { createCentralizedEgressNetwork } = await import("../src/network.js");
+  const { createEksCluster } = await import("../src/eks.js");
 
   const network = createCentralizedEgressNetwork({
     egress: {

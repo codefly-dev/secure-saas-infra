@@ -4,7 +4,7 @@ import { flushPulumiMocks, installPulumiMocks, resourcesOfType } from "./helpers
 
 test("identity center stack creates group-based permission sets and account assignments", async () => {
   const { resources } = await installPulumiMocks();
-  const { createIdentityCenter } = await import("../src/identity");
+  const { createIdentityCenter } = await import("../src/identity.js");
 
   createIdentityCenter({
     organizationStackRef: "org/secure-saas-infra/management",

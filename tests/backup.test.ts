@@ -8,7 +8,7 @@ import {
 
 test("backup stack creates locked vaults, multi-region KMS, and a cross-region copy plan", async () => {
   const { resources } = await installPulumiMocks();
-  const { createBackupStack } = await import("../src/backup");
+  const { createBackupStack } = await import("../src/backup.js");
 
   createBackupStack({
     replicaRegion: "us-west-2",

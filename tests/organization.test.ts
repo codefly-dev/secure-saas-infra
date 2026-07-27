@@ -4,7 +4,7 @@ import { installPulumiMocks, flushPulumiMocks, resourcesOfType } from "./helpers
 
 test("organization foundation creates OUs, accounts, RAM sharing, and SCP guardrails", async () => {
   const { resources } = await installPulumiMocks();
-  const { createOrganizationFoundation } = await import("../src/organization");
+  const { createOrganizationFoundation } = await import("../src/organization.js");
 
   createOrganizationFoundation({
     createOrganization: true,

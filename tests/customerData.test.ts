@@ -4,7 +4,7 @@ import { flushPulumiMocks, installPulumiMocks, resourcesOfType } from "./helpers
 
 test("customer data store creates encrypted tenant-scoped artifact storage", async () => {
   const { resources } = await installPulumiMocks();
-  const { createCustomerDataStore } = await import("../src/customerData");
+  const { createCustomerDataStore } = await import("../src/customerData.js");
 
   createCustomerDataStore({
     createArtifactStore: true,

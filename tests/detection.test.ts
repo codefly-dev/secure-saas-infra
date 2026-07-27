@@ -8,7 +8,7 @@ import {
 
 test("detection stack creates SNS topic and EventBridge rules for high-severity events", async () => {
   const { resources } = await installPulumiMocks();
-  const { createDetectionRules } = await import("../src/detection");
+  const { createDetectionRules } = await import("../src/detection.js");
 
   createDetectionRules({
     emailSubscriptions: ["security-alerts@deus.example"],

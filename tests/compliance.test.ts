@@ -8,7 +8,7 @@ import {
 
 test("compliance stack deploys CIS conformance pack", async () => {
   const { resources } = await installPulumiMocks();
-  const { createComplianceBaseline } = await import("../src/compliance");
+  const { createComplianceBaseline } = await import("../src/compliance.js");
 
   createComplianceBaseline({
     deployConformancePack: true,

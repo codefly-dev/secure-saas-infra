@@ -87,7 +87,7 @@ test("validateIngressConfig rejects weak TLS, wrong NLB, and missing logging", (
 
 test("ingress stack creates CloudFront with VPC Origin, WAF, ACM, hardened headers, and KMS-encrypted access logs", async () => {
   const { resources } = await installPulumiMocks();
-  const { createPublicIngress } = await import("../src/ingress");
+  const { createPublicIngress } = await import("../src/ingress.js");
 
   createPublicIngress(baseline);
 

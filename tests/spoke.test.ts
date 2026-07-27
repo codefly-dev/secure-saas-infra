@@ -8,7 +8,7 @@ import {
 
 test("detached spoke stacks stay private and attach to the shared Transit Gateway", async () => {
   const { resources } = await installPulumiMocks();
-  const { createDetachedSpokeNetwork } = await import("../src/network");
+  const { createDetachedSpokeNetwork } = await import("../src/network.js");
 
   createDetachedSpokeNetwork({
     name: "platform-dev",

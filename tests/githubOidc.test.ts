@@ -4,7 +4,7 @@ import { flushPulumiMocks, installPulumiMocks, resourcesOfType } from "./helpers
 
 test("github oidc stack creates roles scoped to repository refs and environments", async () => {
   const { resources } = await installPulumiMocks();
-  const { createGithubOidc } = await import("../src/githubOidc");
+  const { createGithubOidc } = await import("../src/githubOidc.js");
 
   createGithubOidc({
     enabled: true,

@@ -8,7 +8,7 @@ import {
 
 test("centralized egress network keeps internet access only in the egress VPC", async () => {
   const { resources } = await installPulumiMocks();
-  const { createCentralizedEgressNetwork } = await import("../src/network");
+  const { createCentralizedEgressNetwork } = await import("../src/network.js");
 
   createCentralizedEgressNetwork({
     egress: {
@@ -71,7 +71,7 @@ test("centralized egress network keeps internet access only in the egress VPC", 
 
 test("centralized egress network creates exactly one TGW default route from spokes to egress", async () => {
   const { resources } = await installPulumiMocks();
-  const { createCentralizedEgressNetwork } = await import("../src/network");
+  const { createCentralizedEgressNetwork } = await import("../src/network.js");
 
   createCentralizedEgressNetwork({
     egress: {
@@ -103,7 +103,7 @@ test("centralized egress network creates exactly one TGW default route from spok
 
 test("spoke private route tables default to Transit Gateway and AWS APIs use VPC endpoints", async () => {
   const { resources } = await installPulumiMocks();
-  const { createCentralizedEgressNetwork } = await import("../src/network");
+  const { createCentralizedEgressNetwork } = await import("../src/network.js");
 
   createCentralizedEgressNetwork({
     egress: {
@@ -200,7 +200,7 @@ test("spoke private route tables default to Transit Gateway and AWS APIs use VPC
 
 test("centralized egress network emits flow logs and Network Firewall logs", async () => {
   const { resources } = await installPulumiMocks();
-  const { createCentralizedEgressNetwork } = await import("../src/network");
+  const { createCentralizedEgressNetwork } = await import("../src/network.js");
 
   createCentralizedEgressNetwork({
     egress: {

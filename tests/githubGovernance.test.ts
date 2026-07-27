@@ -8,7 +8,7 @@ import {
 
 test("github governance stack creates repository controls for customer-code infrastructure", async () => {
   const { resources } = await installPulumiMocks();
-  const { createGithubGovernance } = await import("../src/githubGovernance");
+  const { createGithubGovernance } = await import("../src/githubGovernance.js");
 
   createGithubGovernance({
     enabled: true,
@@ -141,7 +141,7 @@ test("github governance stack creates repository controls for customer-code infr
 
 test("github governance falls back to legacy branch protection on free GitHub plans", async () => {
   const { resources } = await installPulumiMocks();
-  const { createGithubGovernance } = await import("../src/githubGovernance");
+  const { createGithubGovernance } = await import("../src/githubGovernance.js");
 
   createGithubGovernance({
     enabled: true,
