@@ -38,6 +38,8 @@ assertExactBuildOutputs(
 
 const generated = [
   "artifacts/contract-schema-validation.json",
+  "artifacts/management-seed-test-results.json",
+  "artifacts/management-seed-test-results.junit.xml",
   "artifacts/secure-saas-infra.spdx.json",
   "artifacts/security-contract-evidence.json",
   ...(args.sourceRelease ? [] : ["artifacts/local-gate-evidence.json"]),

@@ -1,7 +1,7 @@
 # Pre-AWS Readiness TODO
 
 Status: active operator checklist  
-Last live-state verification: 2026-07-25  
+Last live-state verification: 2026-07-26
 Scope: AWS Organizations management seed only
 
 This is the short, dependency-ordered checklist for returning to the first AWS
@@ -19,10 +19,16 @@ sequence.
 At the start of this checklist edit:
 
 - [x] The two earlier CI defects were fixed in signed commits and pushed.
+- [x] The SLSA reusable-workflow identity regression was fixed in signed,
+      GitHub-verified commit `739c2ef`; the two generator jobs use the required
+      exact `v2.1.0` tag while ordinary Actions remain SHA-pinned.
 - [x] Signed commit `4647d31` is GitHub-verified and its complete `infra-ci`
       workflow passed.
 - [x] Linux source CI has passed on the admitted workflow, including its
       `amd64` and `arm64` lanes.
+- [ ] The current exact commit has green CI. The `infra-ci` run for `739c2ef`
+      ended in `startup_failure` with zero jobs because the free Actions budget
+      was exhausted; rerun after the allowance resets on 2026-08-01.
 - [x] Pulumi Cloud Individual is selected at
       `toussaint-antoine-gmail-com/secure-saas-infra/management`; the stack is
       empty.
@@ -49,11 +55,17 @@ At the start of this checklist edit:
       dispositions for one exact source tree.
 - [ ] A release tag or GitHub release exists.
 - [ ] Native Linux host-kit qualification is complete.
-- [ ] An AWS account or AWS configuration is in scope.
+- [x] The dedicated AWS account exists, ignored onboarding/backend configuration
+      is complete, the deterministic access bundle verifies, and no long-lived
+      AWS credential is present locally.
+- [ ] Root-account safety is independently evidenced: multiple separately held
+      MFA devices, zero root access keys, current recovery email/phone, and
+      billing/security/operations alternate contacts.
 
-The offline doctor currently has three expected blockers: missing real AWS
-onboarding configuration, missing Ed25519 trust, and unresolved exact-tree
-reviews. Darwin also cannot provide the final native Linux host evidence.
+The offline doctor currently has two expected blockers: missing Ed25519 trust
+and unresolved exact-tree reviews. Darwin also cannot provide the final native
+Linux host evidence. The already-created AWS account must remain empty except
+for root safety controls until the pre-mutation GO gate below passes.
 
 ## 1. Finish free account and recovery controls
 
@@ -232,10 +244,11 @@ Do not create the final signed bootstrap candidate yet. That candidate binds
 the real management account, roles, emails, configuration, and backend, which
 do not exist before AWS onboarding.
 
-## 8. Pre-account GO decision
+## 8. Pre-mutation GO decision
 
-Create the AWS account only after stages 1 through 7 are complete and a final
-review confirms:
+The AWS account was created before this formal gate. Do not perform governed
+IAM, Organizations, Pulumi, or workload mutation until stages 1 through 7 are
+complete and a final review confirms:
 
 - [ ] GitHub governance and immutable release evidence are complete.
 - [ ] The independent private key remains recoverable and has never entered a
@@ -247,25 +260,25 @@ review confirms:
 - [ ] No AWS access key, Pulumi token, signing key, recovery material, or
       customer credential exists in the repository.
 
-At this point the remaining offline-doctor onboarding failure is expected: it
-is the explicit boundary where the real AWS account ID and role decisions
-become necessary.
+The account and ignored onboarding decisions already exist. Passing this gate
+is the explicit boundary where they may first be used by governed AWS tooling.
 
-## 9. After the GO: create and secure AWS
+## 9. After the GO: establish governed AWS access
 
 This is the next roadmap, not permission to execute it early.
 
-- [ ] Create the dedicated AWS management account and immediately secure the
-      root user with multiple hardware MFA devices; never create a root access
-      key.
-- [ ] Configure billing/security contacts and retain the account ID plus
-      globally unique member-account emails.
+- [x] Create the dedicated AWS management account and retain its account ID plus
+      globally unique member-account emails only in ignored local configuration.
+- [ ] Independently verify root is protected by multiple separately held
+      hardware MFA devices, has no root access key, and has current recovery
+      email/phone.
+- [ ] Configure and verify billing, security, and operations alternate contacts.
 - [ ] Perform the separately reviewed, two-person, console-only initial SAML
       federation ceremony from the management-seed runbook.
-- [ ] Create only ignored `onboarding.local.json` and
-      `Pulumi.management.yaml` from their examples; never commit real account
-      identifiers, emails, or confidential metadata.
-- [ ] Render and verify the deterministic access bundle before any governed AWS
+- [x] Create only ignored `onboarding.local.json` and
+      `Pulumi.management.yaml` from their examples; no real account identifier,
+      email, or confidential metadata is committed.
+- [x] Render and verify the deterministic access bundle without a governed AWS
       mutation.
 - [ ] Re-run qualification from the authenticated native Linux kit, review the
       real-account payload on the independent signer, and return only its

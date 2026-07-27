@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -98,12 +99,113 @@ test("IaC release evidence rejects a substituted validation report", () => {
     writeFileSync(substituted, `${JSON.stringify(report, null, 2)}\n`, {
       mode: 0o600,
     });
-    const result = runGenerator(
-      path.join(directory, "rejected.json"),
-      substituted,
-    );
+    const rejected = path.join(directory, "rejected.json");
+    const result = runGenerator(rejected, substituted);
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /digest does not match/i);
+    assert.equal(existsSync(rejected), false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("release evidence rejects version, digest, path, Unicode, duplicate, and sequence mutations", () => {
+  prepareSbom();
+  prepareValidation();
+  const originalPath = path.join(directory, "mutation-source.json");
+  try {
+    const generated = runGenerator(originalPath);
+    assert.equal(generated.status, 0, generated.stderr);
+    const original = JSON.parse(readFileSync(originalPath, "utf8"));
+    const schemaCases: Array<[string, (value: any) => void, RegExp]> = [
+      [
+        "future API version",
+        (value) => {
+          value.apiVersion =
+            "evidence.security.deus.dev/management-seed-release/v2";
+        },
+        /schema validation.*constant/i,
+      ],
+      [
+        "Unicode-confusable qualification scope",
+        (value) => {
+          value.scope.qualificationScope = "aws-organizations-management-sеed";
+        },
+        /schema validation.*constant/i,
+      ],
+      [
+        "uppercase source digest",
+        (value) => {
+          value.source.revision = value.source.revision.toUpperCase();
+        },
+        /schema validation.*pattern/i,
+      ],
+      [
+        "substituted build-input digest",
+        (value) => {
+          value.buildInputs[0].sha256 = "A".repeat(64);
+        },
+        /schema validation.*pattern/i,
+      ],
+      [
+        "duplicate build input",
+        (value) => {
+          value.buildInputs.push(structuredClone(value.buildInputs[0]));
+        },
+        /schema validation.*(?:duplicate|unique)/i,
+      ],
+      [
+        "path traversal",
+        (value) => {
+          value.validation.contractSchemas.path = "../validation.json";
+        },
+        /schema validation.*pattern/i,
+      ],
+      [
+        "URI query",
+        (value) => {
+          value.validation.contractSchemas.path =
+            "artifacts/validation.json?authority=attacker";
+        },
+        /schema validation.*pattern/i,
+      ],
+      [
+        "URI fragment",
+        (value) => {
+          value.validation.sbom.path = "artifacts/sbom.json#attacker";
+        },
+        /schema validation.*pattern/i,
+      ],
+    ];
+    for (const [name, mutate, expected] of schemaCases) {
+      const hostile = structuredClone(original);
+      mutate(hostile);
+      hostile.evidenceDigest = releaseEvidenceDigest(hostile);
+      const hostilePath = path.join(
+        directory,
+        `${name.replaceAll(" ", "-")}.json`,
+      );
+      writeFileSync(hostilePath, `${JSON.stringify(hostile, null, 2)}\n`, {
+        mode: 0o600,
+      });
+      const result = runVerifier(hostilePath, false);
+      assert.notEqual(result.status, 0, name);
+      assert.match(result.stderr, expected, name);
+    }
+
+    const reordered = structuredClone(original);
+    [reordered.buildInputs[0], reordered.buildInputs[1]] = [
+      reordered.buildInputs[1],
+      reordered.buildInputs[0],
+    ];
+    reordered.evidenceDigest = releaseEvidenceDigest(reordered);
+    const reorderedPath = path.join(directory, "reordered-build-inputs.json");
+    writeFileSync(reorderedPath, `${JSON.stringify(reordered, null, 2)}\n`, {
+      mode: 0o600,
+    });
+    const reorderedResult = runVerifier(reorderedPath, false);
+    assert.notEqual(reorderedResult.status, 0);
+    assert.match(reorderedResult.stderr, /does not bind the exact source/i);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -474,4 +576,9 @@ function canonicalJson(value: unknown): string {
       .join(",")}}`;
   }
   return JSON.stringify(value);
+}
+
+function releaseEvidenceDigest(value: any): string {
+  const { evidenceDigest: _ignored, ...subject } = value;
+  return createHash("sha256").update(canonicalJson(subject)).digest("hex");
 }

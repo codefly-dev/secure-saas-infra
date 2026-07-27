@@ -146,6 +146,96 @@ test("management seed rejects identity, hierarchy, and account drift", () => {
   );
 });
 
+test("management seed rejects duplicate, traversal, wildcard, Unicode, and sequence mutations", () => {
+  const cases: Array<[string, (value: OrganizationConfig) => void, RegExp]> = [
+    [
+      "duplicate account identity",
+      (value) => {
+        value.accounts[1].name = value.accounts[0].name;
+      },
+      /duplicate account name/,
+    ],
+    [
+      "duplicate OU identity",
+      (value) => {
+        value.organizationalUnits[1].name = value.organizationalUnits[0].name;
+      },
+      /duplicate OU name/,
+    ],
+    [
+      "traversal account name",
+      (value) => {
+        value.accounts[0].name = "../security-tooling";
+      },
+      /name is invalid/,
+    ],
+    [
+      "wildcard service principal",
+      (value) => {
+        value.serviceAccessPrincipals[0] = "*.amazonaws.com";
+      },
+      /serviceAccessPrincipals must exactly equal/,
+    ],
+    [
+      "Unicode-confusable OU",
+      (value) => {
+        value.organizationalUnits[0].name = "Securіty";
+      },
+      /name is invalid/,
+    ],
+    [
+      "URI query in account email",
+      (value) => {
+        value.accounts[0].email =
+          "security-tooling@aws.deus.internal?authority=attacker";
+      },
+      /email is invalid/,
+    ],
+    [
+      "fragment in account email",
+      (value) => {
+        value.accounts[0].email = "security-tooling@aws.deus.internal#attacker";
+      },
+      /email is invalid/,
+    ],
+    [
+      "service-principal sequence reordering",
+      (value) => {
+        [value.serviceAccessPrincipals[0], value.serviceAccessPrincipals[1]] = [
+          value.serviceAccessPrincipals[1],
+          value.serviceAccessPrincipals[0],
+        ];
+      },
+      /serviceAccessPrincipals must exactly equal/,
+    ],
+    [
+      "account sequence reordering",
+      (value) => {
+        [value.accounts[0], value.accounts[1]] = [
+          value.accounts[1],
+          value.accounts[0],
+        ];
+      },
+      /must equal the reviewed/,
+    ],
+  ];
+
+  for (const [name, mutate, expected] of cases) {
+    const hostile = structuredClone(baseline);
+    mutate(hostile);
+    assert.throws(() => validateOrganizationTopology(hostile), expected, name);
+    assert.deepEqual(baseline.serviceAccessPrincipals, [
+      "cloudtrail.amazonaws.com",
+      "config.amazonaws.com",
+      "config-multiaccountsetup.amazonaws.com",
+      "guardduty.amazonaws.com",
+      "securityhub.amazonaws.com",
+      "inspector2.amazonaws.com",
+    ]);
+    assert.equal(baseline.accounts[0].name, "security-tooling");
+  }
+});
+
 test("management seed rejects destructive lifecycle and unreviewed tag fields", () => {
   const destructive = structuredClone(baseline);
   destructive.accounts[0].closeOnDeletion = true;

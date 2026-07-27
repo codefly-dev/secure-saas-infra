@@ -224,10 +224,20 @@ test("release workflow uses the exact SLSA Level 3 tag exception", () => {
   assert.match(gateRunner, /g6-sbom/);
   assert.doesNotMatch(body, /disposable-cluster|gitops|k3s/i);
   assert.match(body, /artifacts\/secure-saas-infra\.spdx\.json/);
+  assert.match(body, /artifacts\/management-seed-test-results\.json/);
+  assert.match(body, /artifacts\/management-seed-test-results\.junit\.xml/);
   assert.match(body, /sha256sum[\s\S]+secure-saas-infra\.spdx\.json/);
+  assert.match(
+    body,
+    /sha256sum[\s\S]+management-seed-test-results\.json[\s\S]+management-seed-test-results\.junit\.xml/,
+  );
   assert.match(body, /sha256sum[\s\S]+security-contract-evidence\.json/);
   assert.match(body, /sha256sum[\s\S]+management-seed-release-manifest\.json/);
   assert.match(body, /gh release create[\s\S]+secure-saas-infra\.spdx\.json/);
+  assert.match(
+    body,
+    /gh release create[\s\S]+management-seed-test-results\.json[\s\S]+management-seed-test-results\.junit\.xml/,
+  );
   assert.match(safeGit, /GIT_NO_REPLACE_OBJECTS: "1"/);
   assert.match(signerStage0, /assertCanonicalGitGraph\(\)/);
   assert.match(signerStage0, /refs\/replace/);
@@ -406,6 +416,25 @@ test("source CI and evidence-only promotion enforce the two-stage review topolog
     "promotion dependencies must be installed before the verifier runs",
   );
   assert.match(workflow, /artifacts\/secure-saas-infra\.spdx\.json/);
+  assert.match(workflow, /artifacts\/management-seed-test-results\.json/);
+  assert.match(workflow, /artifacts\/management-seed-test-results\.junit\.xml/);
+  const testRunner = readFileSync("scripts/run-iac-unit-tests.mjs", "utf8");
+  const testReporter = readFileSync(
+    "scripts/management-seed-test-reporter.mjs",
+    "utf8",
+  );
+  const releaseManifest = readFileSync(
+    "scripts/write-management-seed-release-manifest.mjs",
+    "utf8",
+  );
+  assert.match(
+    testRunner,
+    /evidence\.security\.deus\.dev\/management-seed-test-metadata\/v1/,
+  );
+  assert.match(testRunner, /assertTestEvidenceSchema\(report\)/);
+  assert.match(testReporter, /stableFailureCode/);
+  assert.match(releaseManifest, /management-seed-test-results\.json/);
+  assert.match(releaseManifest, /management-seed-test-results\.junit\.xml/);
   assert.match(
     packageJson.scripts["validate:source"],
     /npm ci --ignore-scripts/,

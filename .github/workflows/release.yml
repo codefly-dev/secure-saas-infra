@@ -137,6 +137,8 @@ jobs:
             artifacts/secure-saas-infra.spdx.json \
             artifacts/security-contract-evidence.json \
             artifacts/contract-schema-validation.json \
+            artifacts/management-seed-test-results.json \
+            artifacts/management-seed-test-results.junit.xml \
             artifacts/management-seed-release-manifest.json | base64 -w0)
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"
       - name: Upload artifact
@@ -148,6 +150,8 @@ jobs:
             artifacts/secure-saas-infra.spdx.json
             artifacts/security-contract-evidence.json
             artifacts/contract-schema-validation.json
+            artifacts/management-seed-test-results.json
+            artifacts/management-seed-test-results.junit.xml
             artifacts/management-seed-release-manifest.json
           if-no-files-found: error
           retention-days: 30
@@ -389,6 +393,8 @@ jobs:
             artifacts/secure-saas-infra.spdx.json \
             artifacts/security-contract-evidence.json \
             artifacts/contract-schema-validation.json \
+            artifacts/management-seed-test-results.json \
+            artifacts/management-seed-test-results.junit.xml \
             artifacts/management-seed-release-manifest.json \
             "$MAIN_PROVENANCE" \
             "$HOST_KIT_PROVENANCE"

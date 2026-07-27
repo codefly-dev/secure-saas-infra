@@ -60,6 +60,8 @@ jobs:
           path: |
             artifacts/secure-saas-infra.spdx.json
             artifacts/contract-schema-validation.json
+            artifacts/management-seed-test-results.json
+            artifacts/management-seed-test-results.junit.xml
           if-no-files-found: error
           retention-days: 30
 

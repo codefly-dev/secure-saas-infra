@@ -33,7 +33,7 @@ test("management-seed schemas compile strictly from the positive inventory", () 
     formats: true,
   });
   assert.equal(report.validatedContracts.length, 0);
-  assert.equal(report.publishedSchemas.length, 17);
+  assert.equal(report.publishedSchemas.length, 18);
   assert.equal(
     report.publishedSchemas.filter(
       (entry: any) => entry.validationMode === "checked-contract",
@@ -44,7 +44,7 @@ test("management-seed schemas compile strictly from the positive inventory", () 
     report.publishedSchemas.filter(
       (entry: any) => entry.validationMode === "schema-only",
     ).length,
-    17,
+    18,
   );
   assert.ok(
     report.publishedSchemas.every(

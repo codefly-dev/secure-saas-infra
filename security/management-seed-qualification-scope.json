@@ -182,6 +182,10 @@
         "owner": "secure-saas-infra/local-gate-evidence"
       },
       {
+        "schema": "management-seed-test-evidence-v1.schema.json",
+        "owner": "secure-saas-infra/management-seed-test-evidence"
+      },
+      {
         "schema": "management-seed-access-bundle-v1.schema.json",
         "owner": "secure-saas-infra/management-seed-access"
       },
@@ -325,6 +329,7 @@
     "schemas/management-seed-organization-recovery-receipt-v1.schema.json",
     "schemas/management-seed-provisioner-retirement-receipt-v1.schema.json",
     "schemas/management-seed-release-evidence-v1.schema.json",
+    "schemas/management-seed-test-evidence-v1.schema.json",
     "schemas/pulumi-plan-manifest-v1alpha1.schema.json",
     "schemas/system-runtime-closure-v1.schema.json",
     "schemas/vendor/spdx-2.3.schema.json",
@@ -361,6 +366,7 @@
     "scripts/management-seed-sbom.mjs",
     "scripts/management-seed-scope.mjs",
     "scripts/management-seed-source-closure.mjs",
+    "scripts/management-seed-test-reporter.mjs",
     "scripts/management-seed-test-runtime-guard.cjs",
     "scripts/package-bootstrap-host-kit",
     "scripts/prepare-bootstrap-plugins",
