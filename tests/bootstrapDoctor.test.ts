@@ -693,7 +693,188 @@ echo '${JSON.stringify({ UserId: "session", Account: "999988887777", Arn: arn })
   }
 });
 
+test("AWS account audit is read-only, redacted, and bound to the preview role", () => {
+  const { root, config } = fixture();
+  const bin = installAwsAccountAuditStub(root);
+  const cutoff = new Date(Math.floor((Date.now() - 60_000) / 1000) * 1000)
+    .toISOString()
+    .replace(".000Z", "Z");
+  const result = spawnSync(
+    process.execPath,
+    [
+      "scripts/bootstrap-doctor.mjs",
+      "--root",
+      root,
+      "--config",
+      config,
+      "--check-aws-account-audit",
+      "--root-activity-cutoff",
+      cutoff,
+      "--json",
+    ],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${bin}:${process.env.PATH}`,
+        AWS_AUDIT_STUB_EVENT_TIME: new Date(Date.now() - 30_000).toISOString(),
+        AWS_ENDPOINT_URL: "https://attacker.invalid",
+        AWS_ENDPOINT_URL_IAM: "https://attacker.invalid",
+      },
+    },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.offline, false);
+  assert.equal(report.cloudMutation, false);
+  assert.equal(
+    report.checks.find((check: any) => check.id === "aws.caller").status,
+    "pass",
+  );
+  assert.deepEqual(
+    report.checks.find(
+      (check: any) => check.id === "aws.audit.root-credentials",
+    ).evidence,
+    { rootMfaEnabled: true, rootAccessKeyCount: 0 },
+  );
+  assert.deepEqual(
+    report.checks.find(
+      (check: any) => check.id === "aws.audit.account-contacts",
+    ).evidence,
+    {
+      primaryContactPresent: true,
+      primaryPhonePresent: true,
+      alternateContactsPresent: {
+        billing: true,
+        operations: true,
+        security: true,
+      },
+      rootEmailDelivery: "manual-verification-required",
+    },
+  );
+  assert.deepEqual(
+    report.checks.find((check: any) => check.id === "aws.audit.root-activity")
+      .evidence,
+    {
+      enabledRegionsChecked: 2,
+      rootEventsObserved: 0,
+      rootActivityCutoff: cutoff,
+      eventHistoryWindowDays: 90,
+    },
+  );
+  for (const confidential of [
+    "owner@example.invalid",
+    "billing@example.invalid",
+    "operations@example.invalid",
+    "security@example.invalid",
+    "+33123456789",
+    "Private Operator",
+  ]) {
+    assert.equal(result.stdout.includes(confidential), false);
+  }
+});
+
+test("AWS account audit fails closed on posture, contact, and history mutations", () => {
+  const cutoff = new Date(Math.floor((Date.now() - 60_000) / 1000) * 1000)
+    .toISOString()
+    .replace(".000Z", "Z");
+  for (const [mode, checkId] of [
+    ["no-mfa", "aws.audit.root-credentials"],
+    ["root-access-key", "aws.audit.root-credentials"],
+    ["malformed-summary", "aws.audit.root-credentials"],
+    ["missing-contact", "aws.audit.account-contacts"],
+    ["malformed-regions", "aws.audit.root-activity"],
+    ["truncated-history", "aws.audit.root-activity"],
+    ["root-event", "aws.audit.root-activity"],
+  ] as const) {
+    const { root, config } = fixture();
+    const bin = installAwsAccountAuditStub(root);
+    const result = spawnSync(
+      process.execPath,
+      [
+        "scripts/bootstrap-doctor.mjs",
+        "--root",
+        root,
+        "--config",
+        config,
+        "--check-aws-account-audit",
+        "--root-activity-cutoff",
+        cutoff,
+        "--json",
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${bin}:${process.env.PATH}`,
+          AWS_AUDIT_STUB_MODE: mode,
+          AWS_AUDIT_STUB_EVENT_TIME: new Date(
+            Date.now() - 30_000,
+          ).toISOString(),
+        },
+      },
+    );
+    assert.notEqual(result.status, 0, mode);
+    const report = JSON.parse(result.stdout);
+    const check = report.checks.find((entry: any) => entry.id === checkId);
+    assert.equal(check.status, "failure", mode);
+    assert.doesNotMatch(result.stdout, /owner@example\.invalid/, mode);
+    assert.doesNotMatch(result.stdout, /Private Operator/, mode);
+  }
+});
+
+test("AWS account audit rejects non-preview callers and invalid cutoffs", () => {
+  const { root, config } = fixture();
+  const bin = installAwsAccountAuditStub(root);
+  const applyCaller = spawnSync(
+    process.execPath,
+    [
+      "scripts/bootstrap-doctor.mjs",
+      "--root",
+      root,
+      "--config",
+      config,
+      "--check-aws-account-audit",
+      "--json",
+    ],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${bin}:${process.env.PATH}`,
+        AWS_AUDIT_STUB_ARN:
+          "arn:aws:sts::999988887777:assumed-role/OrganizationSeedApply/human-session",
+      },
+    },
+  );
+  assert.notEqual(applyCaller.status, 0);
+  const applyReport = JSON.parse(applyCaller.stdout);
+  assert.equal(
+    applyReport.checks.find(
+      (entry: any) => entry.id === "aws.audit.precondition",
+    ).status,
+    "failure",
+  );
+
+  for (const invalidArgs of [
+    ["--root-activity-cutoff", "2026-01-01T00:00:00Z"],
+    ["--check-aws-account-audit", "--root-activity-cutoff", "not-a-timestamp"],
+    ["--check-aws-account-audit", "--check-aws-account-audit"],
+  ]) {
+    const invalid = spawnSync(
+      process.execPath,
+      ["scripts/bootstrap-doctor.mjs", ...invalidArgs],
+      { cwd: process.cwd(), encoding: "utf8" },
+    );
+    assert.equal(invalid.status, 2);
+  }
+});
+
 test("bootstrap doctor exposes strict and explicit online checks", () => {
+  const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
   const result = spawnSync(
     process.execPath,
     ["scripts/bootstrap-doctor.mjs", "--help"],
@@ -702,9 +883,15 @@ test("bootstrap doctor exposes strict and explicit online checks", () => {
   assert.equal(result.status, 0);
   assert.match(result.stdout, /Offline by default/);
   assert.match(result.stdout, /--check-aws-session/);
+  assert.match(result.stdout, /--check-aws-account-audit/);
+  assert.match(result.stdout, /--root-activity-cutoff/);
   assert.match(result.stdout, /--check-pulumi-login/);
   assert.match(result.stdout, /--strict/);
-  assert.match(result.stdout, /never performs AWS or Pulumi mutations/);
+  assert.match(result.stdout, /never writes files or changes AWS\/Pulumi/);
+  assert.equal(
+    packageJson.scripts["validate:aws-account"],
+    "node scripts/bootstrap-doctor.mjs --check-aws-account-audit",
+  );
 });
 
 test("management-seed access renderer is deterministic, offline, bounded, and content-addressed", () => {
@@ -943,8 +1130,24 @@ test("management-seed access renderer is deterministic, offline, bounded, and co
             : [statement.Action]
           ).some((action: string) => /^iam:(?:Get|List)/.test(action)),
       );
-      assert.equal(iamAllows.length, 3);
-      for (const statement of iamAllows) {
+      assert.equal(iamAllows.length, 4);
+      const auditRead = iamAllows.find(
+        (statement: any) => statement.Sid === "ReadAccountAuditPosture",
+      );
+      assert.deepEqual(auditRead, {
+        Sid: "ReadAccountAuditPosture",
+        Effect: "Allow",
+        Action: [
+          "account:GetAlternateContact",
+          "account:GetContactInformation",
+          "cloudtrail:LookupEvents",
+          "iam:GetAccountSummary",
+        ],
+        Resource: "*",
+      });
+      for (const statement of iamAllows.filter(
+        (entry: any) => entry !== auditRead,
+      )) {
         assert.notEqual(statement.Resource, "*");
         const resources = Array.isArray(statement.Resource)
           ? statement.Resource
@@ -2067,6 +2270,85 @@ function canonicalJson(value: unknown): string {
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function installAwsAccountAuditStub(root: string): string {
+  const bin = join(root, "bin");
+  mkdirSync(bin);
+  const aws = join(bin, "aws");
+  writeFileSync(
+    aws,
+    `#!/bin/sh
+set -eu
+mode="\${AWS_AUDIT_STUB_MODE:-pass}"
+if [ "\${1:-}" = "--version" ]; then
+  echo "aws-cli/2.test"
+  exit 0
+fi
+if [ "\${AWS_IGNORE_CONFIGURED_ENDPOINT_URLS:-}" != "true" ] ||
+   [ -n "\${AWS_ENDPOINT_URL:-}" ] ||
+   [ -n "\${AWS_ENDPOINT_URL_IAM:-}" ]; then
+  exit 65
+fi
+case "\${1:-}:\${2:-}" in
+  sts:get-caller-identity)
+    printf '{"UserId":"session","Account":"999988887777","Arn":"%s"}\\n' \
+      "\${AWS_AUDIT_STUB_ARN:-arn:aws:sts::999988887777:assumed-role/OrganizationSeedPreview/human-session}"
+    ;;
+  iam:get-account-summary)
+    if [ "$mode" = "malformed-summary" ]; then
+      printf '{\\n'
+    elif [ "$mode" = "no-mfa" ]; then
+      printf '{"SummaryMap":{"AccountMFAEnabled":0,"AccountAccessKeysPresent":0}}\\n'
+    elif [ "$mode" = "root-access-key" ]; then
+      printf '{"SummaryMap":{"AccountMFAEnabled":1,"AccountAccessKeysPresent":1}}\\n'
+    else
+      printf '{"SummaryMap":{"AccountMFAEnabled":1,"AccountAccessKeysPresent":0}}\\n'
+    fi
+    ;;
+  account:get-contact-information)
+    printf '%s\\n' '{"ContactInformation":{"FullName":"Private Operator","AddressLine1":"Private","City":"Paris","PostalCode":"75000","CountryCode":"FR","PhoneNumber":"+33123456789"}}'
+    ;;
+  account:get-alternate-contact)
+    case " $* " in
+      *" BILLING "*) contact_type="BILLING"; email="billing@example.invalid" ;;
+      *" OPERATIONS "*) contact_type="OPERATIONS"; email="operations@example.invalid" ;;
+      *" SECURITY "*)
+        if [ "$mode" = "missing-contact" ]; then
+          echo "owner@example.invalid" >&2
+          exit 254
+        fi
+        contact_type="SECURITY"
+        email="security@example.invalid"
+        ;;
+      *) exit 64 ;;
+    esac
+    printf '{"AlternateContact":{"AlternateContactType":"%s","EmailAddress":"%s","Name":"Private Operator","PhoneNumber":"+33123456789","Title":"Owner"}}\\n' "$contact_type" "$email"
+    ;;
+  ec2:describe-regions)
+    if [ "$mode" = "malformed-regions" ]; then
+      printf '{"Regions":[{"RegionName":"../invalid","OptInStatus":"opted-in"}]}\\n'
+    else
+      printf '%s\\n' '{"Regions":[{"RegionName":"eu-west-3","OptInStatus":"opted-in"},{"RegionName":"us-east-1","OptInStatus":"opt-in-not-required"},{"RegionName":"af-south-1","OptInStatus":"not-opted-in"}]}'
+    fi
+    ;;
+  cloudtrail:lookup-events)
+    if [ "$mode" = "truncated-history" ]; then
+      printf '{"Events":[],"NextToken":"confidential-token"}\\n'
+    elif [ "$mode" = "root-event" ]; then
+      printf '{"Events":[{"EventId":"00000000-0000-4000-8000-000000000000","EventName":"ConsoleLogin","EventTime":"%s","Username":"root"}]}\\n' "\${AWS_AUDIT_STUB_EVENT_TIME}"
+    else
+      printf '{"Events":[]}\\n'
+    fi
+    ;;
+  *)
+    exit 64
+    ;;
+esac
+`,
+    { mode: 0o700 },
+  );
+  return bin;
 }
 
 function replaceStack(root: string, before: string, after: string) {

@@ -69,7 +69,7 @@ const evidenceInputs = [
   "scripts/run-iac-unit-tests.mjs",
   "security/management-seed-qualification-scope.json",
   "tsconfig.management-seed-test.json",
-  ...scope.tests.compilationSourceFiles,
+  ...scope.sourceFiles,
 ]
   .filter((entry, index, values) => values.indexOf(entry) === index)
   .sort()

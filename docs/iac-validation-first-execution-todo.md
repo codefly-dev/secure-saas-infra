@@ -215,6 +215,12 @@ Completed in this local-only pass:
       identities, ordered sequences, traversal, wildcard, URI query/fragment,
       Unicode confusables, versions, and digests without re-admitting quarantined
       platform contracts.
+- [x] Add an opt-in, redacted AWS account-audit doctor bound to the exact
+      preview role. It fails closed on missing root MFA, root access keys,
+      incomplete primary/alternate contacts, malformed or truncated AWS
+      responses, and post-cutoff root activity across enabled Regions while
+      retaining manual evidence boundaries for multiple root MFA devices and
+      root-email delivery.
 - [ ] Re-record all three dispositions only after exact-tree re-review. The
       checked-in dispositions remain deliberately unresolved;
       `approvedForAwsMutation` always remains `false`.
@@ -224,7 +230,7 @@ Local validation that can run on the dirty implementation worktree:
 - [x] TypeScript typecheck and policy build pass.
 - [x] Eighteen strict management-seed evidence schemas compile. Platform and
       post-seed contracts are explicitly quarantined from this qualification.
-- [x] All 100 positively inventoried management-seed unit/hostile tests pass.
+- [x] All 103 positively inventoried management-seed unit/hostile tests pass.
       Quarantined post-seed and platform tests are not compiled or executed.
 - [x] Native Go unit tests pass on Darwin; the Linux fresh-snapshot, exact-seal,
       host-kit, and budget subsets pass in a local glibc container. Full

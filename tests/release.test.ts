@@ -431,6 +431,7 @@ test("source CI and evidence-only promotion enforce the two-stage review topolog
     testRunner,
     /evidence\.security\.deus\.dev\/management-seed-test-metadata\/v1/,
   );
+  assert.match(testRunner, /\.\.\.scope\.sourceFiles/);
   assert.match(testRunner, /assertTestEvidenceSchema\(report\)/);
   assert.match(testReporter, /stableFailureCode/);
   assert.match(releaseManifest, /management-seed-test-results\.json/);

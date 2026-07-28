@@ -37,6 +37,17 @@
       "Resource": "*"
     },
     {
+      "Sid": "ReadAccountAuditPosture",
+      "Effect": "Allow",
+      "Action": [
+        "account:GetAlternateContact",
+        "account:GetContactInformation",
+        "cloudtrail:LookupEvents",
+        "iam:GetAccountSummary"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "ReadExactBootstrapRoles",
       "Effect": "Allow",
       "Action": [
@@ -78,8 +89,12 @@
       "Sid": "DenyUnreviewedPreviewActions",
       "Effect": "Deny",
       "NotAction": [
+        "account:GetAlternateContact",
+        "account:GetContactInformation",
+        "cloudtrail:LookupEvents",
         "ec2:DescribeRegions",
         "guardduty:ListOrganizationAdminAccounts",
+        "iam:GetAccountSummary",
         "iam:GetPolicy",
         "iam:GetPolicyVersion",
         "iam:GetRole",

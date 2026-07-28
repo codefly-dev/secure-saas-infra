@@ -102,6 +102,24 @@ Strict mode calls only identity/readiness endpoints, verifies the exact
 management account, and rejects root and IAM-user callers. It never mutates
 AWS or Pulumi state.
 
+After the reviewed access policy is installed, assume only the exact preview
+role and run the redacted live account audit. Use the independently recorded
+UTC second at which the root ceremony ended:
+
+```sh
+npm run validate:aws-account -- \
+  --root-activity-cutoff '<ROOT_CEREMONY_CUTOFF_UTC>' \
+  --json
+```
+
+This checks the AWS-reported root MFA/access-key summary, primary and alternate
+contact completeness, and bounded CloudTrail root-event history in every
+enabled Region. The audit checks emit only booleans, counts, and the supplied
+cutoff—not contact values or raw events. AWS does not expose a complete API
+count for all root MFA device types or prove delivery to the root email, so the
+separately witnessed console evidence for multiple MFA devices and
+recovery-email delivery remains mandatory.
+
 ## Prepare and qualify without AWS credentials
 
 Qualification rejects AWS credential/profile variables, Pulumi access-token

@@ -4,13 +4,17 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 const EXPECTED_POLICY_CANONICAL_SHA256 = Object.freeze({
-  preview: "8d1784178520e340bafa05c937d640eb8b9dad501b473a1c8407eeb7a296c885",
-  apply: "b0cc82011089e3c00050290bad213abe08c5766c8719b7288eaacbe6335bbe6d",
+  preview: "79dd219d31923bc7367697aed1d1304274763cf5d6e1baf8ab0d7f8cfb3fa06b",
+  apply: "b7ecb27ff21e27055b26566c97e873dd215abcf48d38e95db613ef7b275b9bae",
 });
 
 const EXPECTED_PREVIEW_ACTIONS = Object.freeze([
+  "account:GetAlternateContact",
+  "account:GetContactInformation",
+  "cloudtrail:LookupEvents",
   "ec2:DescribeRegions",
   "guardduty:ListOrganizationAdminAccounts",
+  "iam:GetAccountSummary",
   "iam:GetPolicy",
   "iam:GetPolicyVersion",
   "iam:GetRole",
@@ -122,7 +126,10 @@ for (const [name, policy] of [
 }
 
 for (const action of previewAllows) {
-  if (!/:(?:Describe|Get|List)/.test(action))
+  if (
+    !/:(?:Describe|Get|List)/.test(action) &&
+    action !== "cloudtrail:LookupEvents"
+  )
     fail(`preview policy contains mutation '${action}'`);
 }
 for (const action of previewAllows) {
@@ -247,6 +254,16 @@ function assertExactActionSet(label, actual, expected) {
 function assertExactIamReadScope(name, policy) {
   const expected = [
     [
+      "ReadAccountAuditPosture",
+      [
+        "account:GetAlternateContact",
+        "account:GetContactInformation",
+        "cloudtrail:LookupEvents",
+        "iam:GetAccountSummary",
+      ],
+      ["*"],
+    ],
+    [
       "ReadExactBootstrapRoles",
       [
         "iam:GetRole",
@@ -295,7 +312,12 @@ function assertExactIamReadScope(name, policy) {
     if (
       statement.Effect === "Allow" &&
       iamReadActions.length > 0 &&
-      statement.Resource === "*"
+      statement.Resource === "*" &&
+      !(
+        statement.Sid === "ReadAccountAuditPosture" &&
+        JSON.stringify(iamReadActions) ===
+          JSON.stringify(["iam:GetAccountSummary"])
+      )
     ) {
       fail(
         `${name} policy allow statement '${statement.Sid}' grants account-wide IAM access`,

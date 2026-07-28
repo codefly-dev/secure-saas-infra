@@ -30,7 +30,9 @@ if (args.help) {
 const root = realpathSync(resolve(args.root ?? process.cwd()));
 const configPath = resolve(args.config ?? join(root, "onboarding.local.json"));
 const strict = args.strict === true;
-const checkAwsSession = strict || args.checkAwsSession === true;
+const checkAwsAccountAudit = args.checkAwsAccountAudit === true;
+const checkAwsSession =
+  strict || args.checkAwsSession === true || checkAwsAccountAudit;
 const checkPulumiLogin = strict || args.checkPulumiLogin === true;
 const checks = [];
 let onboarding = null;
@@ -47,7 +49,8 @@ const cleanReleaseWorktree = checkReleaseWorktree();
 checkReviewDisposition(cleanReleaseWorktree);
 checkProductionQualificationHost();
 
-if (checkAwsSession) checkAwsCaller();
+const awsCaller = checkAwsSession ? checkAwsCaller() : null;
+if (checkAwsAccountAudit) checkAwsAccountPosture(awsCaller);
 if (checkPulumiLogin) checkPulumiIdentity();
 
 const summary = {
@@ -487,42 +490,29 @@ function checkAwsCaller() {
       "failure",
       "Cannot verify AWS caller without a valid managementAccountId.",
     );
-    return;
+    return null;
   }
-  const result = spawnSync(
-    "aws",
-    ["sts", "get-caller-identity", "--output", "json", "--no-cli-pager"],
-    {
-      encoding: "utf8",
-      env: { ...safeProcessEnvironment(), AWS_PAGER: "" },
-    },
-  );
-  if (result.status !== 0) {
+  const result = runAwsJson(["sts", "get-caller-identity"]);
+  if (!result.ok) {
     add(
       "aws.caller",
       "failure",
       "AWS caller identity is unavailable; authenticate with aws configure sso/aws sso login.",
     );
-    return;
+    return null;
   }
-  let identity;
-  try {
-    identity = JSON.parse(result.stdout);
-  } catch {
-    add("aws.caller", "failure", "AWS caller identity response is invalid.");
-    return;
-  }
+  const identity = result.value;
   if (identity.Account !== onboarding.managementAccountId) {
     add(
       "aws.caller",
       "failure",
-      `AWS caller account ${identity.Account ?? "unknown"} does not match the configured management account.`,
+      "AWS caller account does not match the configured management account.",
     );
-    return;
+    return null;
   }
   if (/^arn:aws(?:-[a-z]+)?:iam::[0-9]{12}:root$/.test(identity.Arn ?? "")) {
     add("aws.caller", "failure", "AWS root credentials are forbidden.");
-    return;
+    return null;
   }
   if (/^arn:aws(?:-[a-z]+)?:iam::[0-9]{12}:user\//.test(identity.Arn ?? "")) {
     add(
@@ -530,38 +520,265 @@ function checkAwsCaller() {
       "failure",
       "IAM user caller is forbidden; use a federated or assumed role with temporary credentials.",
     );
-    return;
+    return null;
   }
-  const expectedPrefixes = [
-    onboarding.managementPreviewRoleArn,
-    onboarding.managementApplyRoleArn,
-  ]
-    .filter(Boolean)
-    .map((role) =>
-      String(role)
-        .replace(":iam:", ":sts:")
-        .replace(":role/", ":assumed-role/"),
-    );
-  if (
-    expectedPrefixes.length !== 2 ||
-    typeof identity.Arn !== "string" ||
-    !expectedPrefixes.some(
-      (prefix) =>
-        identity.Arn.startsWith(`${prefix}/`) &&
-        !identity.Arn.slice(prefix.length + 1).includes("/"),
-    )
-  ) {
+  const expectedRoles = [
+    ["preview", onboarding.managementPreviewRoleArn],
+    ["apply", onboarding.managementApplyRoleArn],
+  ].map(([accessMode, role]) => ({
+    accessMode,
+    prefix: String(role ?? "")
+      .replace(":iam:", ":sts:")
+      .replace(":role/", ":assumed-role/"),
+  }));
+  const matchedRole = expectedRoles.find(
+    ({ prefix }) =>
+      prefix.length > 0 &&
+      typeof identity.Arn === "string" &&
+      identity.Arn.startsWith(`${prefix}/`) &&
+      !identity.Arn.slice(prefix.length + 1).includes("/"),
+  );
+  if (expectedRoles.some(({ prefix }) => prefix.length === 0) || !matchedRole) {
     add(
       "aws.caller",
       "failure",
       "AWS caller is not one of the exact configured management seed assumed roles.",
     );
-    return;
+    return null;
   }
   add(
     "aws.caller",
     "pass",
-    `Verified temporary caller ${identity.Arn} in the exact management account.`,
+    `Verified the exact temporary management ${matchedRole.accessMode} role without emitting its session name.`,
+    { accessMode: matchedRole.accessMode },
+  );
+  return { accessMode: matchedRole.accessMode };
+}
+
+function checkAwsAccountPosture(caller) {
+  if (caller?.accessMode !== "preview") {
+    add(
+      "aws.audit.precondition",
+      "failure",
+      "Live account audit requires the exact management preview role after caller verification.",
+    );
+    return;
+  }
+
+  checkRootCredentialPosture();
+  checkAccountContacts();
+  checkRootActivity();
+}
+
+function checkRootCredentialPosture() {
+  const result = runAwsJson(["iam", "get-account-summary"]);
+  const summary = result.value?.SummaryMap;
+  if (
+    !result.ok ||
+    summary === null ||
+    typeof summary !== "object" ||
+    Array.isArray(summary) ||
+    !Number.isInteger(summary.AccountMFAEnabled) ||
+    !Number.isInteger(summary.AccountAccessKeysPresent)
+  ) {
+    add(
+      "aws.audit.root-credentials",
+      "failure",
+      "AWS root credential posture could not be read or was malformed.",
+    );
+    return;
+  }
+  const evidence = {
+    rootMfaEnabled: summary.AccountMFAEnabled === 1,
+    rootAccessKeyCount: summary.AccountAccessKeysPresent,
+  };
+  if (!evidence.rootMfaEnabled || evidence.rootAccessKeyCount !== 0) {
+    add(
+      "aws.audit.root-credentials",
+      "failure",
+      "AWS root must have MFA enabled and zero access keys.",
+      evidence,
+    );
+    return;
+  }
+  add(
+    "aws.audit.root-credentials",
+    "pass",
+    "AWS reports root MFA enabled and zero root access keys.",
+    evidence,
+  );
+}
+
+function checkAccountContacts() {
+  const primaryResult = runAwsJson(["account", "get-contact-information"]);
+  const primary = primaryResult.value?.ContactInformation;
+  const primaryPhonePresent =
+    primaryResult.ok && isNonEmptyString(primary?.PhoneNumber);
+  const primaryPresent =
+    primaryResult.ok &&
+    isNonEmptyString(primary?.FullName) &&
+    isNonEmptyString(primary?.AddressLine1) &&
+    isNonEmptyString(primary?.City) &&
+    isNonEmptyString(primary?.PostalCode) &&
+    /^[A-Z]{2}$/.test(primary?.CountryCode ?? "") &&
+    primaryPhonePresent;
+
+  const alternateContacts = {};
+  for (const type of ["BILLING", "OPERATIONS", "SECURITY"]) {
+    const result = runAwsJson([
+      "account",
+      "get-alternate-contact",
+      "--alternate-contact-type",
+      type,
+    ]);
+    const contact = result.value?.AlternateContact;
+    alternateContacts[type.toLowerCase()] =
+      result.ok &&
+      contact?.AlternateContactType === type &&
+      isNonEmptyString(contact?.EmailAddress) &&
+      isNonEmptyString(contact?.Name) &&
+      isNonEmptyString(contact?.PhoneNumber) &&
+      isNonEmptyString(contact?.Title);
+  }
+  const evidence = {
+    primaryContactPresent: primaryPresent,
+    primaryPhonePresent,
+    alternateContactsPresent: alternateContacts,
+    rootEmailDelivery: "manual-verification-required",
+  };
+  if (
+    !primaryPresent ||
+    Object.values(alternateContacts).some((present) => !present)
+  ) {
+    add(
+      "aws.audit.account-contacts",
+      "failure",
+      "Primary contact or one of billing, operations, and security alternate contacts is missing or malformed.",
+      evidence,
+    );
+    return;
+  }
+  add(
+    "aws.audit.account-contacts",
+    "pass",
+    "Primary phone and all three alternate contact records are populated; root email delivery remains a manual recovery check.",
+    evidence,
+  );
+}
+
+function checkRootActivity() {
+  const regionsResult = runAwsJson([
+    "ec2",
+    "describe-regions",
+    "--all-regions",
+    "--region",
+    onboarding.managementAccessRegion,
+  ]);
+  const regions = regionsResult.value?.Regions;
+  if (
+    !regionsResult.ok ||
+    !Array.isArray(regions) ||
+    regions.length === 0 ||
+    regions.length > 64
+  ) {
+    add(
+      "aws.audit.root-activity",
+      "failure",
+      "Enabled AWS Regions could not be enumerated for the root-activity audit.",
+    );
+    return;
+  }
+  const enabledRegions = regions
+    .filter((entry) =>
+      ["opt-in-not-required", "opted-in"].includes(entry?.OptInStatus),
+    )
+    .map((entry) => entry?.RegionName)
+    .filter((entry) => /^[a-z]{2}(?:-gov)?-[a-z]+-\d$/.test(entry ?? ""))
+    .sort();
+  if (
+    enabledRegions.length === 0 ||
+    new Set(enabledRegions).size !== enabledRegions.length
+  ) {
+    add(
+      "aws.audit.root-activity",
+      "failure",
+      "Enabled AWS Region inventory is empty, duplicated, or malformed.",
+    );
+    return;
+  }
+
+  let rootEvents = 0;
+  for (const region of enabledRegions) {
+    const command = [
+      "cloudtrail",
+      "lookup-events",
+      "--region",
+      region,
+      "--lookup-attributes",
+      "AttributeKey=Username,AttributeValue=root",
+      "--max-items",
+      "200",
+    ];
+    if (args.rootActivityCutoff) {
+      command.push("--start-time", args.rootActivityCutoff);
+    }
+    const result = runAwsJson(command);
+    if (
+      !result.ok ||
+      !Array.isArray(result.value?.Events) ||
+      isNonEmptyString(result.value?.NextToken) ||
+      result.value.Events.some(
+        (event) =>
+          event?.Username !== "root" ||
+          !isNonEmptyString(event?.EventId) ||
+          !isNonEmptyString(event?.EventName) ||
+          !isNonEmptyString(event?.EventTime) ||
+          !Number.isFinite(Date.parse(event?.EventTime)) ||
+          (args.rootActivityCutoff &&
+            Date.parse(event.EventTime) < Date.parse(args.rootActivityCutoff)),
+      )
+    ) {
+      add(
+        "aws.audit.root-activity",
+        "failure",
+        "CloudTrail root-activity history was unavailable, incomplete, or malformed.",
+      );
+      return;
+    }
+    rootEvents += result.value.Events.length;
+  }
+
+  const evidence = {
+    enabledRegionsChecked: enabledRegions.length,
+    rootEventsObserved: rootEvents,
+    rootActivityCutoff: args.rootActivityCutoff ?? null,
+    eventHistoryWindowDays: 90,
+  };
+  if (args.rootActivityCutoff && rootEvents > 0) {
+    add(
+      "aws.audit.root-activity",
+      "failure",
+      "CloudTrail recorded root activity at or after the approved cutoff.",
+      evidence,
+    );
+    return;
+  }
+  if (!args.rootActivityCutoff && rootEvents > 0) {
+    add(
+      "aws.audit.root-activity",
+      "warning",
+      "CloudTrail root activity exists in the available history; rerun with an independently recorded --root-activity-cutoff to enforce the post-ceremony boundary.",
+      evidence,
+    );
+    return;
+  }
+  add(
+    "aws.audit.root-activity",
+    "pass",
+    args.rootActivityCutoff
+      ? "No CloudTrail root activity was recorded at or after the approved cutoff."
+      : "No root activity was found in the available CloudTrail event history.",
+    evidence,
   );
 }
 
@@ -636,15 +853,64 @@ function readDirectJson(file, label) {
 }
 
 function safeProcessEnvironment() {
-  return {
+  const environment = {
     ...process.env,
+    AWS_CLI_AUTO_PROMPT: "off",
+    AWS_IGNORE_CONFIGURED_ENDPOINT_URLS: "true",
+    AWS_PAGER: "",
     NO_COLOR: "1",
     PAGER: "cat",
   };
+  for (const key of Object.keys(environment)) {
+    if (key === "AWS_ENDPOINT_URL" || key.startsWith("AWS_ENDPOINT_URL_")) {
+      delete environment[key];
+    }
+  }
+  return environment;
 }
 
-function add(id, status, message) {
-  checks.push({ id, status, message });
+function runAwsJson(commandArgs) {
+  const exactRegion =
+    /^[a-z]{2}(?:-gov)?-[a-z]+-\d$/.test(
+      onboarding?.managementAccessRegion ?? "",
+    ) && !commandArgs.includes("--region")
+      ? ["--region", onboarding.managementAccessRegion]
+      : [];
+  const result = spawnSync(
+    "aws",
+    [...commandArgs, ...exactRegion, "--output", "json", "--no-cli-pager"],
+    {
+      encoding: "utf8",
+      env: safeProcessEnvironment(),
+      maxBuffer: 8 * 1024 * 1024,
+      timeout: 30_000,
+    },
+  );
+  if (result.status !== 0 || result.signal !== null || result.error) {
+    return { ok: false, value: null };
+  }
+  try {
+    const value = JSON.parse(result.stdout);
+    if (value === null || typeof value !== "object" || Array.isArray(value)) {
+      return { ok: false, value: null };
+    }
+    return { ok: true, value };
+  } catch {
+    return { ok: false, value: null };
+  }
+}
+
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function add(id, status, message, evidence) {
+  checks.push({
+    id,
+    status,
+    message,
+    ...(evidence === undefined ? {} : { evidence }),
+  });
 }
 
 function printReport(report) {
@@ -670,12 +936,13 @@ function printReport(report) {
 
 function parseArgs(values) {
   const parsed = {};
-  const valueArgs = new Set(["root", "config"]);
+  const valueArgs = new Set(["root", "config", "root-activity-cutoff"]);
   const flagArgs = new Set([
     "help",
     "json",
     "strict",
     "check-aws-session",
+    "check-aws-account-audit",
     "check-pulumi-login",
   ]);
   for (let index = 0; index < values.length; index += 1) {
@@ -683,16 +950,45 @@ function parseArgs(values) {
     if (!raw.startsWith("--")) throw new Error(`Invalid argument '${raw}'.`);
     const name = raw.slice(2);
     if (flagArgs.has(name)) {
-      parsed[toCamelCase(name)] = true;
+      const key = toCamelCase(name);
+      if (Object.hasOwn(parsed, key)) {
+        throw new Error(`Duplicate argument '--${name}'.`);
+      }
+      parsed[key] = true;
       continue;
     }
     if (!valueArgs.has(name)) throw new Error(`Unknown argument '--${name}'.`);
+    const key = toCamelCase(name);
+    if (Object.hasOwn(parsed, key)) {
+      throw new Error(`Duplicate argument '--${name}'.`);
+    }
     const value = values[index + 1];
     if (!value || value.startsWith("--")) {
       throw new Error(`--${name} requires a value.`);
     }
-    parsed[toCamelCase(name)] = value;
+    parsed[key] = value;
     index += 1;
+  }
+  if (parsed.rootActivityCutoff !== undefined) {
+    if (parsed.checkAwsAccountAudit !== true) {
+      throw new Error(
+        "--root-activity-cutoff requires --check-aws-account-audit.",
+      );
+    }
+    const cutoff = parsed.rootActivityCutoff;
+    const timestamp = Date.parse(cutoff);
+    const now = Date.now();
+    if (
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(cutoff) ||
+      !Number.isFinite(timestamp) ||
+      new Date(timestamp).toISOString().replace(".000Z", "Z") !== cutoff ||
+      timestamp > now ||
+      timestamp < now - 89 * 24 * 60 * 60 * 1000
+    ) {
+      throw new Error(
+        "--root-activity-cutoff must be a canonical UTC second within the available 89-day audit window.",
+      );
+    }
   }
   return parsed;
 }
@@ -711,9 +1007,12 @@ Options:
   --config <path>            Onboarding JSON. Default: onboarding.local.json.
   --json                     Emit a credential-free JSON report.
   --check-aws-session        Call only STS GetCallerIdentity and reject root/IAM users.
+  --check-aws-account-audit  Read root posture, contacts, and CloudTrail through the exact preview role.
+  --root-activity-cutoff <t> Fail on root events at/after a canonical UTC second (requires account audit).
   --check-pulumi-login       Check the selected Pulumi backend identity.
   --strict                   Require real stack config, Pulumi, AWS session, and backend login.
   --help                     Show this help.
 
-The doctor never writes files and never performs AWS or Pulumi mutations.`);
+The doctor never writes files or changes AWS/Pulumi configuration. Account-audit
+mode performs only explicitly bounded read-only AWS API calls.`);
 }

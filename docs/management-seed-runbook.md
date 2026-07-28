@@ -791,6 +791,35 @@ foundation. If either target role already has any inline policy, or any role,
 boundary, trust, tag, path, session duration, or boundary version differs,
 stop and audit it instead of weakening the attestation or overwriting state.
 
+After the provisioner is retired and the exact preview source/target role chain
+works, run the live account-audit doctor before any Organizations preview. Use
+the independently witnessed canonical UTC second at which the root ceremony
+ended:
+
+```sh
+npm run validate:aws-account -- \
+  --root-activity-cutoff '<ROOT_CEREMONY_CUTOFF_UTC>' \
+  --json
+```
+
+The command accepts only the exact management preview assumed role and makes
+bounded read-only calls for `iam:GetAccountSummary`,
+`account:GetContactInformation`, all three `account:GetAlternateContact`
+records, enabled-Region enumeration, and `cloudtrail:LookupEvents`. Its report
+contains only redacted audit evidence—booleans, counts, the supplied cutoff, and
+fixed audit messages—and never emits contact fields, raw events, tokens, or
+credentials. Missing MFA, any root access key, incomplete contacts, truncated
+or malformed responses, or any root event at or after the cutoff fails closed.
+Root-email delivery and the presence of multiple separately held root MFA
+devices remain witnessed console checks because AWS does not expose complete
+API proof for them.
+
+The audit semantics follow AWS's documented
+[`GetAccountSummary`](https://docs.aws.amazon.com/IAM/latest/APIReference/API_GetAccountSummary.html),
+[alternate-contact](https://docs.aws.amazon.com/accounts/latest/reference/manage-acct-update-contact-alternate.html),
+and [regional 90-day CloudTrail event-history](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/view-cloudtrail-events.html)
+contracts.
+
 AWS recommends federation and temporary credentials for human access, while a
 permissions boundary limits a role's maximum permissions and does not grant
 permissions by itself. This is why each generated role has both an inline

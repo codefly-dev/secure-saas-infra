@@ -1,7 +1,7 @@
 # Pre-AWS Readiness TODO
 
 Status: active operator checklist  
-Last live-state verification: 2026-07-26
+Last live-state verification: 2026-07-28
 Scope: AWS Organizations management seed only
 
 This is the short, dependency-ordered checklist for returning to the first AWS
@@ -26,9 +26,11 @@ At the start of this checklist edit:
       workflow passed.
 - [x] Linux source CI has passed on the admitted workflow, including its
       `amd64` and `arm64` lanes.
-- [ ] The current exact commit has green CI. The `infra-ci` run for `739c2ef`
+- [ ] The current exact commit has green CI. The `infra-ci` run for `c5c08eb`
       ended in `startup_failure` with zero jobs because the free Actions budget
-      was exhausted; rerun after the allowance resets on 2026-08-01.
+      was exhausted. Because the public trust root will change the exact tree,
+      preserve the allowance and run final CI on that trust-root commit after
+      the allowance resets on 2026-08-01.
 - [x] Pulumi Cloud Individual is selected at
       `toussaint-antoine-gmail-com/secure-saas-infra/management`; the stack is
       empty.
@@ -58,6 +60,14 @@ At the start of this checklist edit:
 - [x] The dedicated AWS account exists, ignored onboarding/backend configuration
       is complete, the deterministic access bundle verifies, and no long-lived
       AWS credential is present locally.
+- [x] The operator reports the root account has multiple separately held MFA
+      devices, no root access key, current recovery details, and configured
+      billing/security/operations alternate contacts. Do not repeat this setup;
+      retain the independent evidence below.
+- [x] The doctor has a redacted, fail-closed live AWS account-audit mode bound
+      to the exact preview role. It validates AWS-reported root MFA/access-key
+      posture, contact completeness, and post-cutoff root activity across all
+      enabled Regions without changing AWS configuration.
 - [ ] Root-account safety is independently evidenced: multiple separately held
       MFA devices, zero root access keys, current recovery email/phone, and
       billing/security/operations alternate contacts.
@@ -269,10 +279,11 @@ This is the next roadmap, not permission to execute it early.
 
 - [x] Create the dedicated AWS management account and retain its account ID plus
       globally unique member-account emails only in ignored local configuration.
-- [ ] Independently verify root is protected by multiple separately held
-      hardware MFA devices, has no root access key, and has current recovery
-      email/phone.
-- [ ] Configure and verify billing, security, and operations alternate contacts.
+- [x] The operator reports root is protected by multiple separately held MFA
+      devices, has no root access key, and has current recovery email/phone.
+      Independent machine/witness verification remains tracked below.
+- [x] The operator reports billing, security, and operations alternate contacts
+      are configured. The live doctor must still verify all three records.
 - [ ] Perform the separately reviewed, two-person, console-only initial SAML
       federation ceremony from the management-seed runbook.
 - [x] Create only ignored `onboarding.local.json` and
@@ -280,6 +291,11 @@ This is the next roadmap, not permission to execute it early.
       email, or confidential metadata is committed.
 - [x] Render and verify the deterministic access bundle without a governed AWS
       mutation.
+- [ ] After the reviewed preview policy is installed and the provisioner is
+      retired, run `npm run validate:aws-account` with the independently
+      recorded root-ceremony UTC cutoff. Require every machine-verifiable check
+      to pass and separately retain the witnessed multiple-MFA/root-email
+      evidence.
 - [ ] Re-run qualification from the authenticated native Linux kit, review the
       real-account payload on the independent signer, and return only its
       detached signature.

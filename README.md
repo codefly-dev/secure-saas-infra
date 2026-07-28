@@ -104,6 +104,11 @@ npm run bootstrap:verify-access-bundle -- \
   --config onboarding.local.json \
   --bundle artifacts/management-seed-access-bundle.json \
   --template artifacts/management-seed-access.template.json
+
+# Only after the reviewed preview-role policy exists and root is signed out:
+npm run validate:aws-account -- \
+  --root-activity-cutoff '<ROOT_CEREMONY_CUTOFF_UTC>' \
+  --json
 ```
 
 From an ordinary checkout, stop there and follow the exact
