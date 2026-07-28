@@ -621,4 +621,5 @@ export const dnsEnvironmentZoneIds = dns
   : undefined;
 export const argocdNamespace = argocd?.namespace.metadata.name;
 export const argocdReleaseName = argocd?.release.name;
+export const argocdBootstrapHandoff = argocd?.handoff;
 export const blueprintMigrationReport = platformBlueprintMigrationReport;
