@@ -1,44 +1,43 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { parseAllDocuments } from "yaml";
 
 // The single repository that Codefly's promotion driver publishes reviewed
 // application commits into and that owns Argo application reconciliation. Cloud
 // IaC ends at infrastructure facts and this repository is the only first-party
-// Argo source it may reference.
+// Argo source the platform tree may reference.
 const PROTECTED_PLATFORM_REPOSITORY =
   "https://github.com/codefly-dev/secure-saas-infra.git";
-const FIRST_PARTY_SOURCE_PREFIX = "https://github.com/codefly-dev/";
+const FIRST_PARTY_SOURCE_PATTERN =
+  /https:\/\/github\.com\/codefly-dev\/[A-Za-z0-9._/-]+/g;
 
 const HANDOFF_CONTRACT =
   "contracts/aws-database-infrastructure-handoff-v1alpha1.json";
-const APPPROJECTS = "gitops/bootstrap/argocd/base/projects.appproject.yaml";
+const PLATFORM_TREE = "gitops";
 const PROMOTION_DRIVER = "scripts/verify-review-promotion.mjs";
 const PROMOTION_WORKFLOW = ".github/workflows/review-promotion.yml";
 const QUALIFICATION_ENTRYPOINT = "scripts/credential-free-qualification";
 const SEED_SCOPE = "security/management-seed-qualification-scope.json";
 
-// Argo application-reconciliation and application-source payload markers. The
-// handoff carries infrastructure admission manifests (namespaces, service
-// accounts, network/node policy) but never an application source binding,
-// revision, or container image.
+// Argo application-reconciliation objects and application source-binding keys.
+// The handoff carries infrastructure admission manifests (namespaces, service
+// accounts, network/node policy) but never an Argo Application or an
+// application source binding/revision.
 const APPLICATION_PAYLOAD_KINDS = new Set(["Application", "AppProject"]);
-const APPLICATION_PAYLOAD_KEYS = new Set([
-  "repoURL",
-  "targetRevision",
-  "image",
-  "images",
-  "chart",
-]);
+const APPLICATION_PAYLOAD_KEYS = new Set(["repoURL", "targetRevision"]);
+
+// Publishing application Git commits or Argo Applications is the promotion
+// driver's responsibility; no cloud-IaC command or governed script may do it.
+const APPLICATION_PUBLICATION_PATTERN =
+  /argocd\s+app\s+(?:create|set|sync)|git\s+push|git\s+commit/;
 
 export function validateOwnershipBoundary(root = process.cwd()) {
   return {
     handoff: assertHandoffIsInfrastructureOnly(readHandoff(root)),
     platformRepository: assertProtectedPlatformRepositoryIsSoleFirstPartySource(
-      collectSourceRepositories(root),
+      collectFirstPartyRepositoryReferences(root),
     ),
     promotion: assertApplicationPublicationDelegated(root),
     paths: assertCloudIacDoesNotOwnPlatformTree(readSeedScope(root)),
@@ -46,7 +45,7 @@ export function validateOwnershipBoundary(root = process.cwd()) {
   };
 }
 
-export function assertHandoffIsInfrastructureOnly(handoff) {
+function assertHandoffIsInfrastructureOnly(handoff) {
   if (handoff.owner !== "external-iac") {
     deny("cloud IaC handoff must declare owner 'external-iac'");
   }
@@ -60,26 +59,23 @@ export function assertHandoffIsInfrastructureOnly(handoff) {
   return { owner: handoff.owner, applicationMutationAllowed: false };
 }
 
-export function assertProtectedPlatformRepositoryIsSoleFirstPartySource(
-  repositories,
-) {
-  const firstParty = repositories.filter((repository) =>
-    repository.startsWith(FIRST_PARTY_SOURCE_PREFIX),
-  );
-  for (const repository of firstParty) {
-    if (repository !== PROTECTED_PLATFORM_REPOSITORY) {
+function assertProtectedPlatformRepositoryIsSoleFirstPartySource(references) {
+  for (const reference of references) {
+    if (reference !== PROTECTED_PLATFORM_REPOSITORY) {
       deny(
-        `plugin-owned repository source binding '${repository}' is not the protected platform repository`,
+        `plugin-owned repository source binding '${reference}' is not the protected platform repository`,
       );
     }
   }
-  if (!firstParty.includes(PROTECTED_PLATFORM_REPOSITORY)) {
-    deny("the protected platform repository must own the first-party Argo source");
+  if (!references.includes(PROTECTED_PLATFORM_REPOSITORY)) {
+    deny(
+      "the protected platform repository must own the first-party Argo source",
+    );
   }
   return { protectedPlatformRepository: PROTECTED_PLATFORM_REPOSITORY };
 }
 
-export function assertApplicationPublicationDelegated(root) {
+function assertApplicationPublicationDelegated(root) {
   if (!existsSync(join(root, PROMOTION_DRIVER))) {
     deny("the promotion driver entrypoint is missing");
   }
@@ -89,14 +85,24 @@ export function assertApplicationPublicationDelegated(root) {
   }
   const scripts = JSON.parse(readText(root, "package.json")).scripts ?? {};
   for (const [name, body] of Object.entries(scripts)) {
-    if (/argocd\s+app\s+create|git\s+push|git\s+commit/.test(body)) {
-      deny(`cloud IaC script '${name}' must not publish application commits`);
+    if (APPLICATION_PUBLICATION_PATTERN.test(body)) {
+      deny(`cloud IaC command '${name}' must not publish application commits`);
+    }
+  }
+  // Beyond package.json command bodies, a publish can hide inside an invoked
+  // governed script. Contiguous shell-form invocations are matched here;
+  // programmatic array-argument git calls in .mjs are indistinguishable from
+  // Array.push by text and are instead constrained by the read-only
+  // scripts/safe-git.mjs wrapper that governed scripts route git through.
+  for (const file of governedScripts(root)) {
+    if (APPLICATION_PUBLICATION_PATTERN.test(readText(root, file))) {
+      deny(`cloud IaC script '${file}' must not publish application commits`);
     }
   }
   return { promotionDriver: PROMOTION_DRIVER };
 }
 
-export function assertCloudIacDoesNotOwnPlatformTree(seedScope) {
+function assertCloudIacDoesNotOwnPlatformTree(seedScope) {
   const owned = [
     ...seedScope.sourceFiles,
     ...seedScope.tests.included,
@@ -112,7 +118,7 @@ export function assertCloudIacDoesNotOwnPlatformTree(seedScope) {
   return { cloudIacOwnsPlatformTree: false };
 }
 
-export function assertQualificationStripsProviderCredentials(root) {
+function assertQualificationStripsProviderCredentials(root) {
   const source = readText(root, QUALIFICATION_ENTRYPOINT);
   const stripped = [
     "AWS_ACCESS_KEY_ID",
@@ -149,17 +155,28 @@ function scanForApplicationPayload(value, location) {
   }
 }
 
-function collectSourceRepositories(root) {
-  const documents = parseAllDocuments(readText(root, APPPROJECTS))
-    .map((document) => document.toJSON())
-    .filter(Boolean);
-  const repositories = new Set();
-  for (const document of documents) {
-    for (const repository of document.spec?.sourceRepos ?? []) {
-      repositories.add(repository);
-    }
+// Every first-party repository reference anywhere Argo reconciles from — base
+// AppProjects, environment/role overlay patches, and Application sources — not
+// just the static base project file.
+function collectFirstPartyRepositoryReferences(root) {
+  const references = new Set();
+  for (const file of listYamlFiles(join(root, PLATFORM_TREE))) {
+    const matches = readFileSync(file, "utf8").match(FIRST_PARTY_SOURCE_PATTERN);
+    for (const match of matches ?? []) references.add(match);
   }
-  return [...repositories];
+  return [...references];
+}
+
+function listYamlFiles(directory) {
+  return readdirSync(directory, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".yaml"))
+    .map((entry) => path.join(entry.parentPath, entry.name));
+}
+
+function governedScripts(root) {
+  return readSeedScope(root).sourceFiles.filter((entry) =>
+    /^scripts\//.test(entry),
+  );
 }
 
 function readHandoff(root) {
@@ -182,7 +199,10 @@ function deny(message) {
   throw new Error(`OWNERSHIP_BOUNDARY_DENIED: ${message}`);
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+if (
+  process.argv[1] &&
+  fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
+) {
   try {
     const root = argument("--root") ?? process.cwd();
     validateOwnershipBoundary(root);

@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
   cpSync,
-  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -13,22 +12,22 @@ import os from "node:os";
 import path from "node:path";
 
 const script = "scripts/validate-ownership-boundary.mjs";
-const stagedFiles = [
-  "contracts/aws-database-infrastructure-handoff-v1alpha1.json",
-  "gitops/bootstrap/argocd/base/projects.appproject.yaml",
-  "scripts/verify-review-promotion.mjs",
-  "scripts/credential-free-qualification",
-  ".github/workflows/review-promotion.yml",
+// The validator reads the whole platform tree and the governed cloud-IaC
+// script inventory, so stage the directories it walks rather than a fixed file
+// list.
+const stagedPaths = [
+  "contracts",
+  "gitops",
+  "scripts",
+  ".github",
+  "security",
   "package.json",
-  "security/management-seed-qualification-scope.json",
 ];
 
 function stage(): string {
   const root = mkdtempSync(path.join(os.tmpdir(), "ownership-boundary-"));
-  for (const relative of stagedFiles) {
-    const destination = path.join(root, relative);
-    mkdirSync(path.dirname(destination), { recursive: true });
-    cpSync(relative, destination);
+  for (const relative of stagedPaths) {
+    cpSync(relative, path.join(root, relative), { recursive: true });
   }
   return root;
 }
@@ -110,7 +109,32 @@ test("a plugin-owned first-party Argo source binding is rejected", () => {
   }
 });
 
-test("a cloud-IaC script that publishes application commits is rejected", () => {
+test("a plugin-owned Application repoURL in an overlay is rejected", () => {
+  const root = stage();
+  try {
+    // A source binding that never touches the base AppProject file: an
+    // Application manifest under an environment overlay.
+    writeFileSync(
+      path.join(root, "gitops/overlays/dev/platform/tenant.application.yaml"),
+      [
+        "apiVersion: argoproj.io/v1alpha1",
+        "kind: Application",
+        "spec:",
+        "  source:",
+        "    repoURL: https://github.com/codefly-dev/tenant-plugin.git",
+        "",
+      ].join("\n"),
+    );
+    const result = run(root);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /plugin-owned repository source binding/);
+    assert.match(result.stderr, /tenant-plugin\.git/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a cloud-IaC command that publishes application commits is rejected", () => {
   const root = stage();
   try {
     editJson(root, "package.json", (manifest) => {
@@ -118,7 +142,28 @@ test("a cloud-IaC script that publishes application commits is rejected", () => 
     });
     const result = run(root);
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /must not publish application commits/);
+    assert.match(result.stderr, /command 'publish:apps' must not publish/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a governed cloud-IaC script that publishes application commits is rejected", () => {
+  const root = stage();
+  try {
+    // A publish hidden inside an invoked governed script rather than a
+    // package.json command body.
+    const file = path.join(root, "scripts/credential-free-qualification");
+    writeFileSync(
+      file,
+      `${readFileSync(file, "utf8")}\ngit push origin main\n`,
+    );
+    const result = run(root);
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.stderr,
+      /script 'scripts\/credential-free-qualification' must not publish/,
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
