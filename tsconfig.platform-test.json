@@ -5,5 +5,9 @@
     "outDir": "dist-platform-test",
     "noEmit": false
   },
-  "include": ["tests/argocd.test.ts", "tests/gitops.test.ts"]
+  "include": [
+    "tests/argocd.test.ts",
+    "tests/gitops.test.ts",
+    "tests/ownershipBoundary.test.ts"
+  ]
 }
