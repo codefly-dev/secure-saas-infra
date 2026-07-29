@@ -25,6 +25,7 @@ import {
   WardenMindNetworkDomainId,
   wardenMindNetworkDomainIds,
 } from "./core";
+import { ARGOCD_CHART_VERSION } from "./argocdValues";
 
 export type DeploymentMode = "organization" | "workload" | "all" | "disabled";
 export type StackKind =
@@ -428,9 +429,11 @@ export interface ArgocdConfig {
   clusterAccessRoleArn: string;
   argocdHostname: string;
   chartVersion: string;
-  bootstrapRepository: string;
-  bootstrapRevision: string;
-  bootstrapDirectory: string;
+  bootstrap: {
+    repository: string;
+    revision: string;
+    entrypoint: string;
+  };
   oidcIssuer: string;
   oidcClientId: string;
   oidcClientSecretRef: string;
@@ -1375,23 +1378,23 @@ export function validateArgocdConfig(config: ArgocdConfig) {
     );
   }
 
-  if (!/^\d+\.\d+\.\d+$/.test(config.chartVersion)) {
+  if (config.chartVersion !== ARGOCD_CHART_VERSION) {
     throw new Error(
-      "argocd.chartVersion must pin a fully-qualified semver (e.g. 10.2.1).",
+      `argocd.chartVersion must equal the qualified release '${ARGOCD_CHART_VERSION}'.`,
     );
   }
 
   if (
-    config.bootstrapRepository !==
+    config.bootstrap.repository !==
     "https://github.com/codefly-dev/secure-saas-infra.git"
   ) {
     throw new Error(
-      "argocd.bootstrapRepository must select the exact credential-free GitOps repository.",
+      "argocd.bootstrap.repository must select the exact credential-free GitOps repository.",
     );
   }
-  if (!/^[a-f0-9]{40}$/.test(config.bootstrapRevision)) {
+  if (!/^[a-f0-9]{40}$/.test(config.bootstrap.revision)) {
     throw new Error(
-      "argocd.bootstrapRevision must pin one full Git commit SHA.",
+      "argocd.bootstrap.revision must pin one full Git commit SHA.",
     );
   }
   if (!["platform", "execution"].includes(config.clusterRole)) {
@@ -1401,7 +1404,7 @@ export function validateArgocdConfig(config: ArgocdConfig) {
   }
   const bootstrapMatch =
     /^gitops\/bootstrap\/argocd\/overlays\/(dev|staging|production)\/(platform|execution)$/.exec(
-      config.bootstrapDirectory,
+      config.bootstrap.entrypoint,
     );
   const clusterEnvironment =
     bootstrapMatch?.[1] === "production" ? "prod" : bootstrapMatch?.[1];
@@ -1455,10 +1458,15 @@ export function argocdBootstrapHandoff(config: ArgocdConfig) {
   return {
     clusterRole: config.clusterRole,
     clusterName: config.clusterName,
-    repository: config.bootstrapRepository,
-    revision: config.bootstrapRevision,
-    bootstrapEntrypoint: config.bootstrapDirectory,
+    repository: config.bootstrap.repository,
+    revision: config.bootstrap.revision,
+    bootstrapEntrypoint: config.bootstrap.entrypoint,
   };
+}
+
+export function argocdBootstrapDirectory(config: ArgocdConfig) {
+  const repository = config.bootstrap.repository.replace(/\.git$/, "");
+  return `${repository}//${config.bootstrap.entrypoint}?ref=${config.bootstrap.revision}`;
 }
 
 export function validateConfigValues(
