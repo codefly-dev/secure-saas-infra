@@ -1,6 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
 import {
-  argocdConfig,
   awsAllowedAccountIds,
   awsOrganizationId,
   awsRegion,
@@ -51,7 +50,6 @@ import { createDetectionStack } from "./stacks/detectionStack";
 import { createE2bByocStack } from "./stacks/e2bByocStack";
 import { createGithubGovernanceStack } from "./stacks/githubGovernanceStack";
 import { createGithubOidcStack } from "./stacks/githubOidcStack";
-import { createArgocdStack } from "./stacks/argocdStack";
 import { createDnsStack } from "./stacks/dnsStack";
 import { createIdentityStack } from "./stacks/identityStack";
 import { createIngressStack } from "./stacks/ingressStack";
@@ -226,10 +224,6 @@ const ingress =
     : undefined;
 const dns =
   stackKind === "dns" && dnsConfig ? createDnsStack(dnsConfig) : undefined;
-const argocd =
-  stackKind === "argocd" && argocdConfig
-    ? createArgocdStack(argocdConfig)
-    : undefined;
 
 const network = networkHub?.network ?? workload?.network;
 
@@ -619,7 +613,4 @@ export const dnsEnvironmentZoneIds = dns
       ),
     )
   : undefined;
-export const argocdNamespace = argocd?.namespace.metadata.name;
-export const argocdReleaseName = argocd?.release.name;
-export const argocdBootstrapHandoff = argocd?.handoff;
 export const blueprintMigrationReport = platformBlueprintMigrationReport;

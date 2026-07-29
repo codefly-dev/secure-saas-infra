@@ -52,7 +52,8 @@ AWS Budgets is the _floor_, not the _ceiling_. The agent broker enforces:
 - per-tenant token budget (`agenticAi.perTenantTokenBudget`);
 - per-tenant inference timeout (`agenticAi.perTenantInferenceTimeoutSeconds`);
 - per-tenant ResourceQuota in Kubernetes (extend
-  `gitops/base/quotas/execution-limits.yaml` to include per-tenant LimitRange
+  [`gitops/base/quotas/execution-limits.yaml`](https://github.com/codefly-dev/secure-saas-platform/blob/v0.1.0/gitops/base/quotas/execution-limits.yaml)
+  in the platform repository to include per-tenant LimitRange
   objects when tenant-aware namespaces ship).
 
 ## Tag policy

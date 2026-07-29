@@ -6,7 +6,9 @@ driver.
 
 ## Falco
 
-`gitops/bootstrap/argocd/base/apps/falco.application.yaml` installs the Falco
+The platform repository's
+[`falco.application.yaml`](https://github.com/codefly-dev/secure-saas-platform/blob/v0.1.0/gitops/bootstrap/argocd/base/apps/falco.application.yaml)
+installs the Falco
 chart with:
 
 - `driver.kind: modern_ebpf` so no kernel modules are loaded.
@@ -40,7 +42,9 @@ ConfigMap):
 
 ## Relationship to other controls
 
-- Kyverno (`gitops/base/kyverno`) enforces Pod Security `restricted`,
+- Kyverno in the
+  [`gitops/base/kyverno`](https://github.com/codefly-dev/secure-saas-platform/tree/v0.1.0/gitops/base/kyverno)
+  platform release enforces Pod Security `restricted`,
   RuntimeClass requirements, image signatures, and audit metadata at admission.
   Falco watches _runtime_ — a pod that passes admission but then misbehaves.
 - VPC Flow Logs and Network Firewall ALERT logs cover network egress; Falco

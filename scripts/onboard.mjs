@@ -62,18 +62,6 @@ planTransformedFile(".github/CODEOWNERS", ".github/CODEOWNERS", {
   onlyWhenPlaceholdersRemain: true,
 });
 
-for (const file of [
-  "gitops/bootstrap/argocd/base/projects.appproject.yaml",
-  "gitops/bootstrap/argocd/base/platform-cluster-baseline.application.yaml",
-  "gitops/bootstrap/argocd/base/execution-cluster-baseline.application.yaml",
-  "gitops/base/kyverno/verify-signed-provenance.yaml",
-]) {
-  planTransformedFile(file, file, {
-    overwriteExisting: true,
-    onlyWhenPlaceholdersRemain: true,
-  });
-}
-
 planGeneratedFile("ONBOARDING.generated.md", renderSummary());
 
 if (operations.length === 0) {

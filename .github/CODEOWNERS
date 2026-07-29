@@ -1,9 +1,8 @@
-# Infrastructure, GitOps, and security docs require platform/security review.
+# Infrastructure and security docs require platform/security review.
 * @codefly-dev/platform-security
 
 /policy/ @codefly-dev/platform-security
 /src/ @codefly-dev/platform-security
-/gitops/ @codefly-dev/platform-security
 /docs/mind-server-security.md @codefly-dev/platform-security
 /docs/e2b-byoc.md @codefly-dev/platform-security
 /docs/incident-response.md @codefly-dev/platform-security

@@ -73,7 +73,6 @@
     "quarantined": [
       "tests/adapterContracts.test.ts",
       "tests/agenticAi.test.ts",
-      "tests/argocd.test.ts",
       "tests/awsAdapter.test.ts",
       "tests/awsBootstrapAccess.test.ts",
       "tests/awsDataAdapter.test.ts",
@@ -101,7 +100,6 @@
       "tests/database.test.ts",
       "tests/databaseAccess.test.ts",
       "tests/detection.test.ts",
-      "tests/disposableClusterReportVerifier.test.ts",
       "tests/dns.test.ts",
       "tests/e2bByoc.test.ts",
       "tests/eks.test.ts",
@@ -109,7 +107,6 @@
       "tests/environments.test.ts",
       "tests/githubGovernance.test.ts",
       "tests/githubOidc.test.ts",
-      "tests/gitops.test.ts",
       "tests/identity.test.ts",
       "tests/infrastructureController.test.ts",
       "tests/infrastructureControllerProtocol.test.ts",
@@ -248,6 +245,10 @@
         "schema": "managed-postgres-v1alpha2.schema.json"
       },
       {
+        "contract": "platform-iac-handoff-v1.json",
+        "schema": "platform-iac-handoff-v1.schema.json"
+      },
+      {
         "contract": "postgres-access-observation-v1alpha1.json",
         "schema": "postgres-access-observation-v1alpha1.schema.json"
       },
@@ -261,7 +262,6 @@
       }
     ],
     "quarantinedSchemaOnly": [
-      "disposable-cluster-validation-v1.schema.json",
       "resource-broker-state-v1alpha1.schema.json",
       "resource-claim-v1alpha1.schema.json"
     ]
