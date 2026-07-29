@@ -66,9 +66,11 @@ evidence; they cannot emit or consume production local-gate evidence:
 4. dependency security audit; and
 5. SPDX SBOM generation.
 
-They do not invoke Docker, Helm, kubectl, K3s, or GitOps rendering. The root
-package exposes no platform validation command and contains no Kubernetes or
-Helm dependency.
+They do not invoke Docker, Helm, kubectl, K3s, or GitOps rendering. The
+separate `npm run validate:handoff` gate compiles the quarantined handoff
+schema, verifies its signed fixture, and exercises publication from a Pulumi
+stack-output document without admitting any platform input to the management
+seed. The root package contains no Kubernetes or Helm dependency.
 
 ## Platform handoff
 
@@ -76,8 +78,12 @@ This repository owns the
 `platform-iac-handoff-v1.schema.json` contract and its credential-free cloud
 inputs. The contract binds the cluster role, endpoint and CA reference,
 bootstrap identity reference, cloud resource IDs, and policy/evidence digests.
-Its signed example remains quarantined from the management-seed release
-inventory.
+`npm run handoff:publish -- --stack-outputs <file> --private-key <file>
+--output <file>` materializes that document from the
+`platformIacHandoff` Pulumi stack output, replaces the inline cluster CA with
+its content digest, and signs the canonical spec with an external ECDSA P-256
+key. Its signed example and qualification test remain quarantined from the
+management-seed release inventory.
 
 The production GitOps tree, Argo CD activation, disposable-cluster validation,
 promotion evidence, CODEOWNERS, and release controls live in

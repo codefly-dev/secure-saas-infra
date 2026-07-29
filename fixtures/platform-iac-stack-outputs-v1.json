@@ -1,13 +1,12 @@
 {
-  "apiVersion": "infrastructure.deus.dev/platform-iac-handoff/v1",
-  "kind": "PlatformIacHandoff",
-  "specDigest": "6307bbacf23444549cca40e3985ac5eecd8fd08f7eb4778b4f9bbb6c20c23063",
-  "spec": {
+  "platformIacHandoff": {
     "cluster": {
       "role": "platform",
       "name": "platform-prod",
       "endpoint": "https://0123456789ABCDEF.gr7.us-east-1.eks.amazonaws.com",
-      "certificateAuthorityReference": "sha256:828dcd0599c636ae3970d6d0359172338434d46895255af534bc7615aef78962"
+      "certificateAuthority": {
+        "data": "cXVhbGlmaWNhdGlvbi1wbGF0Zm9ybS1jbHVzdGVyLWNh"
+      }
     },
     "bootstrapIdentity": {
       "principalArn": "arn:aws:iam::888877776666:role/InfrastructureApplyProd-Workload",
@@ -38,11 +37,5 @@
       "iacPlan": "3333333333333333333333333333333333333333333333333333333333333333",
       "iacRelease": "4444444444444444444444444444444444444444444444444444444444444444"
     }
-  },
-  "signature": {
-    "algorithm": "ecdsa-p256-sha256",
-    "keyId": "36d07e5da7c486ceb7d74ea8be3ef47f5d1ba73144a5ffcefa0daddf19b81703",
-    "publicKeyReference": "key-id://sha256/36d07e5da7c486ceb7d74ea8be3ef47f5d1ba73144a5ffcefa0daddf19b81703",
-    "value": "MEQCIH4ZkwKr2gDx/1lW1IsmOAcujUG7DBKwbr+RUk8PxQjZAiBFs8wKSmMW1mhjZP9eyWtmeRA0P4GPW6XBePWjgkezEg=="
   }
 }
