@@ -5,5 +5,8 @@
     "outDir": "dist-platform-handoff-test",
     "noEmit": false
   },
-  "include": ["tests/platformIacHandoff.test.ts"]
+  "include": [
+    "tests/ownershipBoundary.test.ts",
+    "tests/platformIacHandoff.test.ts"
+  ]
 }

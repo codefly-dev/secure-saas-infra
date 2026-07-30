@@ -50,6 +50,39 @@ route, Argo CD Application, Helm release, or Kubernetes Gateway/Ingress object
 is platform desired state. The handoff between them is an explicit versioned
 contract, not shared ownership of the same resource.
 
+## Application-delivery authorities
+
+Beyond cloud IaC, three separate authorities own application delivery. Cloud
+IaC ends at infrastructure facts and a credential-free handoff; it never
+invokes a service/module plugin, manufactures an application manifest,
+publishes an application Git commit, or owns Argo application reconciliation.
+
+| Authority                           | Owns                                                                                    | Credentials it may hold |
+| ----------------------------------- | --------------------------------------------------------------------------------------- | ----------------------- |
+| Cloud IaC (this repository's seed)  | AWS/Pulumi provisioning and a signed, credential-free, application-payload-free handoff | AWS, Pulumi             |
+| Manifest producer (Codefly plugins) | Rendering application manifests from service/module plugins                             | none                    |
+| Promotion driver (Codefly)          | Publishing reviewed application commits into the protected platform repository          | none                    |
+| Protected platform repository       | Argo application reconciliation and repository/cluster credentials                      | Git, Argo, cluster      |
+
+The paths are disjoint. Cloud IaC's governed source, test, and contract
+inventory owns none of the platform tree (`gitops/`), and the platform tree
+carries no AWS/Pulumi program. The manifest producer renders without AWS, Git,
+Argo, or cluster credentials, so a compromised plugin cannot reach the cloud
+control plane or the platform repository. The promotion driver holds no
+AWS/Pulumi credentials, so the repository publisher cannot provision or mutate
+cloud infrastructure. Because credential-free qualification refuses to run when
+any AWS, Pulumi, or Git credential is present, plugin rendering and application
+publication are structurally denied provider access.
+
+The database-infrastructure handoff carries infrastructure identities and
+admission manifests only: `owner: external-iac`,
+`applicationMutationAllowed: false`, and no Argo `Application`/`AppProject`,
+application source binding, revision, or container image. The signed platform
+handoff names `codefly-dev/secure-saas-platform` as the only first-party Argo
+source. Any other `codefly-dev` repository binding is rejected.
+`scripts/validate-ownership-boundary.mjs` proves the cloud repository contains
+no platform tree and that each authority owns a disjoint responsibility.
+
 ## Governed validation
 
 `npm run verify:all`, `npm run gates:local`, and bootstrap qualification run

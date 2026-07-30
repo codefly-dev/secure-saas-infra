@@ -117,6 +117,7 @@
       "tests/network.test.ts",
       "tests/networkRouting.test.ts",
       "tests/onboard.test.ts",
+      "tests/ownershipBoundary.test.ts",
       "tests/platformIacHandoff.test.ts",
       "tests/policy.test.ts",
       "tests/policyFixtures.test.ts",
