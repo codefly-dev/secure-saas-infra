@@ -29,7 +29,9 @@ default-deny NetworkPolicy, and Istio ambient mode.
 
 ## Kyverno policy
 
-`gitops/base/kyverno/require-agent-audit.yaml` enforces:
+The platform repository's
+[`require-agent-audit.yaml`](https://github.com/codefly-dev/secure-saas-platform/blob/v0.1.0/gitops/base/kyverno/require-agent-audit.yaml)
+enforces:
 
 - pods in `agent-broker` and `agent-egress` carry tenant/principal/turn
   metadata labels and prompt/tool audit annotations;

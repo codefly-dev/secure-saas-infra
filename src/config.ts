@@ -25,7 +25,6 @@ import {
   WardenMindNetworkDomainId,
   wardenMindNetworkDomainIds,
 } from "./core";
-import { ARGOCD_CHART_VERSION } from "./argocdValues";
 
 export type DeploymentMode = "organization" | "workload" | "all" | "disabled";
 export type StackKind =
@@ -51,7 +50,6 @@ export type StackKind =
   | "waf"
   | "ingress"
   | "dns"
-  | "argocd"
   | "disabled";
 export type SpokeKind = "platform" | "execution" | "data" | "shared";
 export interface PlatformBlueprintPresetConfig {
@@ -420,24 +418,6 @@ export interface DnsConfig {
   createRootZone: boolean;
   enableQueryLogging: boolean;
   environmentSubdomains: string[];
-}
-
-export interface ArgocdConfig {
-  clusterStackRef: string;
-  clusterName: string;
-  clusterRole: "platform" | "execution";
-  clusterAccessRoleArn: string;
-  argocdHostname: string;
-  chartVersion: string;
-  bootstrap: {
-    repository: string;
-    revision: string;
-    entrypoint: string;
-  };
-  oidcIssuer: string;
-  oidcClientId: string;
-  oidcClientSecretRef: string;
-  oidcAdminGroup: string;
 }
 
 export interface IngressConfig {
@@ -887,8 +867,6 @@ export const ingressConfig = projectConfig.getObject<IngressConfig>("ingress");
 
 export const dnsConfig = projectConfig.getObject<DnsConfig>("dns");
 
-export const argocdConfig = projectConfig.getObject<ArgocdConfig>("argocd");
-
 export const agenticAiConfig =
   projectConfig.getObject<AgenticAiConfig>("agenticAi") ??
   ({
@@ -1157,15 +1135,6 @@ export function validateConfig() {
     }
     validateDnsConfig(dnsConfig);
   }
-
-  if (stackKind === "argocd") {
-    if (!argocdConfig) {
-      throw new Error(
-        "argocd stacks require secure-saas-infra:argocd configuration.",
-      );
-    }
-    validateArgocdConfig(argocdConfig);
-  }
 }
 
 function validateBlueprintAwsCompilation(blueprint: PlatformBlueprint) {
@@ -1344,129 +1313,6 @@ export function validateDnsConfig(config: DnsConfig) {
     }
     seen.add(env);
   }
-}
-
-export function validateArgocdConfig(config: ArgocdConfig) {
-  if (!config.clusterStackRef) {
-    throw new Error(
-      "argocd.clusterStackRef is required (Pulumi stack name for the cluster).",
-    );
-  }
-
-  if (!config.clusterName) {
-    throw new Error(
-      "argocd.clusterName must match a key in the cluster stack's eksClusters output.",
-    );
-  }
-
-  if (
-    !/^arn:aws(?:-[a-z]+)?:iam::\d{12}:role\/[A-Za-z0-9+=,.@_/-]+$/.test(
-      config.clusterAccessRoleArn,
-    ) ||
-    config.clusterAccessRoleArn.includes("*")
-  ) {
-    throw new Error(
-      "argocd.clusterAccessRoleArn must be one exact IAM role ARN authorized by an EKS access entry.",
-    );
-  }
-
-  if (
-    !/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$/i.test(config.argocdHostname)
-  ) {
-    throw new Error(
-      `argocd.argocdHostname '${config.argocdHostname}' is not a valid hostname.`,
-    );
-  }
-
-  if (config.chartVersion !== ARGOCD_CHART_VERSION) {
-    throw new Error(
-      `argocd.chartVersion must equal the qualified release '${ARGOCD_CHART_VERSION}'.`,
-    );
-  }
-
-  if (
-    config.bootstrap.repository !==
-    "https://github.com/codefly-dev/secure-saas-infra.git"
-  ) {
-    throw new Error(
-      "argocd.bootstrap.repository must select the exact credential-free GitOps repository.",
-    );
-  }
-  if (!/^[a-f0-9]{40}$/.test(config.bootstrap.revision)) {
-    throw new Error(
-      "argocd.bootstrap.revision must pin one full Git commit SHA.",
-    );
-  }
-  if (!["platform", "execution"].includes(config.clusterRole)) {
-    throw new Error(
-      "argocd.clusterRole must be exactly 'platform' or 'execution'.",
-    );
-  }
-  const bootstrapMatch =
-    /^gitops\/bootstrap\/argocd\/overlays\/(dev|staging|production)\/(platform|execution)$/.exec(
-      config.bootstrap.entrypoint,
-    );
-  const clusterEnvironment =
-    bootstrapMatch?.[1] === "production" ? "prod" : bootstrapMatch?.[1];
-  if (
-    !bootstrapMatch ||
-    bootstrapMatch[2] !== config.clusterRole ||
-    config.clusterName !== `${config.clusterRole}-${clusterEnvironment}`
-  ) {
-    throw new Error(
-      "argocd bootstrap handoff must bind one matching cluster role, cluster name, and environment/role entrypoint.",
-    );
-  }
-  let issuer: URL;
-  try {
-    issuer = new URL(config.oidcIssuer);
-  } catch {
-    throw new Error("argocd.oidcIssuer must be an exact HTTPS URL.");
-  }
-  if (
-    issuer.protocol !== "https:" ||
-    issuer.username ||
-    issuer.password ||
-    issuer.search ||
-    issuer.hash
-  ) {
-    throw new Error(
-      "argocd.oidcIssuer must be a credential-free exact HTTPS URL.",
-    );
-  }
-  if (
-    !config.oidcClientId ||
-    config.oidcClientId.length > 128 ||
-    !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(config.oidcClientId)
-  ) {
-    throw new Error("argocd.oidcClientId must be an exact OIDC client ID.");
-  }
-  if (!/^\$[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(config.oidcClientSecretRef)) {
-    throw new Error(
-      "argocd.oidcClientSecretRef must be an Argo secret-key reference, never a secret value.",
-    );
-  }
-  if (
-    !/^[A-Za-z0-9][A-Za-z0-9:_-]*$/.test(config.oidcAdminGroup) ||
-    config.oidcAdminGroup.includes("*")
-  ) {
-    throw new Error("argocd.oidcAdminGroup must be one exact OIDC group.");
-  }
-}
-
-export function argocdBootstrapHandoff(config: ArgocdConfig) {
-  return {
-    clusterRole: config.clusterRole,
-    clusterName: config.clusterName,
-    repository: config.bootstrap.repository,
-    revision: config.bootstrap.revision,
-    bootstrapEntrypoint: config.bootstrap.entrypoint,
-  };
-}
-
-export function argocdBootstrapDirectory(config: ArgocdConfig) {
-  const repository = config.bootstrap.repository.replace(/\.git$/, "");
-  return `${repository}//${config.bootstrap.entrypoint}?ref=${config.bootstrap.revision}`;
 }
 
 export function validateConfigValues(
@@ -1795,7 +1641,6 @@ export function validateStackKindValues(
     "waf",
     "ingress",
     "dns",
-    "argocd",
     "disabled",
   ];
 

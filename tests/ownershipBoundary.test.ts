@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
   cpSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -12,12 +13,8 @@ import os from "node:os";
 import path from "node:path";
 
 const script = "scripts/validate-ownership-boundary.mjs";
-// The validator reads the whole platform tree and the governed cloud-IaC
-// script inventory, so stage the directories it walks rather than a fixed file
-// list.
 const stagedPaths = [
   "contracts",
-  "gitops",
   "scripts",
   ".github",
   "security",
@@ -39,7 +36,11 @@ function run(root: string) {
   });
 }
 
-function editJson(root: string, relative: string, mutate: (value: any) => void) {
+function editJson(
+  root: string,
+  relative: string,
+  mutate: (value: any) => void,
+) {
   const file = path.join(root, relative);
   const value = JSON.parse(readFileSync(file, "utf8"));
   mutate(value);
@@ -92,15 +93,10 @@ test("a handoff that embeds an Argo Application payload is rejected", () => {
 test("a plugin-owned first-party Argo source binding is rejected", () => {
   const root = stage();
   try {
-    const file = path.join(
-      root,
-      "gitops/bootstrap/argocd/base/projects.appproject.yaml",
-    );
-    const poisoned = readFileSync(file, "utf8").replace(
-      "  sourceRepos:\n    - https://github.com/codefly-dev/secure-saas-infra.git",
-      "  sourceRepos:\n    - https://github.com/codefly-dev/tenant-plugin.git",
-    );
-    writeFileSync(file, poisoned);
+    editJson(root, "contracts/platform-iac-handoff-v1.json", (handoff) => {
+      handoff.spec.gitops.repository =
+        "https://github.com/codefly-dev/tenant-plugin.git";
+    });
     const result = run(root);
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /plugin-owned repository source binding/);
@@ -109,26 +105,18 @@ test("a plugin-owned first-party Argo source binding is rejected", () => {
   }
 });
 
-test("a plugin-owned Application repoURL in an overlay is rejected", () => {
+test("a local platform tree is rejected after extraction", () => {
   const root = stage();
   try {
-    // A source binding that never touches the base AppProject file: an
-    // Application manifest under an environment overlay.
+    const gitops = path.join(root, "gitops");
+    mkdirSync(gitops);
     writeFileSync(
-      path.join(root, "gitops/overlays/dev/platform/tenant.application.yaml"),
-      [
-        "apiVersion: argoproj.io/v1alpha1",
-        "kind: Application",
-        "spec:",
-        "  source:",
-        "    repoURL: https://github.com/codefly-dev/tenant-plugin.git",
-        "",
-      ].join("\n"),
+      path.join(gitops, "legacy-platform.application.yaml"),
+      "kind: Application\n",
     );
     const result = run(root);
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /plugin-owned repository source binding/);
-    assert.match(result.stderr, /tenant-plugin\.git/);
+    assert.match(result.stderr, /must not contain the extracted platform tree/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -176,7 +164,9 @@ test("a platform path inside the cloud-IaC inventory is rejected", () => {
       root,
       "security/management-seed-qualification-scope.json",
       (scope) => {
-        scope.sourceFiles.push("gitops/base/kyverno/workload-native-admission.yaml");
+        scope.sourceFiles.push(
+          "gitops/base/kyverno/workload-native-admission.yaml",
+        );
       },
     );
     const result = run(root);

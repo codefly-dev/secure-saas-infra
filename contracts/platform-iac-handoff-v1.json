@@ -1,0 +1,48 @@
+{
+  "apiVersion": "infrastructure.deus.dev/platform-iac-handoff/v1",
+  "kind": "PlatformIacHandoff",
+  "specDigest": "6307bbacf23444549cca40e3985ac5eecd8fd08f7eb4778b4f9bbb6c20c23063",
+  "spec": {
+    "cluster": {
+      "role": "platform",
+      "name": "platform-prod",
+      "endpoint": "https://0123456789ABCDEF.gr7.us-east-1.eks.amazonaws.com",
+      "certificateAuthorityReference": "sha256:828dcd0599c636ae3970d6d0359172338434d46895255af534bc7615aef78962"
+    },
+    "bootstrapIdentity": {
+      "principalArn": "arn:aws:iam::888877776666:role/InfrastructureApplyProd-Workload",
+      "accessEntryReference": "eks-access://platform-prod/argocd-bootstrap"
+    },
+    "cloudResources": {
+      "accountId": "888877776666",
+      "region": "us-east-1",
+      "clusterArn": "arn:aws:eks:us-east-1:888877776666:cluster/platform-prod",
+      "vpcId": "vpc-0123456789abcdef0",
+      "privateSubnetIds": [
+        "subnet-0123456789abcdef0",
+        "subnet-0fedcba9876543210"
+      ],
+      "clusterSecurityGroupId": "sg-0123456789abcdef0",
+      "secretsEncryptionKeyArn": "arn:aws:kms:us-east-1:888877776666:key/11111111-2222-3333-4444-555555555555"
+    },
+    "gitops": {
+      "repository": "https://github.com/codefly-dev/secure-saas-platform.git",
+      "revision": "v0.1.1",
+      "bootstrapEntrypoint": "gitops/bootstrap/argocd/overlays/production/platform"
+    },
+    "policyDigests": {
+      "clusterAccess": "1111111111111111111111111111111111111111111111111111111111111111",
+      "networkBoundary": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "evidenceDigests": {
+      "iacPlan": "3333333333333333333333333333333333333333333333333333333333333333",
+      "iacRelease": "4444444444444444444444444444444444444444444444444444444444444444"
+    }
+  },
+  "signature": {
+    "algorithm": "ecdsa-p256-sha256",
+    "keyId": "36d07e5da7c486ceb7d74ea8be3ef47f5d1ba73144a5ffcefa0daddf19b81703",
+    "publicKeyReference": "key-id://sha256/36d07e5da7c486ceb7d74ea8be3ef47f5d1ba73144a5ffcefa0daddf19b81703",
+    "value": "MEQCIH4ZkwKr2gDx/1lW1IsmOAcujUG7DBKwbr+RUk8PxQjZAiBFs8wKSmMW1mhjZP9eyWtmeRA0P4GPW6XBePWjgkezEg=="
+  }
+}

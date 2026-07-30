@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist-platform-handoff-test",
+    "noEmit": false
+  },
+  "include": [
+    "tests/ownershipBoundary.test.ts",
+    "tests/platformIacHandoff.test.ts"
+  ]
+}

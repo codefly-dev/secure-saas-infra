@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -509,6 +510,31 @@ test("management-seed release and dependency inventories exclude the platform la
     "@pulumi/aws",
     "@pulumi/pulumi",
   ]);
+  assert.equal(packageJson.devDependencies["@pulumi/kubernetes"], undefined);
+  assert.ok(
+    Object.keys(packageJson.scripts).every(
+      (name) => !name.startsWith("platform:"),
+    ),
+  );
+  for (const path of [
+    "gitops",
+    ".github/workflows/platform-ci.yml",
+    "scripts/validate-gitops.mjs",
+    "scripts/validate-argocd-cluster-roles.mjs",
+    "scripts/validate-disposable-cluster.mjs",
+    "src/argocd.ts",
+    "src/argocdValues.ts",
+    "src/stacks/argocdStack.ts",
+  ]) {
+    assert.equal(existsSync(path), false, `${path} remains in cloud IaC`);
+  }
+  assert.ok(
+    scope.contracts.quarantinedChecked.some(
+      (entry: { contract: string; schema: string }) =>
+        entry.contract === "platform-iac-handoff-v1.json" &&
+        entry.schema === "platform-iac-handoff-v1.schema.json",
+    ),
+  );
   assert.match(project, /main: dist-management-seed\/managementSeed\.js/);
   assert.match(audit, /dist-management-seed-support\/dependencySecurity\.js/);
   assert.doesNotMatch(audit, /\.\.\/dist\/dependencySecurity\.js/);

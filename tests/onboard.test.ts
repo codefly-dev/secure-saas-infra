@@ -73,33 +73,6 @@ test("onboarding helper generates filled stack files without touching examples",
   );
   assert.match(codeowners, /@deus-ai\/platform-security/);
 
-  const argocd = readFileSync(
-    join(
-      outDir,
-      "gitops/bootstrap/argocd/base/platform-cluster-baseline.application.yaml",
-    ),
-    "utf8",
-  );
-  assert.match(argocd, /https:\/\/github\.com\/deus-ai\/infra\.git/);
-
-  const argocdProjects = readFileSync(
-    join(outDir, "gitops/bootstrap/argocd/base/projects.appproject.yaml"),
-    "utf8",
-  );
-  assert.match(argocdProjects, /https:\/\/github\.com\/deus-ai\/infra\.git/);
-  assert.doesNotMatch(argocdProjects, /codefly-dev\/secure-saas-infra/);
-
-  const imageTrust = readFileSync(
-    join(outDir, "gitops/base/kyverno/verify-signed-provenance.yaml"),
-    "utf8",
-  );
-  assert.match(imageTrust, /ghcr\.io\/deus-ai\/infra\/\*/);
-  assert.match(
-    imageTrust,
-    /github\\\.com\/deus-ai\/infra\/\\\.github\/workflows/,
-  );
-  assert.doesNotMatch(imageTrust, /\[\^\/\]\+\/\[\^\/\]\+/);
-
   const summary = readFileSync(join(outDir, "ONBOARDING.generated.md"), "utf8");
   assert.match(summary, /GitHub organization: deus-ai/);
   assert.match(summary, /qualify:bootstrap/);

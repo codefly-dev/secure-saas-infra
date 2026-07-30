@@ -1,20 +1,17 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-// The single repository that Codefly's promotion driver publishes reviewed
-// application commits into and that owns Argo application reconciliation. Cloud
-// IaC ends at infrastructure facts and this repository is the only first-party
-// Argo source the platform tree may reference.
+// The receiver repository that Codefly's promotion driver publishes reviewed
+// application commits into and that owns Argo application reconciliation.
 const PROTECTED_PLATFORM_REPOSITORY =
-  "https://github.com/codefly-dev/secure-saas-infra.git";
-const FIRST_PARTY_SOURCE_PATTERN =
-  /https:\/\/github\.com\/codefly-dev\/[A-Za-z0-9._/-]+/g;
+  "https://github.com/codefly-dev/secure-saas-platform.git";
 
 const HANDOFF_CONTRACT =
   "contracts/aws-database-infrastructure-handoff-v1alpha1.json";
+const PLATFORM_HANDOFF_CONTRACT = "contracts/platform-iac-handoff-v1.json";
 const PLATFORM_TREE = "gitops";
 const PROMOTION_DRIVER = "scripts/verify-review-promotion.mjs";
 const PROMOTION_WORKFLOW = ".github/workflows/review-promotion.yml";
@@ -36,11 +33,11 @@ const APPLICATION_PUBLICATION_PATTERN =
 export function validateOwnershipBoundary(root = process.cwd()) {
   return {
     handoff: assertHandoffIsInfrastructureOnly(readHandoff(root)),
-    platformRepository: assertProtectedPlatformRepositoryIsSoleFirstPartySource(
-      collectFirstPartyRepositoryReferences(root),
+    platformRepository: assertProtectedPlatformRepository(
+      readPlatformHandoff(root).spec.gitops.repository,
     ),
     promotion: assertApplicationPublicationDelegated(root),
-    paths: assertCloudIacDoesNotOwnPlatformTree(readSeedScope(root)),
+    paths: assertCloudIacDoesNotOwnPlatformTree(root, readSeedScope(root)),
     credentials: assertQualificationStripsProviderCredentials(root),
   };
 }
@@ -59,17 +56,10 @@ function assertHandoffIsInfrastructureOnly(handoff) {
   return { owner: handoff.owner, applicationMutationAllowed: false };
 }
 
-function assertProtectedPlatformRepositoryIsSoleFirstPartySource(references) {
-  for (const reference of references) {
-    if (reference !== PROTECTED_PLATFORM_REPOSITORY) {
-      deny(
-        `plugin-owned repository source binding '${reference}' is not the protected platform repository`,
-      );
-    }
-  }
-  if (!references.includes(PROTECTED_PLATFORM_REPOSITORY)) {
+function assertProtectedPlatformRepository(reference) {
+  if (reference !== PROTECTED_PLATFORM_REPOSITORY) {
     deny(
-      "the protected platform repository must own the first-party Argo source",
+      `plugin-owned repository source binding '${reference}' is not the protected platform repository`,
     );
   }
   return { protectedPlatformRepository: PROTECTED_PLATFORM_REPOSITORY };
@@ -102,7 +92,7 @@ function assertApplicationPublicationDelegated(root) {
   return { promotionDriver: PROMOTION_DRIVER };
 }
 
-function assertCloudIacDoesNotOwnPlatformTree(seedScope) {
+function assertCloudIacDoesNotOwnPlatformTree(root, seedScope) {
   const owned = [
     ...seedScope.sourceFiles,
     ...seedScope.tests.included,
@@ -114,6 +104,9 @@ function assertCloudIacDoesNotOwnPlatformTree(seedScope) {
     deny(
       `cloud IaC inventory must not own the platform tree ('${platform[0]}')`,
     );
+  }
+  if (existsSync(join(root, PLATFORM_TREE))) {
+    deny("cloud IaC repository must not contain the extracted platform tree");
   }
   return { cloudIacOwnsPlatformTree: false };
 }
@@ -155,24 +148,6 @@ function scanForApplicationPayload(value, location) {
   }
 }
 
-// Every first-party repository reference anywhere Argo reconciles from — base
-// AppProjects, environment/role overlay patches, and Application sources — not
-// just the static base project file.
-function collectFirstPartyRepositoryReferences(root) {
-  const references = new Set();
-  for (const file of listYamlFiles(join(root, PLATFORM_TREE))) {
-    const matches = readFileSync(file, "utf8").match(FIRST_PARTY_SOURCE_PATTERN);
-    for (const match of matches ?? []) references.add(match);
-  }
-  return [...references];
-}
-
-function listYamlFiles(directory) {
-  return readdirSync(directory, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".yaml"))
-    .map((entry) => path.join(entry.parentPath, entry.name));
-}
-
 function governedScripts(root) {
   return readSeedScope(root).sourceFiles.filter((entry) =>
     /^scripts\//.test(entry),
@@ -181,6 +156,10 @@ function governedScripts(root) {
 
 function readHandoff(root) {
   return JSON.parse(readText(root, HANDOFF_CONTRACT));
+}
+
+function readPlatformHandoff(root) {
+  return JSON.parse(readText(root, PLATFORM_HANDOFF_CONTRACT));
 }
 
 function readSeedScope(root) {

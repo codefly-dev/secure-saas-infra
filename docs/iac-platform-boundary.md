@@ -29,9 +29,10 @@ API after that handoff, including Argo CD configuration, Helm releases,
 Kyverno, Istio, namespaces, NetworkPolicy, rollout resources, operators, and
 application/database migration workloads.
 
-The only bootstrap exception is the future, separately reviewed mechanism that
-installs or activates Argo CD itself. That mechanism must be minimal and end by
-handing ownership to GitOps; it is not part of the organization seed preview.
+The only bootstrap exception is the separately reviewed mechanism in
+[`codefly-dev/secure-saas-platform`](https://github.com/codefly-dev/secure-saas-platform)
+that activates Argo CD from a signed handoff and then hands ownership to Git.
+It is not part of the organization seed preview.
 
 ## Cloud infrastructure waves
 
@@ -42,7 +43,7 @@ handing ownership to GitOps; it is not part of the organization seed preview.
 | 2 — network                   | Inspection/egress and spoke VPCs, Transit Gateway, endpoints, DNS and routing                                             | Planned cloud IaC                                                                                                             |
 | 3 — compute and data          | EKS control planes/node infrastructure/access entries/Pod Identity and RDS/Aurora/Proxy/backups                           | Planned cloud IaC                                                                                                             |
 | 4 — edge                      | Route 53, ACM, WAF, CloudFront and AWS load-balancer prerequisites                                                        | Planned cloud IaC                                                                                                             |
-| Handoff — platform activation | Minimal cluster bootstrap plus signed, credential-free cloud outputs                                                      | Contract and owner must be separately qualified                                                                               |
+| Handoff — platform activation | Minimal cluster bootstrap plus signed, credential-free cloud outputs                                                      | Versioned contract emitted here and consumed by the protected platform owner                                                  |
 
 An AWS load balancer and its AWS-side prerequisites are cloud IaC. An Istio
 route, Argo CD Application, Helm release, or Kubernetes Gateway/Ingress object
@@ -73,13 +74,14 @@ cloud infrastructure. Because credential-free qualification refuses to run when
 any AWS, Pulumi, or Git credential is present, plugin rendering and application
 publication are structurally denied provider access.
 
-The credential-free IaC handoff carries infrastructure identities, references,
-and digests only: `owner: external-iac`, `applicationMutationAllowed: false`,
-and no Argo `Application`/`AppProject`, application source binding, revision, or
-container image. Only the protected platform repository may be a first-party
-Argo source; any other `codefly-dev` repository binding is a plugin-owned
-source and is rejected. `scripts/validate-ownership-boundary.mjs` proves each
-authority owns a disjoint path and responsibility.
+The database-infrastructure handoff carries infrastructure identities and
+admission manifests only: `owner: external-iac`,
+`applicationMutationAllowed: false`, and no Argo `Application`/`AppProject`,
+application source binding, revision, or container image. The signed platform
+handoff names `codefly-dev/secure-saas-platform` as the only first-party Argo
+source. Any other `codefly-dev` repository binding is rejected.
+`scripts/validate-ownership-boundary.mjs` proves the cloud repository contains
+no platform tree and that each authority owns a disjoint responsibility.
 
 ## Governed validation
 
@@ -97,31 +99,31 @@ evidence; they cannot emit or consume production local-gate evidence:
 4. dependency security audit; and
 5. SPDX SBOM generation.
 
-They do not invoke Docker, Helm, kubectl, K3s, or GitOps rendering. The root
-package exposes no platform validation command; legacy platform files are
-outside the positive seed source, test, contract, dependency, and release
-inventories.
+They do not invoke Docker, Helm, kubectl, K3s, or GitOps rendering. The
+separate `npm run validate:handoff` gate compiles the quarantined handoff
+schema, verifies its signed fixture, and exercises publication from a Pulumi
+stack-output document without admitting any platform input to the management
+seed. The root package contains no Kubernetes or Helm dependency.
 
-## Extraction debt
+## Platform handoff
 
-The existing `gitops/`, disposable-cluster scripts, and Kubernetes/Helm Argo CD
-material predate this boundary. They remain temporarily so the move can retain
-history and tests, but they are excluded from the AWS release archive and
-qualification inventory. Do not add new in-cluster behavior here.
+This repository owns the
+`platform-iac-handoff-v1.schema.json` contract and its credential-free cloud
+inputs. The contract binds the cluster role, endpoint and CA reference,
+bootstrap identity reference, cloud resource IDs, and policy/evidence digests.
+`npm run handoff:publish -- --stack-outputs <file> --private-key <file>
+--output <file>` materializes that document from the
+`platformIacHandoff` Pulumi stack output, replaces the inline cluster CA with
+its content digest, and signs the canonical spec with an external ECDSA P-256
+key. Its signed example and qualification test remain quarantined from the
+management-seed release inventory.
 
-Before any post-seed EKS deployment is enabled:
-
-- [ ] create the platform/GitOps repository and ownership rules;
-- [ ] move `gitops/`, its static validator, and disposable-cluster tests there;
-- [ ] move Kubernetes/Helm Argo CD reconciliation out of the Pulumi cloud
-      program;
-- [ ] define and schema-check the credential-free cloud-to-platform handoff;
-- [ ] implement the minimal Argo CD activation mechanism in its declared
-      owner;
-- [ ] make platform CI reconcile a disposable Git remote through Argo CD and
-      run its own K3s/Kubernetes hostile tests; and
-- [ ] delete the temporary `platform:*` commands and legacy files from this
-      repository after the receiving repository proves parity.
+The production GitOps tree, Argo CD activation, disposable-cluster validation,
+promotion evidence, CODEOWNERS, and release controls live in
+[`codefly-dev/secure-saas-platform`](https://github.com/codefly-dev/secure-saas-platform).
+That repository retained the relevant history and proved exact-revision
+reconciliation on AMD64 and ARM64 before the legacy platform paths were removed
+here.
 
 Application schema/data migrations remain application code and are never an
 IaC responsibility.

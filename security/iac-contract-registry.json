@@ -41,6 +41,11 @@
       "owner": "secure-saas-infra/managed-postgres"
     },
     {
+      "contract": "platform-iac-handoff-v1.json",
+      "schema": "platform-iac-handoff-v1.schema.json",
+      "owner": "secure-saas-infra/platform-iac-handoff"
+    },
+    {
       "contract": "postgres-access-observation-v1alpha1.json",
       "schema": "postgres-access-observation-v1alpha1.schema.json",
       "owner": "secure-saas-infra/postgres-access-observation"
@@ -76,10 +81,6 @@
     {
       "schema": "contract-schema-validation-v1.schema.json",
       "owner": "secure-saas-infra/contract-schema-validation"
-    },
-    {
-      "schema": "disposable-cluster-validation-v1.schema.json",
-      "owner": "secure-saas-infra/disposable-cluster-validation"
     },
     {
       "schema": "management-seed-release-evidence-v1.schema.json",

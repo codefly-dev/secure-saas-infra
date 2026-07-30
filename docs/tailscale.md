@@ -17,7 +17,10 @@ Do not use Tailscale as the normal internet egress path for client code. Client-
 
 Install the Tailscale Kubernetes Operator with the official Helm chart. The operator requires OAuth credentials with `Devices Core`, `Auth Keys`, and `Services` write scopes and the `tag:k8s-operator` tag.
 
-The bootstrap Application in `gitops/bootstrap/argocd/tailscale-operator.application.yaml` installs the operator chart. Before syncing it, provide credentials through one of these methods:
+The platform repository's
+[`tailscale-operator.application.yaml`](https://github.com/codefly-dev/secure-saas-platform/blob/v0.1.0/gitops/bootstrap/argocd/base/apps/tailscale-operator.application.yaml)
+installs the operator chart. Before syncing it, provide credentials through one
+of these methods:
 
 - Vault-backed secret injection into the `tailscale` namespace.
 - Argo CD secret management plugin.
@@ -37,7 +40,9 @@ Required tag ownership:
 
 ## Platform Connector
 
-`gitops/clusters/platform/tailscale-platform-access.yaml` advertises the platform VPC CIDR through a highly available Tailscale Connector:
+The platform repository's
+[`tailscale-platform-access.yaml`](https://github.com/codefly-dev/secure-saas-platform/blob/v0.1.0/gitops/clusters/platform/tailscale-platform-access.yaml)
+advertises the platform VPC CIDR through a highly available Tailscale Connector:
 
 ```yaml
 subnetRouter:
