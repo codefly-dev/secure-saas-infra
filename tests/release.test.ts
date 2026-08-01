@@ -261,11 +261,27 @@ test("release workflow uses the exact SLSA Level 3 tag exception", () => {
     ".github/workflows/infra-ci.yml",
     ".github/workflows/review-promotion.yml",
   ];
+  // Must mirror the repository selected-actions allowlist. An action outside it
+  // makes the whole run fail at startup with zero jobs, indistinguishable from a
+  // billing block, so drift here silently disables CI.
+  const allowedActionOwners = new Set([
+    "actions",
+    "github",
+    "slsa-framework",
+    "sigstore",
+  ]);
+  const allowedActionRepos = new Set(["pulumi/actions"]);
   let slsaGeneratorReferences = 0;
   for (const workflowPath of workflowPaths) {
     for (const line of readFileSync(workflowPath, "utf8").split("\n")) {
       const match = /^\s*uses:\s*([^\s#]+)/.exec(line);
       if (!match) continue;
+      const [owner, repo] = match[1].replace(/@.*$/, "").split("/");
+      assert.ok(
+        allowedActionOwners.has(owner) ||
+          allowedActionRepos.has(`${owner}/${repo}`),
+        `${workflowPath} uses ${match[1]} outside the repository Actions allowlist`,
+      );
       if (
         match[1] ===
         "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0"
