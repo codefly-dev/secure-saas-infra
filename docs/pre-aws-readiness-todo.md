@@ -12,7 +12,8 @@ The exact commands and security requirements remain in the
 [management-seed runbook](management-seed-runbook.md). The larger
 [validation-first backlog](iac-validation-first-execution-todo.md) records
 implementation detail and later work; this file records the immediate operator
-sequence.
+sequence. The [pre-AWS readiness roadmap](pre-aws-readiness-roadmap.md) maps each
+numbered stage below to its tracked issue and records the dependency ordering.
 
 ## Current checkpoint
 

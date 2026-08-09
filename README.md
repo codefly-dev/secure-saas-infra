@@ -245,6 +245,10 @@ See
 for the short dependency-ordered operator checklist to complete before creating
 the AWS management account.
 See
+[docs/pre-aws-readiness-roadmap.md](docs/pre-aws-readiness-roadmap.md)
+for the dependency-ordered map of tracked issues to that checklist's stages, from
+the current state to the first governed management-seed apply.
+See
 [docs/infrastructure-controller-protocol.md](docs/infrastructure-controller-protocol.md)
 for the implemented public/internal controller trust boundary and protocol
 verification rules.
